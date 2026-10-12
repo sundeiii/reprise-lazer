@@ -4,71 +4,36 @@
 
 # Reprise Lazer
 
-> This is a fork of [ppy/osu](https://github.com/ppy/osu) maintained for [reprise.pw](https://osu.reprise.pw). It includes the following changes on top of the upstream osu!(lazer) client to work better with [g0v0-server](https://github.com/GooGuTeam/g0v0-server).
+The osu!(lazer) client for [reprise.pw](https://osu.reprise.pw), an unofficial osu! private server. It's
+[ppy/osu](https://github.com/ppy/osu) with reprise's changes on top, and it is not affiliated with ppy Pty Ltd.
 
-## Changes from upstream
+## Download
 
-### Custom API server
+| [Windows 10+ (x64)](https://github.com/sundeiii/reprise-lazer/releases/latest/download/Reprise-Lazer-Setup.exe) | macOS 12+ ([Intel](https://github.com/sundeiii/reprise-lazer/releases/latest/download/Reprise-Lazer-macOS-Intel.zip), [Apple Silicon](https://github.com/sundeiii/reprise-lazer/releases/latest/download/Reprise-Lazer-macOS-Apple-Silicon.zip)) | [Linux (x64)](https://github.com/sundeiii/reprise-lazer/releases/latest/download/Reprise-Lazer.AppImage) |
+| --- | --- | --- |
 
-- Players can specify a custom API server URL in **Settings > Online > Web**, allowing connection to third-party servers.
-- URL validation, debouncing, and a restart-required notice are provided in the settings UI.
+Windows without installing: the [portable zip](https://github.com/sundeiii/reprise-lazer/releases/latest/download/Reprise-Lazer-win-x64-portable.zip).
+These links always give the latest release; every release is on the [releases page](https://github.com/sundeiii/reprise-lazer/releases).
+Once installed, the game keeps itself up to date.
 
-### Special rulesets (Relax / Autopilot)
+Reprise Lazer is its own app next to osu!(lazer): it keeps its files in its own folder (`osu-reprise`), so it doesn't
+touch an existing lazer install.
 
-- Added first-class support for **Relax (RX)** and **Autopilot (AP)** as special game modes.
-- Dedicated difficulty and performance (PP) calculators for the osu! Relax mode, including a standalone `RelaxAimEvaluator`, `RelaxRhythmEvaluator`, and `Relax` difficulty skill.
-- Profile and overlay ruleset selectors display special rulesets with a popover menu, and user statistics are fetched per special ruleset.
+## What's different from osu!(lazer)
 
-### Ruleset hash validation
+- **Plays on reprise.pw**: the website, the game server and multiplayer are reprise's.
+- **Relax and Autopilot modes**: a VN / RX / AP picker in the toolbar. With Relax or Autopilot on, the leaderboards
+  (song select, in game, results) and your rank and pp are that mode's, as on the website. Relax and Autopilot are
+  ranked and score in full (1x), and the star rating and pp are what the play would be worth without them.
+- **Ranked mods**: Double Time and Nightcore at any speed, and Difficulty Adjust, are ranked.
+- **osu!stable's look, as a setting**: with a legacy skin, the results screen, song select, the main menu and parts of
+  the HUD can look like osu!stable's (Settings > Skin).
+- **Session stats**: your plays this session (accuracy, unstable rate, hit errors) on the results screen, with an
+  attempt counter.
+- **osu-web's beatmap listing and beatmap page** layouts.
+- No gameplay assistance of any kind.
 
-- The client computes and sends SHA-256 hashes of loaded rulesets to the server via API requests and SignalR headers, enabling server-side integrity verification.
-- When the server reports a ruleset is outdated, players receive an in-game notification with a direct download link.
-
-### Server info notification
-
-- On startup, a notification is displayed showing the currently connected server information.
-
-### Issue reporting
-
-- The "Report an issue" button now opens a confirmation dialog before redirecting to the GooGuTeam GitHub Issues page.
-
-### Update source
-
-- Desktop update checks and mobile update notifications point to the **sundeiii/osu** GitHub repository.
-- A new **Disable automatic updates** option is available in the update settings.
-
-### Error reporting
-
-- Client-side crash reports are sent to a GooGuTeam-hosted Glitchtip instance instead of the upstream Sentry endpoint.
-
----
-
-*All other gameplay, UI, and framework behaviour remains identical to upstream osu!(lazer).*
-
-## Status
-
-This project is under constant development, but we do our best to keep things in a stable state. Players are encouraged to install from a release alongside their stable *osu!* client. This project will continue to evolve until we eventually reach the point where most users prefer it over the previous "osu!stable" release.
-
-A few resources are available as starting points to getting involved and understanding the project:
-
-- Detailed release changelogs are available on the [official osu! site](https://osu.ppy.sh/home/changelog/lazer).
-- You can learn more about our approach to [project management](https://github.com/ppy/osu/wiki/Project-management).
-- Track our current efforts [towards improving the game](https://github.com/orgs/ppy/projects/7/views/6).
-
-## Running osu!
-
-If you are just looking to give the game a whirl, you can grab the latest release for your platform:
-
-### Latest release:
-
-| [Windows 10+ (x64)](https://github.com/ppy/osu/releases/latest/download/install.exe) | macOS 12+ ([Intel](https://github.com/ppy/osu/releases/latest/download/osu.app.Intel.zip), [Apple Silicon](https://github.com/ppy/osu/releases/latest/download/osu.app.Apple.Silicon.zip)) | [Linux (x64)](https://github.com/ppy/osu/releases/latest/download/osu.AppImage) | [iOS 13.4+](https://osu.ppy.sh/home/testflight) | [Android 5+](https://github.com/ppy/osu/releases/latest/download/sh.ppy.osulazer.apk) |
-|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ------------- | ------------- | ------------- |
-
-You can also generally download a version for your current device from the [osu! site](https://osu.ppy.sh/home/download).
-
-If your platform is unsupported or not listed above, there is still a chance you can run the release or manually build it by following the instructions below.
-
-**For iOS/iPadOS users**: The iOS testflight link fills up very fast (Apple has a hard limit of 10,000 users). We reset it occasionally. Please do not ask about this. Check back regularly for link resets or follow [peppy](https://twitter.com/ppy) on twitter for announcements. Our goal is to get the game on mobile app stores very soon so we don't have to live with this limitation.
+Crash reports go to reprise's own Sentry. Problems or ideas: [open an issue](https://github.com/sundeiii/reprise-lazer/issues).
 
 ## Developing a custom ruleset
 
@@ -91,8 +56,8 @@ When working with the codebase, we recommend using an IDE with intelligent code 
 Clone the repository:
 
 ```shell
-git clone https://github.com/ppy/osu
-cd osu
+git clone https://github.com/sundeiii/reprise-lazer
+cd reprise-lazer
 ```
 
 To update the source code to the latest commit, run the following command inside the `osu` directory:

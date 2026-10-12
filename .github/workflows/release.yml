@@ -255,6 +255,8 @@ jobs:
             -i "$ICON_FILE" \
             -c "${{ matrix.channel }}"
 
+      # The player downloads have the same names every release, so .../releases/latest/download/<name>
+      # always gives the newest (the README links them); Velopack's update files keep its own names.
       - name: Normalize release asset names
         shell: bash
         run: |
@@ -281,13 +283,13 @@ jobs:
             for f in Releases/*.exe; do
               if [ -f "$f" ]; then
                 cp "$f" \
-                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-win-x64-Setup.exe"
+                  "release-assets/Reprise-Lazer-Setup.exe"
                 break
               fi
             done
 
             powershell -NoProfile -Command \
-              "Compress-Archive -Path 'publish/${{ matrix.runtime }}/*' -DestinationPath 'release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-win-x64-portable.zip' -Force"
+              "Compress-Archive -Path 'publish/${{ matrix.runtime }}/*' -DestinationPath 'release-assets/Reprise-Lazer-win-x64-portable.zip' -Force"
 
             copy_velopack_update_files
           fi
@@ -296,7 +298,7 @@ jobs:
             for f in Releases/*.AppImage; do
               if [ -f "$f" ]; then
                 cp "$f" \
-                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-linux-x64.AppImage"
+                  "release-assets/Reprise-Lazer.AppImage"
               fi
             done
 
@@ -307,7 +309,7 @@ jobs:
             for f in Releases/*.zip; do
               if [ -f "$f" ]; then
                 cp "$f" \
-                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-macos-intel.zip"
+                  "release-assets/Reprise-Lazer-macOS-Intel.zip"
               fi
             done
 
@@ -318,7 +320,7 @@ jobs:
             for f in Releases/*.zip; do
               if [ -f "$f" ]; then
                 cp "$f" \
-                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-macos-apple-silicon.zip"
+                  "release-assets/Reprise-Lazer-macOS-Apple-Silicon.zip"
               fi
             done
 
