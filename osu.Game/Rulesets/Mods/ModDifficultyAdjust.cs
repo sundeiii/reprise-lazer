@@ -23,6 +23,9 @@ namespace osu.Game.Rulesets.Mods
 
         public override ModType Type => ModType.Conversion;
 
+        // Reprise: ranked, whatever its settings (reprise.pw counts it, Admin panel > Mods).
+        public override bool Ranked => true;
+
         public override IconUsage? Icon => OsuIcon.ModDifficultyAdjust;
 
         public override bool RequiresConfiguration => true;
