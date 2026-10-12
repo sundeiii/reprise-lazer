@@ -139,17 +139,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (score.Mods.Any(m => m is OsuModSpunOut) && totalHits > 0)
                 multiplier *= 1.0 - DiffUtils.Pow((double)osuAttributes.SpinnerCount / totalHits, 0.85);
 
-            if (score.Mods.Any(h => h is OsuModRelax))
-            {
-                // https://www.desmos.com/calculator/vspzsop6td
-                // we use OD13.3 as maximum since it's the value at which great hitwidow becomes 0
-                // this is well beyond currently maximum achievable OD which is 12.17 (DTx2 + DA with OD11)
-                double okMultiplier = 0.75 * Math.Max(0.0, overallDifficulty > 0.0 ? 1 - overallDifficulty / 13.33 : 1.0);
-                double mehMultiplier = Math.Max(0.0, overallDifficulty > 0.0 ? 1 - DiffUtils.Pow(overallDifficulty / 13.33, 5) : 1.0);
-
-                // As we're adding Oks and Mehs to an approximated number of combo breaks the result can be higher than total hits in specific scenarios (which breaks some calculations) so we need to clamp it.
-                effectiveMissCount = Math.Min(effectiveMissCount + countOk * okMultiplier + countMeh * mehMultiplier, totalHits);
-            }
+            // Reprise: Relax and Autopilot plays are worth what they would be without the mod (no Relax or
+            // Autopilot formulas here), as reprise.pw works their pp out.
 
             speedDeviation = calculateSpeedDeviation(osuAttributes);
 
@@ -182,9 +173,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeAimValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
-            if (score.Mods.Any(h => h is OsuModAutopilot))
-                return 0.0;
-
             double aimDifficulty = attributes.AimDifficulty;
 
             if (attributes.SliderCount > 0 && attributes.AimDifficultSliderCount > 0)
@@ -236,7 +224,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeSpeedValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
-            if (score.Mods.Any(h => h is OsuModRelax) || speedDeviation == null)
+            if (speedDeviation == null)
                 return 0.0;
 
             double speedValue = HarmonicSkill.DifficultyToPerformance(attributes.SpeedDifficulty);
@@ -272,9 +260,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeAccuracyValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
-            if (score.Mods.Any(h => h is OsuModRelax))
-                return 0.0;
-
             // This percentage only considers HitCircles of any value - in this part of the calculation we focus on hitting the timing hit window.
             double betterAccuracyPercentage;
             int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
