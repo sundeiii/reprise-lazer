@@ -24,6 +24,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override ModType Type => ModType.Automation;
         public override LocalisableString Description => @"Automatic cursor movement - just follow the rhythm.";
 
+        // Reprise: ranked (reprise.pw has Autopilot leaderboards and pp).
+        public override bool Ranked => true;
+
         public override Type[] IncompatibleMods => new[]
         {
             typeof(OsuModSpunOut),

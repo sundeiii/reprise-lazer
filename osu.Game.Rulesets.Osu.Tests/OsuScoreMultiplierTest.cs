@@ -148,7 +148,7 @@ namespace osu.Game.Rulesets.Osu.Tests
             [new Mod[] { new OsuModAutoplay() }, 1],
             [new Mod[] { new OsuModCinema() }, 1],
             [new Mod[] { new OsuModRelax() }, 1], // Reprise: Relax scores in full
-            [new Mod[] { new OsuModAutopilot() }, 0.1],
+            [new Mod[] { new OsuModAutopilot() }, 1], // Reprise: Autopilot scores in full
             [new Mod[] { new OsuModSpunOut() }, 0.95],
 
             #endregion
