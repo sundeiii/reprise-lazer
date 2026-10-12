@@ -408,5 +408,7 @@ jobs:
           environment: production
           release: ${{ needs.version.outputs.sentryRelease }}
           set_commits: auto
+          # This repository started fresh (no Anarchy history): an earlier release's commit may not be in it.
+          ignore_missing: true
           finalize: true
           ignore_empty: true
