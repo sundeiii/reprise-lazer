@@ -37,6 +37,21 @@ namespace osu.Game.Rulesets.Osu.Tests
         public void TestClassicMod(double expectedStarRating, int expectedMaxCombo, string name)
             => Test(expectedStarRating, expectedMaxCombo, name, new OsuModClassic());
 
+        // Reprise: Relax and Autopilot leave the star rating as it is without them.
+        [TestCase(6.5243170265483581d, 239, "diffcalc-test")]
+        [TestCase(1.3280410795791415d, 54, "zero-length-sliders")]
+        public void TestRelax(double expectedStarRating, int expectedMaxCombo, string name)
+            => Test(expectedStarRating, expectedMaxCombo, name, new OsuModRelax());
+
+        [TestCase(6.5243170265483581d, 239, "diffcalc-test")]
+        [TestCase(1.3280410795791415d, 54, "zero-length-sliders")]
+        public void TestAutopilot(double expectedStarRating, int expectedMaxCombo, string name)
+            => Test(expectedStarRating, expectedMaxCombo, name, new OsuModAutopilot());
+
+        [TestCase(9.4677607900646308d, 239, "diffcalc-test")]
+        public void TestRelaxWithDoubleTime(double expectedStarRating, int expectedMaxCombo, string name)
+            => Test(expectedStarRating, expectedMaxCombo, name, new OsuModRelax(), new OsuModDoubleTime());
+
         [Test]
         public void TestTimedExtended()
         {
