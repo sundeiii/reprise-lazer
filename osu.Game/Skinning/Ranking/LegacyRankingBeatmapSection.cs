@@ -67,7 +67,7 @@ namespace osu.Game.Skinning.Ranking
                     Position = new Vector2(275, 3),
                     Text = beatmap == null
                         ? string.Empty
-                        : $"{beatmap.Metadata.Artist} - {beatmap.Metadata.Title} [{beatmap.DifficultyName}] by {beatmap.Metadata.Author.Username}",
+                        : StableMetadata.ArtistTitle(beatmap.Metadata, after: $" [{beatmap.DifficultyName}] by {beatmap.Metadata.Author.Username}"),
                     Font = OsuFont.GetFont(size: 21, weight: FontWeight.Light),
                     Alpha = decorated ? 1 : 0,
                 },

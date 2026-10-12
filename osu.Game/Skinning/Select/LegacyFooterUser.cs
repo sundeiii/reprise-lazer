@@ -1,6 +1,8 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Collections.Generic;
 using System.Globalization;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -19,6 +21,7 @@ using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Users.Drawables;
 using osuTK;
 using osuTK.Graphics;
@@ -149,17 +152,24 @@ namespace osu.Game.Skinning.Select
                 userStatisticsProvider.StatisticsUpdated += onStatisticsUpdated;
 
             ruleset.BindValueChanged(_ => updateDisplay(), true);
+            selectedMods?.BindValueChanged(_ => updateDisplay());
         }
+
+        // Reprise: with Relax or Autopilot on, the rank and pp shown are that mode's.
+        [Resolved(CanBeNull = true)]
+        private IBindable<IReadOnlyList<Mod>>? selectedMods { get; set; }
+
+        private RulesetInfo currentRuleset => Ruleset ?? ruleset.Value.ForMods(selectedMods?.Value ?? Array.Empty<Mod>());
 
         private void onStatisticsUpdated(UserStatisticsUpdate statistics)
         {
-            if (ruleset.Value.Equals(statistics.Ruleset))
+            if (currentRuleset.ShortName == statistics.Ruleset.ShortName)
                 updateDisplay();
         }
 
         private void updateDisplay()
         {
-            var shownRuleset = Ruleset ?? ruleset.Value;
+            var shownRuleset = currentRuleset;
             var statistics = Statistics != null ? Statistics.Value : userStatisticsProvider?.GetStatisticsFor(shownRuleset);
 
             if (statistics == null)

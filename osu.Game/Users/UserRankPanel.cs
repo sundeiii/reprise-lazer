@@ -1,6 +1,8 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.LocalisationExtensions;
@@ -14,6 +16,7 @@ using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays.Profile.Header.Components;
 using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osuTK;
 
 namespace osu.Game.Users
@@ -50,6 +53,12 @@ namespace osu.Game.Users
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
+        // Reprise: with Relax or Autopilot on, the rank and pp shown are that mode's.
+        [Resolved(CanBeNull = true)]
+        private IBindable<IReadOnlyList<Mod>>? selectedMods { get; set; }
+
+        private RulesetInfo shownRuleset => ruleset.Value.ForMods(selectedMods?.Value ?? Array.Empty<Mod>());
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
@@ -58,12 +67,13 @@ namespace osu.Game.Users
                 statisticsProvider.StatisticsUpdated += onStatisticsUpdated;
 
             ruleset.BindValueChanged(_ => updateDisplay(), true);
+            selectedMods?.BindValueChanged(_ => updateDisplay());
             updateDisplay();
         }
 
         private void onStatisticsUpdated(UserStatisticsUpdate update)
         {
-            if (update.Ruleset.Equals(ruleset.Value))
+            if (update.Ruleset.ShortName == shownRuleset.ShortName)
                 updateDisplay();
         }
 
@@ -80,7 +90,7 @@ namespace osu.Game.Users
                 return;
             }
 
-            var statistics = statisticsProvider?.GetStatisticsFor(ruleset.Value);
+            var statistics = statisticsProvider?.GetStatisticsFor(shownRuleset);
 
             loadingLayer.State.Value = statistics == null ? Visibility.Visible : Visibility.Hidden;
 

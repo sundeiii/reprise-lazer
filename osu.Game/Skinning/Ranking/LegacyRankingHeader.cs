@@ -56,7 +56,7 @@ namespace osu.Game.Skinning.Ranking
                 new OsuSpriteText
                 {
                     Position = new Vector2(text_left, 2),
-                    Text = beatmap == null ? string.Empty : $"{beatmap.Metadata.Artist} - {beatmap.Metadata.Title} [{beatmap.DifficultyName}]",
+                    Text = beatmap == null ? string.Empty : StableMetadata.ArtistTitle(beatmap.Metadata, after: $" [{beatmap.DifficultyName}]"),
                     Font = OsuFont.GetFont(size: 32),
                 },
                 new OsuSpriteText

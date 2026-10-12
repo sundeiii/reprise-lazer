@@ -47,6 +47,27 @@ namespace osu.Game.Online.Leaderboards
         private RulesetStore rulesets { get; set; } = null!;
 
         /// <summary>
+        /// Reprise: with Relax or Autopilot on, the leaderboards are that mode's (osurx, ...): ranked by pp, the
+        /// server's own order.
+        /// </summary>
+        [Resolved(CanBeNull = true)]
+        private IBindable<IReadOnlyList<Mod>>? selectedMods { get; set; }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            // Turning Relax or Autopilot on or off is another leaderboard.
+            selectedMods?.BindValueChanged(mods =>
+            {
+                if (CurrentCriteria?.Ruleset is not { } ruleset)
+                    return;
+                if (ruleset.ForMods(mods.OldValue ?? Array.Empty<Mod>()).ShortName != ruleset.ForMods(mods.NewValue ?? Array.Empty<Mod>()).ShortName)
+                    FetchWithCriteria(CurrentCriteria, forceRefresh: true);
+            });
+        }
+
+        /// <summary>
         /// Fetch leaderboard content with the new criteria specified in the background.
         /// On completion, <see cref="Scores"/> will be updated with the results from this call (unless a more recent call with a different criteria has completed).
         /// </summary>
@@ -128,7 +149,10 @@ namespace osu.Game.Online.Leaderboards
                             requestMods = newCriteria.ExactMods;
                     }
 
-                    var newRequest = new GetScoresRequest(newCriteria.Beatmap, newCriteria.Ruleset, newCriteria.Scope, requestMods);
+                    // Reprise: Relax or Autopilot on is that mode's leaderboard (osurx, ...), in the server's order (by pp).
+                    var requestRuleset = newCriteria.Ruleset.ForMods(selectedMods?.Value ?? Array.Empty<Mod>());
+                    bool variant = requestRuleset.ShortName != newCriteria.Ruleset.ShortName;
+                    var newRequest = new GetScoresRequest(newCriteria.Beatmap, requestRuleset, newCriteria.Scope, requestMods);
                     newRequest.Success += response =>
                     {
                         if (inFlightOnlineRequest != null && !newRequest.Equals(inFlightOnlineRequest))
@@ -137,7 +161,7 @@ namespace osu.Game.Online.Leaderboards
                         var result = LeaderboardScores.Success
                         (
                             response.Scores.Select(s => s.ToScoreInfo(rulesets, newCriteria.Beatmap))
-                                    .OrderByTotalScore()
+                                    .OrderByServerOr(variant)
                                     .Select((s, idx) =>
                                     {
                                         s.Position = idx + 1;
@@ -282,5 +306,12 @@ namespace osu.Game.Online.Leaderboards
         NotLoggedIn = -5,
         NotSupporter = -6,
         NoTeam = -7
+    }
+
+    internal static class LeaderboardOrder
+    {
+        /// <summary>Reprise: a Relax/Autopilot board keeps the server's order (by pp); a vanilla one is by score.</summary>
+        public static IEnumerable<ScoreInfo> OrderByServerOr(this IEnumerable<ScoreInfo> scores, bool serverOrder) =>
+            serverOrder ? scores : scores.OrderByTotalScore();
     }
 }

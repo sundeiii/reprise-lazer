@@ -473,7 +473,7 @@ namespace osu.Game.Screens.Ranking
             }
 
             // The player's statistics now, for their own scores (the server may send no before-and-after for one).
-            stableCurrentStatistics.Value = isOwnScore(score!) ? localUserStatistics?.GetStatisticsFor(score!.Ruleset) : null;
+            stableCurrentStatistics.Value = isOwnScore(score!) ? localUserStatistics?.GetStatisticsFor(score!.Ruleset.ForMods(score.Mods)) : null;
 
             // Not after watching a replay (stable's online ranking is for scores just set).
             bool hasSecondPage = player != null && player is not ReplayPlayer && score == Score;
@@ -649,7 +649,7 @@ namespace osu.Game.Screens.Ranking
             // Statistics that arrive after the stable layout was made (the first fetch, or a refresh).
             Schedule(() =>
             {
-                if (stableScore != null && isOwnScore(stableScore) && update.Ruleset.ShortName == stableScore.Ruleset.ShortName)
+                if (stableScore != null && isOwnScore(stableScore) && update.Ruleset.ShortName == stableScore.Ruleset.ForMods(stableScore.Mods).ShortName)
                     stableCurrentStatistics.Value = update.NewStatistics;
             });
         }

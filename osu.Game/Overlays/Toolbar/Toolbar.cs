@@ -133,7 +133,18 @@ namespace osu.Game.Overlays.Toolbar
                                         Masking = false,
                                         Children = new Drawable[]
                                         {
-                                            rulesetSelector = new ToolbarRulesetSelector()
+                                            // Reprise: vanilla / Relax / Autopilot right after the rulesets.
+                                            new FillFlowContainer
+                                            {
+                                                RelativeSizeAxes = Axes.Y,
+                                                AutoSizeAxes = Axes.X,
+                                                Direction = FillDirection.Horizontal,
+                                                Children = new Drawable[]
+                                                {
+                                                    rulesetSelector = new ToolbarRulesetSelector(),
+                                                    new ToolbarModeVariantSelector(),
+                                                }
+                                            }
                                         }
                                     },
                                     new Box

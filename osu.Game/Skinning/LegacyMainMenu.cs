@@ -109,6 +109,14 @@ namespace osu.Game.Skinning
         private StableLogo stableLogo = null!;
         private FillFlowContainer<OsuSpriteText> info = null!;
         private TruncatingSpriteText nowPlayingText = null!;
+
+        // Reprise: the song's title in its original language when the setting prefers it.
+        [Resolved]
+        private osu.Framework.Configuration.FrameworkConfigManager frameworkConfig { get; set; } = null!;
+
+        private IBindable<bool> preferOriginal = null!;
+
+        private string titleOf(WorkingBeatmap working) => StableMetadata.ArtistTitle(working.Metadata).GetPreferred(preferOriginal.Value);
         private Sprite nowPlayingBar = null!;
         private Box progress = null!;
         private OsuSpriteText tip = null!;
@@ -235,7 +243,9 @@ namespace osu.Game.Skinning
             base.LoadComplete();
 
             buttons.StateChanged += onStateChanged;
-            beatmap.BindValueChanged(b => showTitle($"{b.NewValue.Metadata.Artist} - {b.NewValue.Metadata.Title}", b.OldValue != null), true);
+            preferOriginal = frameworkConfig.GetBindable<bool>(osu.Framework.Configuration.FrameworkSetting.ShowUnicode);
+            beatmap.BindValueChanged(b => showTitle(titleOf(b.NewValue), b.OldValue != null), true);
+            preferOriginal.BindValueChanged(_ => showTitle(titleOf(beatmap.Value), false));
             onStateChanged(buttons.State);
 
             tip.Text = tips[RNG.Next(tips.Length)];

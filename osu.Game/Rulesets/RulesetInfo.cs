@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using osu.Game.Extensions;
@@ -146,19 +147,33 @@ namespace osu.Game.Rulesets
             return newRuleset;
         }
 
-        public RulesetInfo? CreateSpecialRulesetByScore(ScoreInfo score)
-        {
-            if (!score.Ruleset.HasSpecialRuleset()) { return null; }
+        public RulesetInfo? CreateSpecialRulesetByScore(ScoreInfo score) => CreateSpecialRulesetByMods(score.Mods);
 
-            return score.Ruleset.ShortName switch
+        /// <summary>
+        /// Reprise: the Relax/Autopilot mode (osurx, osuap, taikorx, fruitsrx) <paramref name="mods"/> make of this
+        /// ruleset, or null for its vanilla one. Relax or Autopilot on is playing in that mode: its leaderboards
+        /// and the player's rank and pp in it.
+        /// </summary>
+        public RulesetInfo? CreateSpecialRulesetByMods(IEnumerable<IMod> mods)
+        {
+            if (!this.HasSpecialRuleset()) { return null; }
+
+            var acronyms = mods.Select(m => m.Acronym).ToArray();
+            bool relax = acronyms.Contains("RX");
+            bool autopilot = acronyms.Contains("AP");
+
+            return ShortName switch
             {
-                OSU_MODE_SHORTNAME when score.Mods.OfType<ModRelax>().Any() => CreateSpecialRuleset(OSU_RELAX_MODE_SHORTNAME, OSU_RELAX_ONLINE_ID),
-                OSU_MODE_SHORTNAME when score.APIMods.Any(m => m.Acronym == "AP") => CreateSpecialRuleset(OSU_AUTOPILOT_MODE_SHORTNAME, OSU_AUTOPILOT_ONLINE_ID),
-                TAIKO_MODE_SHORTNAME when score.Mods.OfType<ModRelax>().Any() => CreateSpecialRuleset(TAIKO_RELAX_MODE_SHORTNAME, TAIKO_RELAX_ONLINE_ID),
-                CATCH_MODE_SHORTNAME when score.Mods.OfType<ModRelax>().Any() => CreateSpecialRuleset(CATCH_RELAX_MODE_SHORTNAME, CATCH_RELAX_ONLINE_ID),
+                OSU_MODE_SHORTNAME when relax => CreateSpecialRuleset(OSU_RELAX_MODE_SHORTNAME, OSU_RELAX_ONLINE_ID),
+                OSU_MODE_SHORTNAME when autopilot => CreateSpecialRuleset(OSU_AUTOPILOT_MODE_SHORTNAME, OSU_AUTOPILOT_ONLINE_ID),
+                TAIKO_MODE_SHORTNAME when relax => CreateSpecialRuleset(TAIKO_RELAX_MODE_SHORTNAME, TAIKO_RELAX_ONLINE_ID),
+                CATCH_MODE_SHORTNAME when relax => CreateSpecialRuleset(CATCH_RELAX_MODE_SHORTNAME, CATCH_RELAX_ONLINE_ID),
                 _ => null
             };
         }
+
+        /// <summary>Reprise: the mode <paramref name="mods"/> make of this ruleset: its Relax/Autopilot one, or itself.</summary>
+        public RulesetInfo ForMods(IEnumerable<IMod> mods) => CreateSpecialRulesetByMods(mods) ?? this;
 
         public RulesetInfo CreateNormalRuleset()
         {

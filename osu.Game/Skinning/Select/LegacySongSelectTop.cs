@@ -403,7 +403,7 @@ namespace osu.Game.Skinning.Select
             double rate = ModUtils.CalculateRateWithMods(currentMods);
 
             showStatus(info.Status);
-            title.Text = $"{info.Metadata.Artist} - {info.Metadata.Title} [{info.DifficultyName}]";
+            title.Text = StableMetadata.ArtistTitle(info.Metadata, after: $" [{info.DifficultyName}]");
             mapper.Text = $"Mapped by {info.Metadata.Author.Username}";
 
             // CS/HP/AR/OD with the mods (HR, EZ, and the speed mods' effect on AR and OD), and the stars with them.

@@ -93,7 +93,7 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("show example score", () =>
             {
                 var score = TestResources.CreateTestScoreInfo(createTestBeatmap(new RealmUser()));
-                score.Mods = score.Mods.Append(new OsuModDifficultyAdjust()).ToArray();
+                score.Mods = score.Mods.Append(new OsuModWiggle()).ToArray(); // Reprise: Difficulty Adjust is ranked here
                 showPanel(score);
             });
 

@@ -14,6 +14,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
@@ -277,8 +278,8 @@ namespace osu.Game.Skinning.Select
             thumbnail.Beatmap = beatmaps.GetWorkingBeatmap(beatmap);
 
             title.Font = title.Font.With(size: 25.6f);
-            title.Text = beatmap.Metadata.Title;
-            artist.Text = $"{beatmap.Metadata.Artist} // {beatmap.Metadata.Author.Username}";
+            title.Text = StableMetadata.Title(beatmap.Metadata);
+            artist.Text = LocalisableString.Interpolate($"{StableMetadata.Artist(beatmap.Metadata)} // {beatmap.Metadata.Author.Username}");
             difficulty.Text = isDifficulty ? beatmap.DifficultyName : string.Empty;
             showsDifficulty = isDifficulty;
 
