@@ -1,0 +1,54 @@
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+#nullable disable
+
+using osu.Framework.Allocation;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
+using osu.Game.Graphics;
+using osu.Game.Online.API.Requests.Responses;
+
+namespace osu.Game.Users.Drawables
+{
+    [LongRunningLoad]
+    public partial class DrawableAvatar : Sprite
+    {
+        private readonly IUser user;
+
+        /// <summary>
+        /// A simple, non-interactable avatar sprite for the specified user.
+        /// </summary>
+        /// <param name="user">The user. A null value will get a placeholder avatar.</param>
+        public DrawableAvatar(IUser user = null)
+        {
+            this.user = user;
+
+            RelativeSizeAxes = Axes.Both;
+            FillMode = FillMode.Fit;
+            Anchor = Anchor.Centre;
+            Origin = Anchor.Centre;
+        }
+
+        [BackgroundDependencyLoader]
+        private void load(LargeTextureStore textures, OnlineAssetCachingStore onlineTextures)
+        {
+            if (user != null && user.OnlineID > 1)
+                // TODO: The fallback here should not need to exist. Users should be looked up and populated via UserLookupCache or otherwise
+                // in remaining cases where this is required (chat tabs, local leaderboard), at which point this should be removed.
+                Texture = onlineTextures.Get((user as APIUser)?.AvatarUrl ?? $@"https://a.reprise.pw/{user.OnlineID}");
+            else if (user is { OnlineID: 1 } && !string.IsNullOrWhiteSpace(user.Username) && user.Username != @"Guest")
+                // A player with no account on the server, only a name (replays from osu!): the server's by name, else their osu! avatar.
+                Texture = onlineTextures.Get($@"https://a.reprise.pw/u/{System.Uri.EscapeDataString(user.Username)}");
+
+            Texture ??= textures.Get(@"Online/avatar-guest");
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            this.FadeInFromZero(300, Easing.OutQuint);
+        }
+    }
+}

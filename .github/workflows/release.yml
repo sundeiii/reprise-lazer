@@ -1,0 +1,412 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*-lazer"
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  # The vanilla client (no Anarchy), an app of its own beside the Rinari one: its own updater identity and data folder (osu-reprise).
+  APP_ID: "reprise-lazer"
+  APP_TITLE: "Reprise Lazer"
+  APP_AUTHORS: "reprise.pw"
+  SENTRY_PROJECT: "rinari-lazer-client"
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Compute version
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      semver: ${{ steps.version.outputs.semver }}
+      cleanVersion: ${{ steps.version.outputs.cleanVersion }}
+      assemblyVersion: ${{ steps.version.outputs.assemblyVersion }}
+      fileVersion: ${{ steps.version.outputs.fileVersion }}
+      velopackVersion: ${{ steps.version.outputs.velopackVersion }}
+      sentryRelease: ${{ steps.version.outputs.sentryRelease }}
+
+    steps:
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          SEMVER="${VERSION#v}"
+
+          # Example:
+          # tag: v2026.723.0-lazer
+          # semver: 2026.723.0-lazer
+          # cleanVersion: 2026.723.0
+          CLEAN_VERSION="${SEMVER%%-*}"
+
+          # Assembly/FileVersion need 4 numeric parts.
+          PARTS=$(echo "$CLEAN_VERSION" | awk -F. '{print NF}')
+          ASSEMBLY_VERSION="$CLEAN_VERSION"
+          if [[ $PARTS -eq 1 ]]; then ASSEMBLY_VERSION="$ASSEMBLY_VERSION.0.0.0"; fi
+          if [[ $PARTS -eq 2 ]]; then ASSEMBLY_VERSION="$ASSEMBLY_VERSION.0.0"; fi
+          if [[ $PARTS -eq 3 ]]; then ASSEMBLY_VERSION="$ASSEMBLY_VERSION.0"; fi
+
+          # Velopack wants 3-part semver without pre-release suffix.
+          VELOPACK_VERSION=$(echo "$ASSEMBLY_VERSION" | awk -F. '{print $1"."$2"."$3}')
+
+          # Sentry release should match SentryConfig.cs getRelease().
+          SENTRY_RELEASE="reprise-lazer@$CLEAN_VERSION"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "cleanVersion=$CLEAN_VERSION" >> "$GITHUB_OUTPUT"
+          echo "assemblyVersion=$ASSEMBLY_VERSION" >> "$GITHUB_OUTPUT"
+          echo "fileVersion=$ASSEMBLY_VERSION" >> "$GITHUB_OUTPUT"
+          echo "velopackVersion=$VELOPACK_VERSION" >> "$GITHUB_OUTPUT"
+          echo "sentryRelease=$SENTRY_RELEASE" >> "$GITHUB_OUTPUT"
+
+          echo "Version: $VERSION"
+          echo "SemVer: $SEMVER"
+          echo "Clean version: $CLEAN_VERSION"
+          echo "Assembly/File version: $ASSEMBLY_VERSION"
+          echo "Velopack version: $VELOPACK_VERSION"
+          echo "Sentry release: $SENTRY_RELEASE"
+
+  build:
+    name: Build ${{ matrix.artifact-name }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+            framework: net8.0-windows
+            channel: win
+            artifact-name: reprise-lazer-windows
+            executable: "osu!.exe"
+
+          - os: ubuntu-latest
+            runtime: linux-x64
+            framework: net8.0
+            channel: linux
+            artifact-name: reprise-lazer-linux
+            executable: "osu!"
+
+          - os: macos-latest
+            runtime: osx-x64
+            framework: net8.0
+            channel: osx-x64
+            artifact-name: reprise-lazer-macos-intel
+            executable: "osu!"
+
+          - os: macos-latest
+            runtime: osx-arm64
+            framework: net8.0
+            channel: osx-arm64
+            artifact-name: reprise-lazer-macos-apple-silicon
+            executable: "osu!"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Checkout custom osu-resources
+        shell: bash
+        run: |
+          git clone https://github.com/sundeiii/rinari-resources.git ../osu-resources
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Velopack CLI
+        shell: bash
+        run: dotnet tool install -g vpk
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet/v3-cache
+            ~/.cache/NuGet/v3-cache
+          key: ${{ runner.os }}-${{ matrix.runtime }}-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.runtime }}-nuget-
+            ${{ runner.os }}-nuget-
+
+      - name: Show version
+        shell: bash
+        run: |
+          echo "Tag: ${{ needs.version.outputs.version }}"
+          echo "SemVer: ${{ needs.version.outputs.semver }}"
+          echo "Clean version: ${{ needs.version.outputs.cleanVersion }}"
+          echo "Assembly version: ${{ needs.version.outputs.assemblyVersion }}"
+          echo "Velopack version: ${{ needs.version.outputs.velopackVersion }}"
+          echo "Sentry release: ${{ needs.version.outputs.sentryRelease }}"
+
+      - name: Clean previous build artifacts
+        shell: bash
+        run: |
+          rm -rf osu.Desktop/bin osu.Desktop/obj
+          rm -rf publish/${{ matrix.runtime }}
+          rm -rf Releases
+
+      - name: Create macOS icon
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        continue-on-error: true
+        run: |
+          if [ -f "osu.Desktop/lazer.icns" ] && [ -s "osu.Desktop/lazer.icns" ]; then
+            echo "lazer.icns already exists."
+            exit 0
+          fi
+
+          if [ -f "osu.Desktop/lazer.ico" ]; then
+            echo "Creating macOS .icns from lazer.ico..."
+            sips -s format png osu.Desktop/lazer.ico --out temp_icon.png || {
+              echo "Could not convert icon. Continuing without .icns."
+              exit 0
+            }
+
+            mkdir -p lazer.iconset
+            sips -z 16 16 temp_icon.png --out lazer.iconset/icon_16x16.png
+            sips -z 32 32 temp_icon.png --out lazer.iconset/icon_16x16@2x.png
+            sips -z 32 32 temp_icon.png --out lazer.iconset/icon_32x32.png
+            sips -z 64 64 temp_icon.png --out lazer.iconset/icon_32x32@2x.png
+            sips -z 128 128 temp_icon.png --out lazer.iconset/icon_128x128.png
+            sips -z 256 256 temp_icon.png --out lazer.iconset/icon_128x128@2x.png
+            sips -z 256 256 temp_icon.png --out lazer.iconset/icon_256x256.png
+            sips -z 512 512 temp_icon.png --out lazer.iconset/icon_256x256@2x.png
+            sips -z 512 512 temp_icon.png --out lazer.iconset/icon_512x512.png
+            cp lazer.iconset/icon_512x512.png lazer.iconset/icon_512x512@2x.png
+
+            iconutil -c icns lazer.iconset
+            cp lazer.icns osu.Desktop/lazer.icns
+
+            rm -f temp_icon.png lazer.icns
+            rm -rf lazer.iconset
+          fi
+
+      - name: Publish desktop app
+        shell: bash
+        env:
+          RINARI_SENTRY_DSN: ${{ secrets.RINARI_SENTRY_DSN }}
+        run: |
+          dotnet publish osu.Desktop/osu.Desktop.csproj \
+            --configuration Release \
+            --framework ${{ matrix.framework }} \
+            --runtime ${{ matrix.runtime }} \
+            --self-contained true \
+            --output "publish/${{ matrix.runtime }}" \
+            --verbosity normal \
+            -p:PublishSingleFile=false \
+            -p:PublishTrimmed=false \
+            -p:Version=${{ needs.version.outputs.cleanVersion }} \
+            -p:FileVersion=${{ needs.version.outputs.fileVersion }} \
+            -p:AssemblyVersion=${{ needs.version.outputs.assemblyVersion }} \
+            -p:InformationalVersion=${{ needs.version.outputs.version }} \
+            -p:ContinuousIntegrationBuild=true \
+            -p:SentryDsn="${RINARI_SENTRY_DSN:-}"
+
+      - name: Set executable permissions
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+        shell: bash
+        run: chmod +x "publish/${{ matrix.runtime }}/${{ matrix.executable }}"
+
+      - name: Download previous Velopack release
+        shell: bash
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p Releases
+
+          vpk download github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --token "$GH_TOKEN" \
+            --channel "${{ matrix.channel }}" \
+            --outputDir Releases
+
+      - name: Create Velopack package
+        shell: bash
+        run: |
+          ICON_FILE="osu.Desktop/lazer.ico"
+
+          if [[ "${{ matrix.os }}" == "macos-latest" ]] && [ -f "osu.Desktop/lazer.icns" ] && [ -s "osu.Desktop/lazer.icns" ]; then
+            ICON_FILE="osu.Desktop/lazer.icns"
+          fi
+
+          vpk pack \
+            -u "${{ env.APP_ID }}" \
+            -v "${{ needs.version.outputs.velopackVersion }}" \
+            -p "publish/${{ matrix.runtime }}" \
+            -e "${{ matrix.executable }}" \
+            --packAuthors "${{ env.APP_AUTHORS }}" \
+            --packTitle "${{ env.APP_TITLE }}" \
+            -i "$ICON_FILE" \
+            -c "${{ matrix.channel }}"
+
+      - name: Normalize release asset names
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          shopt -s nullglob
+
+          echo "Files created by Velopack:"
+          find Releases -maxdepth 2 -type f -print || true
+
+          copy_velopack_update_files() {
+            for f in \
+              Releases/*.nupkg \
+              Releases/RELEASES* \
+              Releases/releases.*.json \
+              Releases/assets.*.json; do
+              if [ -f "$f" ]; then
+                echo "Copying Velopack update file: $f"
+                cp "$f" release-assets/
+              fi
+            done
+          }
+
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            for f in Releases/*.exe; do
+              if [ -f "$f" ]; then
+                cp "$f" \
+                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-win-x64-Setup.exe"
+                break
+              fi
+            done
+
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path 'publish/${{ matrix.runtime }}/*' -DestinationPath 'release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-win-x64-portable.zip' -Force"
+
+            copy_velopack_update_files
+          fi
+
+          if [[ "${{ matrix.runtime }}" == "linux-x64" ]]; then
+            for f in Releases/*.AppImage; do
+              if [ -f "$f" ]; then
+                cp "$f" \
+                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-linux-x64.AppImage"
+              fi
+            done
+
+            copy_velopack_update_files
+          fi
+
+          if [[ "${{ matrix.runtime }}" == "osx-x64" ]]; then
+            for f in Releases/*.zip; do
+              if [ -f "$f" ]; then
+                cp "$f" \
+                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-macos-intel.zip"
+              fi
+            done
+
+            copy_velopack_update_files
+          fi
+
+          if [[ "${{ matrix.runtime }}" == "osx-arm64" ]]; then
+            for f in Releases/*.zip; do
+              if [ -f "$f" ]; then
+                cp "$f" \
+                  "release-assets/Reprise-Lazer-${{ needs.version.outputs.cleanVersion }}-macos-apple-silicon.zip"
+              fi
+            done
+
+            copy_velopack_update_files
+          fi
+
+          echo "Release assets:"
+          find release-assets -maxdepth 1 -type f -exec basename {} \; | sort
+
+      - name: Verify Velopack release assets
+        shell: bash
+        run: |
+          FEED="release-assets/releases.${{ matrix.channel }}.json"
+
+          test -f "$FEED" || {
+            echo "::error::Missing $FEED"
+            exit 1
+          }
+
+          if ! compgen -G "release-assets/*.nupkg" > /dev/null; then
+            echo "::error::No Velopack package was copied"
+            exit 1
+          fi
+
+          echo "Verified Velopack assets:"
+          ls -lh release-assets
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.artifact-name }}
+          path: release-assets/
+          retention-days: 90
+
+      - name: Upload raw publish artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-${{ matrix.artifact-name }}-${{ needs.version.outputs.version }}
+          path: publish/${{ matrix.runtime }}/
+          retention-days: 14
+
+  release:
+    name: Create GitHub Release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "installer-*"
+          merge-multiple: true
+          path: release-files
+
+      - name: Show release files
+        shell: bash
+        run: |
+          echo "Release files:"
+          find release-files -maxdepth 2 -type f -print
+          ls -al release-files
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Reprise Lazer ${{ needs.version.outputs.version }}
+          files: release-files/**
+          draft: false
+          prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Sentry Release
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ env.SENTRY_PROJECT }}
+        with:
+          environment: production
+          release: ${{ needs.version.outputs.sentryRelease }}
+          set_commits: auto
+          finalize: true
+          ignore_empty: true
