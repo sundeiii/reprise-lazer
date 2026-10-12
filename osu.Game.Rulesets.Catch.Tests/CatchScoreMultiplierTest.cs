@@ -123,7 +123,7 @@ namespace osu.Game.Rulesets.Catch.Tests
 
             [new Mod[] { new CatchModAutoplay() }, 1],
             [new Mod[] { new CatchModCinema() }, 1],
-            [new Mod[] { new CatchModRelax() }, 0.1],
+            [new Mod[] { new CatchModRelax() }, 1], // Reprise: Relax scores in full
 
             #endregion
 

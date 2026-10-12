@@ -51,7 +51,7 @@ namespace osu.Game.Rulesets.Taiko.Scoring
 
             // Autoplay
             // Cinema
-            Single<TaikoModRelax>(hasMultiplier: 0.1);
+            Single<TaikoModRelax>(hasMultiplier: 1.0); // Reprise: Relax scores in full (osu!: 0.1x)
 
             #endregion
 

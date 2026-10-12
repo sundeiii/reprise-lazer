@@ -128,7 +128,7 @@ namespace osu.Game.Rulesets.Taiko.Tests
 
             [new Mod[] { new TaikoModAutoplay() }, 1],
             [new Mod[] { new TaikoModCinema() }, 1],
-            [new Mod[] { new TaikoModRelax() }, 0.1],
+            [new Mod[] { new TaikoModRelax() }, 1], // Reprise: Relax scores in full
 
             #endregion
 

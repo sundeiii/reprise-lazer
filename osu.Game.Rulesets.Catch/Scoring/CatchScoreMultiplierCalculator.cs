@@ -47,7 +47,7 @@ namespace osu.Game.Rulesets.Catch.Scoring
 
             // Autoplay
             // Cinema
-            Single<CatchModRelax>(hasMultiplier: 0.1);
+            Single<CatchModRelax>(hasMultiplier: 1.0); // Reprise: Relax scores in full (osu!: 0.1x)
 
             #endregion
 

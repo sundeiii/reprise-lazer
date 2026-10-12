@@ -71,7 +71,7 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
             // Autoplay (1.0x)
             // Cinema (1.0x)
-            Single<OsuModRelax>(hasMultiplier: 0.1);
+            Single<OsuModRelax>(hasMultiplier: 1.0); // Reprise: Relax scores in full (osu!: 0.1x)
             Single<OsuModAutopilot>(hasMultiplier: 0.1);
             Single<OsuModSpunOut>(hasMultiplier: 0.95);
 
