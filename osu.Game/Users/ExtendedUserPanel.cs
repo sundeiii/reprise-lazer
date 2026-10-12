@@ -174,9 +174,9 @@ namespace osu.Game.Users
 
         private static string getClientDisplayName(string client) => client switch
         {
-            "stable" => "Rinari Stable",
-            "lazer" => "Rinari Lazer",
-            "web" => "Rinari Web",
+            "stable" => "Reprise Stable",
+            "lazer" => "Reprise Lazer",
+            "web" => "Reprise Web",
             _ => client
         };
 
@@ -190,9 +190,9 @@ namespace osu.Game.Users
 
         private static string getClientTooltip(string client) => client switch
         {
-            "stable" => "Playing on Rinari Stable",
-            "lazer" => "Playing on Rinari Lazer",
-            "web" => "Browsing Rinari Web",
+            "stable" => "Playing on Reprise Stable",
+            "lazer" => "Playing on Reprise Lazer",
+            "web" => "Browsing Reprise Web",
             _ => $"Online via {client}"
         };
 
