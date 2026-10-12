@@ -294,6 +294,8 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.DashboardSortMode, UserSortCriteria.LastVisit);
             SetDefault(OsuSetting.DashboardDisplayStyle, OverlayPanelDisplayStyle.Card);
+
+            SetDefault(OsuSetting.PMFriendsOnly, false);
         }
 
         protected override bool CheckLookupContainsPrivateInformation(OsuSetting lookup)
@@ -586,6 +588,11 @@ namespace osu.Game.Configuration
         /// Which osu!stable the stable layouts look like (<see cref="Skinning.StableLayoutVersion"/>).
         /// </summary>
         StableLayoutVersion,
+
+        /// <summary>
+        /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
+        /// </summary>
+        PMFriendsOnly,
     }
 
     public enum ResultScreenStyle

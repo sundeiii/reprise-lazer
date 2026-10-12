@@ -119,8 +119,13 @@ namespace osu.Desktop
 
         protected override UpdateManager CreateUpdateManager()
         {
+            // If this is the first time we've run the game, ie it is being installed,
+            // reset the user's release stream specified by the installation target.
+            //
+            // This ensures that if a user is trying to recover from a failed startup, it will keep them
+            // on the stream which is imminently being reinstalled.
             if (IsFirstRun)
-                LocalConfig.SetValue(OsuSetting.ReleaseStream, ReleaseStream.Lazer);
+                LocalConfig.SetValue(OsuSetting.ReleaseStream, Version.Contains("-tachyon") ? ReleaseStream.Tachyon : ReleaseStream.Lazer);
 
             if (IsPackageManaged)
                 return new NoActionUpdateManager();

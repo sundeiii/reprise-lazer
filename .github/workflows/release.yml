@@ -6,7 +6,7 @@ on:
       - "v*-lazer"
 
 env:
-  DOTNET_VERSION: "8.0.x"
+  DOTNET_VERSION: "10.0.x"
   # The vanilla client (no Anarchy), an app of its own beside the Rinari one: its own updater identity and data folder (osu-reprise).
   APP_ID: "reprise-lazer"
   APP_TITLE: "Reprise Lazer"
@@ -84,28 +84,28 @@ jobs:
         include:
           - os: windows-latest
             runtime: win-x64
-            framework: net8.0-windows
+            framework: net10.0-windows
             channel: win
             artifact-name: reprise-lazer-windows
             executable: "osu!.exe"
 
           - os: ubuntu-latest
             runtime: linux-x64
-            framework: net8.0
+            framework: net10.0
             channel: linux
             artifact-name: reprise-lazer-linux
             executable: "osu!"
 
           - os: macos-latest
             runtime: osx-x64
-            framework: net8.0
+            framework: net10.0
             channel: osx-x64
             artifact-name: reprise-lazer-macos-intel
             executable: "osu!"
 
           - os: macos-latest
             runtime: osx-arm64
-            framework: net8.0
+            framework: net10.0
             channel: osx-arm64
             artifact-name: reprise-lazer-macos-apple-silicon
             executable: "osu!"
