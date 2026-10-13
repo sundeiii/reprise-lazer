@@ -119,7 +119,7 @@ namespace osu.Game.Rulesets.Mania.Tests
             [new Mod[] { new ManiaModRandom() }, 1],
             [new Mod[] { new ManiaModDualStages() }, 1],
             [new Mod[] { new ManiaModMirror() }, 1],
-            [new Mod[] { new ManiaModDifficultyAdjust() }, 0.5],
+            [new Mod[] { new ManiaModDifficultyAdjust() }, 0.9],
             [new Mod[] { new ManiaModClassic() }, 1],
             [new Mod[] { new ManiaModInvert() }, 1],
             [new Mod[] { new ManiaModConstantSpeed() }, 0.9],

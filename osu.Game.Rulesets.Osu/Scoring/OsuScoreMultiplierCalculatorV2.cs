@@ -174,13 +174,14 @@ namespace osu.Game.Rulesets.Osu.Scoring
             double odDifference = Math.Abs(selectedOverallDifficulty - beatmapDifficulty.OverallDifficulty);
             double arDifference = Math.Abs(selectedApproachRate - beatmapDifficulty.ApproachRate);
 
-            // Per parameter, reduce multiplier by 0.05x per 0.1 change.
-            double csMultiplier = Math.Max(0.1, 1.0 - csDifference * 0.5);
-            double hpMultiplier = Math.Max(0.1, 1.0 - hpDifference * 0.5);
-            double odMultiplier = Math.Max(0.1, 1.0 - odDifference * 0.5);
-            double arMultiplier = Math.Max(0.1, 1.0 - arDifference * 0.5);
+            // Reprise: per parameter, reduce multiplier by 0.01x per 0.1 change (osu!'s is 0.05x, down to 0.1x),
+            // and never below 0.5x in all.
+            double csMultiplier = Math.Max(0.5, 1.0 - csDifference * 0.1);
+            double hpMultiplier = Math.Max(0.5, 1.0 - hpDifference * 0.1);
+            double odMultiplier = Math.Max(0.5, 1.0 - odDifference * 0.1);
+            double arMultiplier = Math.Max(0.5, 1.0 - arDifference * 0.1);
 
-            return Math.Max(0.1, csMultiplier * hpMultiplier * odMultiplier * arMultiplier);
+            return Math.Max(0.5, csMultiplier * hpMultiplier * odMultiplier * arMultiplier);
         }
 
         private static double timeRampMultiplier(ModTimeRamp timeRamp)

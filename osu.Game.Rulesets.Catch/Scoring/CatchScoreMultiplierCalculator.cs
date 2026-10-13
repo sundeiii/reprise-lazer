@@ -37,7 +37,8 @@ namespace osu.Game.Rulesets.Catch.Scoring
 
             #region Conversion
 
-            Single<CatchModDifficultyAdjust>(hasMultiplier: 0.5);
+            // Reprise: Difficulty Adjust is 0.9x (osu!'s is 0.5x).
+            Single<CatchModDifficultyAdjust>(hasMultiplier: 0.9);
             Single<CatchModClassic>(hasMultiplier: _ => classicMultiplier(context.Score));
             // Mirror
 

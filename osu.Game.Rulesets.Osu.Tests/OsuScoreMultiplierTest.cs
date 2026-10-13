@@ -230,19 +230,19 @@ namespace osu.Game.Rulesets.Osu.Tests
             => TestModCombination(mods, expectedMultiplier);
 
         [TestCase(null, null, null, null, 1)]
-        [TestCase(2.9f, null, null, null, 0.95)]
-        [TestCase(3.1f, null, null, null, 0.95)]
-        [TestCase(null, 3.9f, null, null, 0.95)]
-        [TestCase(null, 4.1f, null, null, 0.95)]
-        [TestCase(null, null, 4.9f, null, 0.95)]
-        [TestCase(null, null, 5.1f, null, 0.95)]
-        [TestCase(null, null, null, 5.9f, 0.95)]
-        [TestCase(null, null, null, 6.1f, 0.95)]
-        [TestCase(2.9f, 3.9f, null, null, 0.95 * 0.95)]
-        [TestCase(2.9f, 3.9f, 4.9f, null, 0.95 * 0.95 * 0.95)]
-        [TestCase(2.9f, 3.9f, 4.9f, 5.9f, 0.95 * 0.95 * 0.95 * 0.95)]
-        [TestCase(0.0f, null, null, null, 0.1)]
-        [TestCase(0.0f, 0.0f, 0.0f, 0.0f, 0.1)]
+        [TestCase(2.9f, null, null, null, 0.99)]
+        [TestCase(3.1f, null, null, null, 0.99)]
+        [TestCase(null, 3.9f, null, null, 0.99)]
+        [TestCase(null, 4.1f, null, null, 0.99)]
+        [TestCase(null, null, 4.9f, null, 0.99)]
+        [TestCase(null, null, 5.1f, null, 0.99)]
+        [TestCase(null, null, null, 5.9f, 0.99)]
+        [TestCase(null, null, null, 6.1f, 0.99)]
+        [TestCase(2.9f, 3.9f, null, null, 0.99 * 0.99)]
+        [TestCase(2.9f, 3.9f, 4.9f, null, 0.99 * 0.99 * 0.99)]
+        [TestCase(2.9f, 3.9f, 4.9f, 5.9f, 0.99 * 0.99 * 0.99 * 0.99)]
+        [TestCase(0.0f, null, null, null, 0.7)]
+        [TestCase(0.0f, 0.0f, 0.0f, 0.0f, 0.5)]
         public void TestDifficultyAdjust(float? cs, float? ar, float? od, float? hp, double expectedMultiplier)
         {
             var difficulty = new BeatmapDifficulty

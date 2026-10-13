@@ -116,7 +116,7 @@ namespace osu.Game.Rulesets.Taiko.Tests
             #region Conversion
 
             [new Mod[] { new TaikoModRandom() }, 1],
-            [new Mod[] { new TaikoModDifficultyAdjust() }, 0.5],
+            [new Mod[] { new TaikoModDifficultyAdjust() }, 0.9],
             [new Mod[] { new TaikoModClassic() }, 1],
             [new Mod[] { new TaikoModSwap() }, 1],
             [new Mod[] { new TaikoModSingleTap() }, 1],

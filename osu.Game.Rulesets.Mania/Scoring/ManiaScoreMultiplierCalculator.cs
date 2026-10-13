@@ -44,7 +44,8 @@ namespace osu.Game.Rulesets.Mania.Scoring
             // Random
             // Dual Stages
             // Mirror
-            Single<ManiaModDifficultyAdjust>(hasMultiplier: 0.5);
+            // Reprise: Difficulty Adjust is 0.9x (osu!'s is 0.5x).
+            Single<ManiaModDifficultyAdjust>(hasMultiplier: 0.9);
             Single<ManiaModClassic>(hasMultiplier: _ => classicMultiplier(Context.Score));
             // Invert
             Single<ManiaModConstantSpeed>(hasMultiplier: 0.9);

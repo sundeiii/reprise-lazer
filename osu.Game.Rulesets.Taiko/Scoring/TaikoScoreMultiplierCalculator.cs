@@ -39,7 +39,8 @@ namespace osu.Game.Rulesets.Taiko.Scoring
             #region Conversion
 
             // Random
-            Single<TaikoModDifficultyAdjust>(hasMultiplier: 0.5);
+            // Reprise: Difficulty Adjust is 0.9x (osu!'s is 0.5x).
+            Single<TaikoModDifficultyAdjust>(hasMultiplier: 0.9);
             Single<TaikoModClassic>(hasMultiplier: _ => classicMultiplier(Context.Score));
             // Swap
             // Single Tap

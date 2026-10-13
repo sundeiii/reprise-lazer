@@ -113,7 +113,7 @@ namespace osu.Game.Rulesets.Catch.Tests
 
             #region Conversion
 
-            [new Mod[] { new CatchModDifficultyAdjust() }, 0.5],
+            [new Mod[] { new CatchModDifficultyAdjust() }, 0.9],
             [new Mod[] { new CatchModClassic() }, 1],
             [new Mod[] { new CatchModMirror() }, 1],
 
