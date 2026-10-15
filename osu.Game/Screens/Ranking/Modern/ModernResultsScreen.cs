@@ -521,7 +521,8 @@ namespace osu.Game.Screens.Ranking.Modern
             {
                 Anchor = Anchor.CentreLeft,
                 Origin = Anchor.CentreLeft,
-                X = 60,
+                // Up a little, to sit in the band's middle: the font has room under its digits (they'd sit 12 low).
+                Position = new Vector2(60, -12),
                 Current = { Value = 0 },
                 Alpha = 0,
                 AlwaysPresent = true,
@@ -651,23 +652,28 @@ namespace osu.Game.Screens.Ranking.Modern
         private Drawable createMods() => new Container
         {
             Position = new Vector2(82, 785),
-            Size = new Vector2(315, 88),
+            // As wide as the mods need (at least the design's 315), with room on the right for the slant.
+            AutoSizeAxes = Axes.X,
+            Height = 88,
             Alpha = score.Mods.Length > 0 ? 1 : 0,
             Children = new Drawable[]
             {
                 new SlantedBox(BACKGROUND_4) { RelativeSizeAxes = Axes.Both },
+                new Container { Width = 315 },
                 new OsuSpriteText
                 {
                     Position = new Vector2(27, 8),
                     Text = "MODS",
                     Font = OsuFont.Torus.With(size: 16, weight: FontWeight.Bold),
                 },
+                // Side by side, apart (a rate mod's plate clear of the next one).
                 new FillFlowContainer<ModIcon>
                 {
                     Position = new Vector2(21, 24),
+                    Margin = new MarginPadding { Right = 30 },
                     AutoSizeAxes = Axes.Both,
                     Direction = FillDirection.Horizontal,
-                    Spacing = new Vector2(-8, 0),
+                    Spacing = new Vector2(4, 0),
                     ChildrenEnumerable = score.Mods.AsOrdered().Select(m => new ModIcon(m) { Scale = new Vector2(0.75f) }),
                 },
             }

@@ -22,6 +22,8 @@ using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Online.API;
+using osu.Game.Online.API.Requests;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -52,6 +54,9 @@ namespace osu.Game.Screens.Ranking.Modern
 
         [Resolved]
         private BeatmapManager beatmaps { get; set; } = null!;
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
 
         private Container panel = null!;
         private FillFlowContainer bottomRow = null!;
@@ -189,6 +194,18 @@ namespace osu.Game.Screens.Ranking.Modern
             var previousBest = new OsuSpriteText { Font = OsuFont.Torus.With(size: 28), Colour = ModernResultsScreen.NUMBER_GRADIENT };
             var plays = new OsuSpriteText { Font = OsuFont.Torus.With(size: 28), Colour = ModernResultsScreen.NUMBER_GRADIENT };
             details.PreviousBest.BindValueChanged(b => previousBest.Text = b.NewValue != null ? b.NewValue.TotalScore.ToString("N0", CultureInfo.CurrentCulture) : "-", true);
+
+            // A score looked at later (not just set) has no "best before it": the player's best on the beatmap now instead.
+            if (!details.HasSecondPage && api.IsLoggedIn && score.BeatmapInfo?.OnlineID > 0)
+            {
+                var request = new GetScoresRequest(score.BeatmapInfo, score.Ruleset.ForMods(score.Mods));
+                request.Success += scores => Schedule(() =>
+                {
+                    if (scores.UserScore?.Score is { } best)
+                        previousBest.Text = best.TotalScore.ToString("N0", CultureInfo.CurrentCulture);
+                });
+                api.Queue(request);
+            }
             details.OnlineBeatmap.BindValueChanged(b => plays.Text = b.NewValue != null ? b.NewValue.PlayCount.ToString("N0", CultureInfo.CurrentCulture) : "-", true);
 
             double multiplier = score.Ruleset.CreateInstance()
