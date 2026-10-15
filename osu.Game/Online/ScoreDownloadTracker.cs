@@ -51,6 +51,7 @@ namespace osu.Game.Online
             long onlineId = TrackedItem.OnlineID;
             long legacyOnlineId = TrackedItem.LegacyOnlineID;
             string hash = TrackedItem.Hash;
+            string beatmapHash = (TrackedItem as ScoreInfo)?.BeatmapHash ?? string.Empty;
 
             realmSubscription = realm.RegisterForNotifications(r => r.All<ScoreInfo>().Where(s =>
                 ((s.OnlineID > 0 && s.OnlineID == onlineId)
@@ -74,7 +75,8 @@ namespace osu.Game.Online
                     );
                 }
 
-                if (items.Any())
+                // Reprise: only one on the same beatmap is this score's replay (another server's score can have the same id).
+                if (items.AsEnumerable().Any(s => ScoreManager.SameBeatmap(s, beatmapHash)))
                     Schedule(() => UpdateState(DownloadState.LocallyAvailable));
                 else
                 {

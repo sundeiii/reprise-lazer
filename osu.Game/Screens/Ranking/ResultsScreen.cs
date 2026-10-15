@@ -719,7 +719,12 @@ namespace osu.Game.Screens.Ranking
             if (!this.IsCurrentScreen() || player is ReplayPlayer)
                 return;
 
-            rankApplauseSound?.Dispose();
+            // Reprise: one already playing is taken out first (disposing it while it's still here crashes the next update; two grade
+            // rings can each ask for applause, as under the redesigned results screen).
+            if (rankApplauseSound?.Parent == this)
+                RemoveInternal(rankApplauseSound, true);
+            else
+                rankApplauseSound?.Dispose();
 
             var applauseSamples = new List<string>();
 

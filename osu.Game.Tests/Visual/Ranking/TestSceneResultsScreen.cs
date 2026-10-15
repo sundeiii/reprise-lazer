@@ -30,6 +30,7 @@ using osu.Game.Scoring;
 using osu.Game.Screens;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking;
+using osu.Game.Screens.Ranking.Modern;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
 using osu.Game.Screens.Ranking.Expanded.Statistics;
 using osu.Game.Screens.Ranking.Statistics;
@@ -313,6 +314,23 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("wait for loaded", () => screen.IsLoaded);
             AddAssert("retry overlay present", () => screen.RetryOverlay != null);
             AddAssert("no badges displayed", () => this.ChildrenOfType<RankBadge>().All(b => !b.IsPresent));
+        }
+
+        [Test]
+        public void TestNewResultsScreenAfterPlay()
+        {
+            TestResultsScreen screen = null;
+
+            AddStep("use the new results screen", () => config.SetValue(OsuSetting.NewResultsScreen, true));
+
+            loadResultsScreen(() => screen = createResultsScreen(TestResources.CreateTestScoreInfo()));
+            AddUntilStep("wait for loaded", () => screen.IsLoaded);
+            AddUntilStep("new screen shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
+            // Its ring's flair and the count-up play out (with their sounds) with the game's own panel underneath.
+            AddWaitStep("let the animations play out", 50);
+            AddAssert("still shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsAlive == true);
+
+            AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
         }
 
         [Test]

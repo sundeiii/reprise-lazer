@@ -84,6 +84,16 @@ namespace osu.Game.Scoring
             return Realm.Run(r => r.All<ScoreInfo>().FirstOrDefault(query)?.Detach());
         }
 
+        /// <summary>The first score found by the query that's on the beatmap with this hash (any, without one).</summary>
+        private ScoreInfo? queryOnBeatmap(Expression<Func<ScoreInfo, bool>> query, string beatmapHash) =>
+            Realm.Run(r => r.All<ScoreInfo>().Where(query).AsEnumerable().FirstOrDefault(s => SameBeatmap(s, beatmapHash))?.Detach());
+
+        /// <summary>
+        /// Reprise: whether a local score is on the beatmap with this hash (or no hash is known to check against). A score matched
+        /// by its online id alone can be another server's (one used before this one, its ids starting over).
+        /// </summary>
+        public static bool SameBeatmap(ScoreInfo local, string beatmapHash) => string.IsNullOrEmpty(beatmapHash) || local.BeatmapHash == beatmapHash;
+
         private ScoreInfo? getDatabasedScoreInfo(IScoreInfo originalScoreInfo)
         {
             ScoreInfo? databasedScoreInfo = null;
@@ -97,11 +107,16 @@ namespace osu.Game.Scoring
                     databasedScoreInfo = Query(s => s.Hash == scoreInfo.Hash);
             }
 
-            if (originalScoreInfo.OnlineID > 0)
-                databasedScoreInfo ??= Query(s => s.OnlineID == originalScoreInfo.OnlineID);
+            // Reprise: by its id only on the same beatmap (scores kept from an earlier server can have the same ids as this one's).
+            string beatmapHash = (originalScoreInfo as ScoreInfo)?.BeatmapHash ?? string.Empty;
+            long onlineId = originalScoreInfo.OnlineID;
+            long legacyOnlineId = originalScoreInfo.LegacyOnlineID;
 
-            if (originalScoreInfo.LegacyOnlineID > 0)
-                databasedScoreInfo ??= Query(s => s.LegacyOnlineID == originalScoreInfo.LegacyOnlineID);
+            if (onlineId > 0)
+                databasedScoreInfo ??= queryOnBeatmap(s => s.OnlineID == onlineId, beatmapHash);
+
+            if (legacyOnlineId > 0)
+                databasedScoreInfo ??= queryOnBeatmap(s => s.LegacyOnlineID == legacyOnlineId, beatmapHash);
 
             if (databasedScoreInfo == null)
             {
@@ -197,7 +212,10 @@ namespace osu.Game.Scoring
             => Realm.Run(realm => realm.All<ScoreInfo>()
                                        // this basically inlines `ModelExtension.MatchesOnlineID(IScoreInfo, IScoreInfo)`,
                                        // because that method can't be used here, as realm can't translate it to its query language.
-                                       .Any(s => s.OnlineID == model.OnlineID || s.LegacyOnlineID == model.LegacyOnlineID));
+                                       .Where(s => s.OnlineID == model.OnlineID || s.LegacyOnlineID == model.LegacyOnlineID)
+                                       // Reprise: on the same beatmap (see SameBeatmap).
+                                       .AsEnumerable()
+                                       .Any(s => SameBeatmap(s, model.BeatmapHash)));
 
         public IEnumerable<string> HandledExtensions => scoreImporter.HandledExtensions;
 

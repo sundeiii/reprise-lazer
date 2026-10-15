@@ -65,6 +65,14 @@ namespace osu.Game.Screens.Ranking.Modern
             RelativeSizeAxes = Axes.Both;
         }
 
+        // The leaderboard's mods are the play's (Relax and Autopilot have their own leaderboards), not song select's picked ones.
+        protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
+        {
+            var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+            dependencies.CacheAs<IBindable<IReadOnlyList<Mod>>>(new Bindable<IReadOnlyList<Mod>>(score.Mods));
+            return dependencies;
+        }
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -401,7 +409,7 @@ namespace osu.Game.Screens.Ranking.Modern
                         X = mods_x,
                         AutoSizeAxes = Axes.Both,
                         Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(-12, 0),
+                        Spacing = new Vector2(2, 0),
                         ChildrenEnumerable = score.Mods.AsOrdered().Select(m => new ModSwitchTiny(m) { Active = { Value = true }, Scale = new Vector2(0.55f) }),
                     },
                 };

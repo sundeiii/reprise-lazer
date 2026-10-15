@@ -182,8 +182,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
             fetchRanks();
 
-            // As lazer's results: once the ring has started filling, the score rolls up (ticking), and the other numbers with it. Only for
-            // a play just set (an older one shows as it is). Scheduled so the counters don't jump to where they end straight away.
+            // As lazer's results: once the ring has started filling, the score rolls up (ticking), and the other numbers with it (each time
+            // the screen's shown). Scheduled so the counters don't jump to where they end straight away.
             ScheduleAfterChildren(() =>
             {
                 using (BeginDelayedSequence(AccuracyCircle.ACCURACY_TRANSFORM_DELAY))
@@ -199,9 +199,6 @@ namespace osu.Game.Screens.Ranking.Modern
 
                 countedUp = true;
                 scoringMode.BindValueChanged(mode => scoreCounter.Current.Value = score.GetDisplayScore(mode.NewValue));
-
-                if (!details.HasSecondPage)
-                    FinishTransforms(true);
             });
         }
 
@@ -247,7 +244,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
             foreach (var (scope, target) in new[] { (BeatmapLeaderboardScope.Country, countryRank), (BeatmapLeaderboardScope.Team, teamRank) })
             {
-                var request = new GetScoresRequest(score.BeatmapInfo, score.Ruleset, scope);
+                // (A Relax or Autopilot play is on that mode's leaderboard.)
+                var request = new GetScoresRequest(score.BeatmapInfo, score.Ruleset.ForMods(score.Mods), scope);
                 request.Success += scores => Schedule(() => target.Value = scores.UserScore?.Position);
                 api.Queue(request);
             }
@@ -383,10 +381,30 @@ namespace osu.Game.Screens.Ranking.Modern
                 Icon = FontAwesome.Regular.Heart,
             };
 
-            details.OnlineBeatmap.BindValueChanged(b => favourites.Text = b.NewValue?.BeatmapSet?.FavouriteCount.ToString("N0", CultureInfo.CurrentCulture) ?? "-", true);
-            details.Favourited.BindValueChanged(f => heart.Icon = f.NewValue ? FontAwesome.Solid.Heart : FontAwesome.Regular.Heart, true);
+            // The count as fetched, then one up or down as the heart's clicked here (the fetched count doesn't follow it).
+            int favouriteChange = 0;
 
-            Color4 difficultyColour = colours.ForStarDifficulty(stars.Stars);
+            void updateFavourites() => favourites.Text = details.OnlineBeatmap.Value?.BeatmapSet is { } set
+                ? Math.Max(0, set.FavouriteCount + favouriteChange).ToString("N0", CultureInfo.CurrentCulture)
+                : "-";
+
+            details.OnlineBeatmap.BindValueChanged(_ =>
+            {
+                favouriteChange = 0;
+                updateFavourites();
+            }, true);
+            details.Favourited.BindValueChanged(f =>
+            {
+                heart.Icon = f.NewValue ? FontAwesome.Solid.Heart : FontAwesome.Regular.Heart;
+
+                if (f.OldValue != f.NewValue && details.OnlineBeatmap.Value != null)
+                {
+                    favouriteChange += f.NewValue ? 1 : -1;
+                    updateFavourites();
+                }
+            }, true);
+
+            Color4 difficultyColour = DifficultyNameColour(colours, stars.Stars);
 
             return new Container
             {
@@ -498,8 +516,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private Drawable createScoreArea()
         {
-            // (Lazer's own ticks while it rolls, unless the ring's flair is playing its sounds.)
-            scoreCounter = new ScoreCounter(!details.HasSecondPage)
+            // Silent, as the ring is: the game's own results underneath (hidden) play their sounds (ticks, dinks, applause) as they animate.
+            scoreCounter = new ScoreCounter(false)
             {
                 Anchor = Anchor.CentreLeft,
                 Origin = Anchor.CentreLeft,
@@ -675,13 +693,14 @@ namespace osu.Game.Screens.Ranking.Modern
                     Size = new Vector2(623),
                     Colour = Color4Extensions.FromHex("333333"),
                 },
-                // Lazer's ring, scaled up whole (its grade drawn at its own size inside it, so it grows with it).
+                // Lazer's ring, scaled up whole (its grade drawn at its own size inside it, so it grows with it). Without its flair: the game's own
+                // results underneath play the sounds (two rings asking for applause crashed the game).
                 new Container
                 {
                     Position = new Vector2(37, 35),
                     Size = new Vector2(230),
                     Scale = new Vector2(645 / 230f),
-                    Child = new AccuracyCircle(score, withFlair: details.HasSecondPage)
+                    Child = new AccuracyCircle(score)
                     {
                         RelativeSizeAxes = Axes.Both,
                     },
@@ -783,6 +802,12 @@ namespace osu.Game.Screens.Ranking.Modern
                 shape.Size = new Vector2(Math.Max(0, DrawWidth - slant), DrawHeight);
             }
         }
+
+        /// <summary>
+        /// A difficulty's name in its stars' colour, as the design has it; from 6.5 stars (where those turn dark, unreadable on the dark band)
+        /// in the light orange lazer writes those stars in.
+        /// </summary>
+        public static Color4 DifficultyNameColour(OsuColour colours, double stars) => stars >= 6.5 ? colours.Orange1 : colours.ForStarDifficulty(stars);
 
         /// <summary>A number that rolls (eased as lazer's results' counters) to where it ends.</summary>
         public partial class CountingText : OsuSpriteText
@@ -1000,6 +1025,8 @@ namespace osu.Game.Screens.Ranking.Modern
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
+                    // Off the middle, away from the icon.
+                    X = iconFirst ? 20 : -24,
                     Text = text,
                     Font = OsuFont.TorusAlternate.With(size: 20, weight: FontWeight.SemiBold),
                 };
@@ -1007,7 +1034,7 @@ namespace osu.Game.Screens.Ranking.Modern
                 {
                     Anchor = iconFirst ? Anchor.CentreLeft : Anchor.CentreRight,
                     Origin = Anchor.Centre,
-                    X = iconFirst ? 48 : -48,
+                    X = iconFirst ? 48 : -40,
                     Size = new Vector2(30),
                     Icon = icon,
                 };

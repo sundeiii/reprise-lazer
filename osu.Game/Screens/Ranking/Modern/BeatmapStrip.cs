@@ -129,7 +129,7 @@ namespace osu.Game.Screens.Ranking.Modern
                                         Anchor = Anchor.CentreLeft,
                                         Origin = Anchor.CentreLeft,
                                     },
-                                    new TextFlowContainer(t => t.Colour = colours.ForStarDifficulty(beatmap.StarRating))
+                                    new TextFlowContainer(t => t.Colour = ModernResultsScreen.DifficultyNameColour(colours, beatmap.StarRating))
                                     {
                                         Anchor = Anchor.CentreLeft,
                                         Origin = Anchor.CentreLeft,
