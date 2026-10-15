@@ -57,6 +57,21 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestPlacedLikeTheGamesModDisplay()
+        {
+            create(true);
+            AddUntilStep("two icons", () => icons().Length == 2);
+            // As the game's mod display: in the top right corner, the first (Hidden) rightmost.
+            AddAssert("in the top right corner", () =>
+            {
+                var area = ScreenSpaceDrawQuad.AABBFloat;
+                var first = icons()[0].ScreenSpaceDrawQuad.AABBFloat;
+                return area.Right - first.Right < area.Width * 0.05f && first.Top - area.Top < area.Height * 0.1f;
+            });
+            AddAssert("the next one to its left", () => icons()[1].ScreenSpaceDrawQuad.Centre.X < icons()[0].ScreenSpaceDrawQuad.Centre.X);
+        }
+
+        [Test]
         public void TestReplayKeepsThem()
         {
             create(true);
