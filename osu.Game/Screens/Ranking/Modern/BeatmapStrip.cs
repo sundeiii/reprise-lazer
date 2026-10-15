@@ -129,17 +129,12 @@ namespace osu.Game.Screens.Ranking.Modern
                                         Anchor = Anchor.CentreLeft,
                                         Origin = Anchor.CentreLeft,
                                     },
-                                    new TextFlowContainer(t => t.Colour = ModernResultsScreen.DifficultyNameColour(colours, beatmap.StarRating))
+                                    // (Within the card: a long difficulty name is cut short.)
+                                    new DifficultyLine(beatmap.DifficultyName, metadata.Author.Username, ModernResultsScreen.DifficultyNameColour(colours, beatmap.StarRating), 600)
                                     {
                                         Anchor = Anchor.CentreLeft,
                                         Origin = Anchor.CentreLeft,
-                                        AutoSizeAxes = Axes.Both,
-                                    }.With(t =>
-                                    {
-                                        t.AddText(beatmap.DifficultyName, s => s.Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold));
-                                        t.AddText(" mapped by ", s => s.Font = OsuFont.Torus.With(size: 14));
-                                        t.AddText(metadata.Author.Username, s => s.Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold));
-                                    }),
+                                    },
                                 }
                             },
                             new FillFlowContainer

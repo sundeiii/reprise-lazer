@@ -71,6 +71,9 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.HitEvents = createHitEvents();
                 score.BeatmapInfo!.OnlineID = 1_234;
                 score.BeatmapInfo.Status = BeatmapOnlineStatus.Ranked;
+                // A long difficulty name on a high star map (cut short, readable).
+                score.BeatmapInfo.DifficultyName = "Ascending from Fallen Elegance, the Reign of the Kingdom Roams Free Forevermore";
+                score.BeatmapInfo.StarRating = 7.98;
 
                 // The leaderboard: a page of players, the player's own best among them.
                 ((DummyAPIAccess)API).HandleRequest = request =>
