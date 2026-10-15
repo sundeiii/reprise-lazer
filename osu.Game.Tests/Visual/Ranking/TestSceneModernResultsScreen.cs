@@ -15,7 +15,10 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online.API;
+using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Users;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
@@ -60,6 +63,24 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.MaximumStatistics[HitResult.LargeBonus] = 10;
                 score.MaximumStatistics[HitResult.SmallBonus] = 60;
                 score.HitEvents = createHitEvents();
+                score.BeatmapInfo!.OnlineID = 1_234;
+                score.BeatmapInfo.Status = BeatmapOnlineStatus.Ranked;
+
+                // The leaderboard: a page of players, the player's own best among them.
+                ((DummyAPIAccess)API).HandleRequest = request =>
+                {
+                    if (request is not GetScoresRequest scores)
+                        return false;
+
+                    var top = Enumerable.Range(0, 12).Select(i => createOnlineScore(i)).ToList();
+                    scores.TriggerSuccess(new APIScoresCollection
+                    {
+                        Scores = top,
+                        ScoresCount = 12,
+                        UserScore = new APIScoreWithPosition { Position = 4, Score = top[3] },
+                    });
+                    return true;
+                };
 
                 exported = false;
                 favourited.Value = false;
@@ -83,15 +104,38 @@ namespace osu.Game.Tests.Visual.Ranking
                         RelativeSizeAxes = Axes.Both,
                         Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex("e05a7a"), Color4Extensions.FromHex("6a3a8c")),
                     },
-                    new ModernResultsScreen(score, () => { }, () => { }, details)
-                    {
-                        ShowRanking = () => { },
-                    },
+                    new ModernResultsScreen(score, () => { }, () => { }, details),
                 };
             });
 
             AddUntilStep("screen loaded", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsLoaded == true);
         }
+
+        private static readonly string[] names = { "Alice", "mrekk", "Lilian", "Accolibed", "lifeline", "aetrna", "Mrekk2", "Rafis", "Cookiezi", "WhiteCat", "Vaxei", "Chicony" };
+        private static readonly string[] countries = { "MY", "AU", "TH", "KR", "US", "DE", "AU", "PL", "KR", "DE", "US", "TW" };
+
+        private static SoloScoreInfo createOnlineScore(int i) => new SoloScoreInfo
+        {
+            ID = 100 + (ulong)i,
+            BeatmapID = 1_234,
+            RulesetID = 0,
+            TotalScore = 1_000_000 - i * 23_456,
+            Accuracy = 0.9950 - i * 0.004,
+            MaxCombo = 1_402 - i * 37,
+            Rank = i < 2 ? ScoreRank.X : i < 7 ? ScoreRank.S : ScoreRank.A,
+            PP = 420 - i * 13.7,
+            Passed = true,
+            EndedAt = DateTimeOffset.Now.AddDays(-i * i * 9),
+            User = new APIUser { Id = 2 + i, Username = names[i], CountryCode = Enum.Parse<CountryCode>(countries[i]) },
+            Statistics = new Dictionary<HitResult, int>
+            {
+                [HitResult.Great] = 1_240 - i * 6,
+                [HitResult.Ok] = 5 + i * 5,
+                [HitResult.Meh] = i / 3,
+                [HitResult.Miss] = i / 4,
+            },
+            Mods = i % 3 == 0 ? new[] { new APIMod(new OsuModHidden()), new APIMod(new OsuModDoubleTime()) } : i % 3 == 1 ? new[] { new APIMod(new OsuModHardRock()) } : Array.Empty<APIMod>(),
+        };
 
         /// <summary>A play's worth of hits on a 3-minute map: mostly on time, a little late, a few 100s and 50s and two misses.</summary>
         private static List<HitEvent> createHitEvents()
@@ -138,6 +182,18 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("advanced info shown", () => this.ChildrenOfType<AdvancedInfoPage>().SingleOrDefault()?.Alpha == 1);
             AddWaitStep("let it settle", 15);
             AddStep("screenshot", () => Screenshot?.Invoke("modern-advanced"));
+            AddWaitStep("saved", 5);
+        }
+
+        [Test]
+        public void TestRanking()
+        {
+            AddStep("open ranking", () => this.ChildrenOfType<OsuClickableContainer>()
+                                              .First(b => b.ChildrenOfType<OsuSpriteText>().Any(t => t.Text == "Ranking") && b.Width == 150)
+                                              .TriggerClick());
+            AddUntilStep("ranking shown", () => this.ChildrenOfType<RankingPage>().SingleOrDefault()?.Alpha == 1);
+            AddWaitStep("let it settle", 15);
+            AddStep("screenshot", () => Screenshot?.Invoke("modern-ranking"));
             AddWaitStep("saved", 5);
         }
 

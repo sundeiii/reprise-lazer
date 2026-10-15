@@ -90,7 +90,7 @@ namespace osu.Game.Screens.Ranking.Modern
                         Children = new Drawable[]
                         {
                             new Box { RelativeSizeAxes = Axes.Both, Colour = ModernResultsScreen.BACKGROUND_5, Alpha = 0.95f },
-                            createBeatmapStrip(working),
+                            new BeatmapStrip(score, working),
                             createScoreRow(),
                             createStatistics(),
                             new GraphPanel("Hit Error", hitErrorGraph = new Container { RelativeSizeAxes = Axes.Both })
@@ -176,132 +176,6 @@ namespace osu.Game.Screens.Ranking.Modern
         {
             loadCancellation.Cancel();
             base.Dispose(isDisposing);
-        }
-
-        // ── the beatmap: its cover, title and numbers ────────────────────────────────────────
-
-        private Drawable createBeatmapStrip(WorkingBeatmap working)
-        {
-            var beatmap = score.BeatmapInfo!;
-            var metadata = beatmap.BeatmapSet?.Metadata ?? beatmap.Metadata;
-
-            // Its difficulty with the play's mods (CS, AR, OD, HP as they were played).
-            var difficulty = new BeatmapDifficulty(beatmap.Difficulty);
-            foreach (var mod in score.Mods.OfType<IApplicableToDifficulty>())
-                mod.ApplyToDifficulty(difficulty);
-
-            return new Container
-            {
-                RelativeSizeAxes = Axes.X,
-                Height = 104,
-                Masking = true,
-                Children = new Drawable[]
-                {
-                    new BeatmapBackgroundSprite(working)
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                        FillMode = FillMode.Fill,
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
-                    },
-                    new Box
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                        Colour = ColourInfo.GradientHorizontal(Color4.Black.Opacity(0.7f), Color4.Black.Opacity(0.1f)),
-                    },
-                    new FillFlowContainer
-                    {
-                        Position = new Vector2(22, 16),
-                        AutoSizeAxes = Axes.Both,
-                        Direction = FillDirection.Vertical,
-                        Spacing = new Vector2(0, 4),
-                        Children = new Drawable[]
-                        {
-                            new BeatmapSetOnlineStatusPill { Status = beatmap.Status, TextSize = 12 },
-                            new OsuSpriteText
-                            {
-                                Text = new RomanisableString(metadata.TitleUnicode, metadata.Title),
-                                Font = OsuFont.TorusAlternate.With(size: 24, weight: FontWeight.SemiBold),
-                                Shadow = true,
-                            },
-                            new OsuSpriteText
-                            {
-                                Text = new RomanisableString(metadata.ArtistUnicode, metadata.Artist),
-                                Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold),
-                                Shadow = true,
-                            },
-                        }
-                    },
-                    // The difficulty's card: stars, name, mapper; then its numbers.
-                    new Container
-                    {
-                        Anchor = Anchor.TopRight,
-                        Origin = Anchor.TopRight,
-                        Position = new Vector2(-8, 6),
-                        Size = new Vector2(730, 90),
-                        Masking = true,
-                        CornerRadius = 12,
-                        BorderThickness = 2,
-                        BorderColour = Color4Extensions.FromHex("ff66ab").Opacity(0.6f),
-                        Children = new Drawable[]
-                        {
-                            new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.7f },
-                            new FillFlowContainer
-                            {
-                                Position = new Vector2(18, 10),
-                                AutoSizeAxes = Axes.Both,
-                                Direction = FillDirection.Horizontal,
-                                Spacing = new Vector2(8, 0),
-                                Children = new Drawable[]
-                                {
-                                    new StarRatingDisplay(new StarDifficulty(beatmap.StarRating, 0), StarRatingDisplaySize.Small)
-                                    {
-                                        Anchor = Anchor.CentreLeft,
-                                        Origin = Anchor.CentreLeft,
-                                    },
-                                    new TextFlowContainer(t => t.Colour = colours.ForStarDifficulty(beatmap.StarRating))
-                                    {
-                                        Anchor = Anchor.CentreLeft,
-                                        Origin = Anchor.CentreLeft,
-                                        AutoSizeAxes = Axes.Both,
-                                    }.With(t =>
-                                    {
-                                        t.AddText(beatmap.DifficultyName, s => s.Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold));
-                                        t.AddText(" mapped by ", s => s.Font = OsuFont.Torus.With(size: 14));
-                                        t.AddText(metadata.Author.Username, s => s.Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold));
-                                    }),
-                                }
-                            },
-                            new FillFlowContainer
-                            {
-                                Position = new Vector2(18, 44),
-                                AutoSizeAxes = Axes.Both,
-                                Direction = FillDirection.Horizontal,
-                                Spacing = new Vector2(16, 0),
-                                ChildrenEnumerable = beatmapNumbers(difficulty).Select(n => new BeatmapNumber(n.Name, n.Value)),
-                            },
-                        }
-                    },
-                }
-            };
-        }
-
-        private IEnumerable<(LocalisableString Name, string Value)> beatmapNumbers(BeatmapDifficulty difficulty)
-        {
-            var beatmap = score.BeatmapInfo!;
-
-            if (score.Ruleset.OnlineID == 0)
-            {
-                // (Counts not known for a beatmap that isn't stored: -1.)
-                bool known = beatmap.TotalObjectCount >= 0 && beatmap.EndTimeObjectCount >= 0;
-                yield return ("Circles", known ? (beatmap.TotalObjectCount - beatmap.EndTimeObjectCount).ToString("N0", CultureInfo.CurrentCulture) : "-");
-                yield return ("Sliders & Spinners", known ? beatmap.EndTimeObjectCount.ToString("N0", CultureInfo.CurrentCulture) : "-");
-            }
-
-            yield return ("Circle Size", difficulty.CircleSize.ToString("0.#", CultureInfo.CurrentCulture));
-            yield return ("Approach Rate", difficulty.ApproachRate.ToString("0.#", CultureInfo.CurrentCulture));
-            yield return ("Accuracy", difficulty.OverallDifficulty.ToString("0.#", CultureInfo.CurrentCulture));
-            yield return ("HP Drain", difficulty.DrainRate.ToString("0.#", CultureInfo.CurrentCulture));
         }
 
         // ── the score against the most there is, the mods, the best and the plays ───────────
@@ -706,23 +580,6 @@ namespace osu.Game.Screens.Ranking.Modern
                         Font = OsuFont.Torus.With(size: 12, weight: FontWeight.Bold),
                         Colour = ModernResultsScreen.BACKGROUND_5,
                     },
-                };
-            }
-        }
-
-        /// <summary>A beatmap number in the difficulty's card: its name, the value, a small bar over them.</summary>
-        private partial class BeatmapNumber : FillFlowContainer
-        {
-            public BeatmapNumber(LocalisableString name, string value)
-            {
-                AutoSizeAxes = Axes.Both;
-                Direction = FillDirection.Vertical;
-                Spacing = new Vector2(0, 2);
-                Children = new Drawable[]
-                {
-                    new Box { Size = new Vector2(70, 2), Colour = Color4Extensions.FromHex("ff66ab").Opacity(0.7f) },
-                    new OsuSpriteText { Text = name, Font = OsuFont.Torus.With(size: 11, weight: FontWeight.SemiBold), Colour = ModernResultsScreen.SUB_CONTENT },
-                    new OsuSpriteText { Text = value, Font = OsuFont.Torus.With(size: 14) },
                 };
             }
         }

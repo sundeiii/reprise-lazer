@@ -67,9 +67,6 @@ namespace osu.Game.Screens.Ranking.Modern
         private readonly Action? watchReplay;
         private readonly LegacyRankingDetails details;
 
-        /// <summary>Opens the ranking screen (null: none yet).</summary>
-        public Action? ShowRanking { get; init; }
-
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
 
@@ -87,6 +84,15 @@ namespace osu.Game.Screens.Ranking.Modern
         private Container mainPage = null!;
         private Container pages = null!;
         private AdvancedInfoPage? advancedPage;
+        private RankingPage? rankingPage;
+        private Page currentPage;
+
+        private enum Page
+        {
+            Main,
+            AdvancedInfo,
+            Ranking,
+        }
         private OsuSpriteText ppText = null!;
 
         public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
@@ -171,17 +177,22 @@ namespace osu.Game.Screens.Ranking.Modern
             personalBest.FadeTo(beaten ? 1 : 0, 300, Easing.OutQuint);
         }
 
-        /// <summary>Over to the advanced info, or back from it.</summary>
-        private void toggleAdvancedInfo() => showAdvancedInfo(!(advancedPage?.Alpha > 0));
+        /// <summary>Over to a page (the bottom bar's tabs), or back to the main one from it.</summary>
+        private void togglePage(Page page) => showPage(currentPage == page ? Page.Main : page);
 
-        /// <summary>The advanced info (made the first time it's shown) or the main page.</summary>
-        private void showAdvancedInfo(bool show)
+        /// <summary>A page (the advanced info and ranking made the first time they're shown).</summary>
+        private void showPage(Page page)
         {
-            if (show && advancedPage == null)
-                pages.Add(advancedPage = new AdvancedInfoPage(score, details, () => createHeader(true)) { Alpha = 0 });
+            currentPage = page;
 
-            mainPage.FadeTo(show ? 0 : 1, 200, Easing.OutQuint);
-            advancedPage?.FadeTo(show ? 1 : 0, 200, Easing.OutQuint);
+            if (page == Page.AdvancedInfo && advancedPage == null)
+                pages.Add(advancedPage = new AdvancedInfoPage(score, details, () => createHeader(true)) { Alpha = 0 });
+            if (page == Page.Ranking && rankingPage == null)
+                pages.Add(rankingPage = new RankingPage(score) { Alpha = 0 });
+
+            mainPage.FadeTo(page == Page.Main ? 1 : 0, 200, Easing.OutQuint);
+            advancedPage?.FadeTo(page == Page.AdvancedInfo ? 1 : 0, 200, Easing.OutQuint);
+            rankingPage?.FadeTo(page == Page.Ranking ? 1 : 0, 200, Easing.OutQuint);
         }
 
         /// <summary>The play's place among the player's country and team on this beatmap.</summary>
@@ -232,11 +243,10 @@ namespace osu.Game.Screens.Ranking.Modern
                             Margin = new MarginPadding { Left = 15 },
                             Children = new Drawable[]
                             {
-                                new HeaderPillButton("Ranking", FontAwesome.Solid.ArrowLeft, ShowRanking)
+                                new HeaderPillButton("Ranking", FontAwesome.Solid.ArrowLeft, () => showPage(Page.Ranking))
                                 {
                                     Anchor = Anchor.CentreLeft,
                                     Origin = Anchor.CentreLeft,
-                                    Alpha = ShowRanking != null ? 1 : 0,
                                 },
                                 new OsuSpriteText
                                 {
@@ -296,11 +306,11 @@ namespace osu.Game.Screens.Ranking.Modern
                     header,
                     // "Advanced Info", at the right of the header; on the advanced info, "Basic Info" at its left.
                     advanced
-                        ? new PageButton("Basic Info", true, () => showAdvancedInfo(false))
+                        ? new PageButton("Basic Info", true, () => showPage(Page.Main))
                         {
                             Position = new Vector2(-100, 73),
                         }
-                        : new PageButton("Advanced Info", false, () => showAdvancedInfo(true))
+                        : new PageButton("Advanced Info", false, () => showPage(Page.AdvancedInfo))
                         {
                             Anchor = Anchor.TopRight,
                             Origin = Anchor.TopRight,
@@ -634,7 +644,7 @@ namespace osu.Game.Screens.Ranking.Modern
                         RelativeSizeAxes = Axes.Both,
                     },
                 },
-                new ArrowButton(() => showAdvancedInfo(true))
+                new ArrowButton(() => showPage(Page.AdvancedInfo))
                 {
                     Position = new Vector2(692, 335),
                 },
@@ -673,8 +683,8 @@ namespace osu.Game.Screens.Ranking.Modern
                         },
                         new TabButton("Save Replay", FontAwesome.Solid.Download, Color4Extensions.FromHex("66ccff"), details.ExportReplay),
                         new TabButton("Screenshot", FontAwesome.Solid.Camera, Color4Extensions.FromHex("ff66ab"), () => screenshots?.TakeScreenshotAsync()),
-                        new TabButton("Ranking", FontAwesome.Solid.Sitemap, Color4Extensions.FromHex("8c66ff"), ShowRanking),
-                        new TabButton("More Info", FontAwesome.Solid.InfoCircle, Color4Extensions.FromHex("8c66ff"), toggleAdvancedInfo),
+                        new TabButton("Ranking", FontAwesome.Solid.Sitemap, Color4Extensions.FromHex("8c66ff"), () => togglePage(Page.Ranking)),
+                        new TabButton("More Info", FontAwesome.Solid.InfoCircle, Color4Extensions.FromHex("8c66ff"), () => togglePage(Page.AdvancedInfo)),
                     }
                 },
                 new FillFlowContainer
@@ -805,7 +815,7 @@ namespace osu.Game.Screens.Ranking.Modern
         /// <summary>The header's outlined pill ("← Ranking").</summary>
         private partial class HeaderPillButton : OsuClickableContainer
         {
-            public HeaderPillButton(string text, IconUsage icon, Action? action)
+            public HeaderPillButton(string text, IconUsage icon, Action action)
             {
                 Action = action;
                 Size = new Vector2(109, 36);
