@@ -33,6 +33,7 @@ using osu.Game.Rulesets.UI;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Screens.Play.Leaderboards;
+using osu.Game.Screens.Ranking.Expanded;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
 using osu.Game.Skinning.Ranking;
 using osu.Game.Users.Drawables;
@@ -93,7 +94,13 @@ namespace osu.Game.Screens.Ranking.Modern
             AdvancedInfo,
             Ranking,
         }
-        private OsuSpriteText ppText = null!;
+        private CountingText ppText = null!;
+        private ScoreCounter scoreCounter = null!;
+        private IBindable<ScoringMode> scoringMode = null!;
+
+        // The numbers that count up (as lazer's results do), with where they end.
+        private readonly List<(CountingText Text, double Target)> countUps = new List<(CountingText, double)>();
+        private bool countedUp;
 
         public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
         {
@@ -115,7 +122,7 @@ namespace osu.Game.Screens.Ranking.Modern
             if (realm.Run(r => r.Find<BeatmapInfo>(beatmap.ID)) != null)
                 stars = difficultyCache.GetDifficultyAsync(beatmap, score.Ruleset, score.Mods).GetResultSafely() ?? stars;
 
-            var scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
+            scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
 
             InternalChild = new DrawSizePreservingFillContainer
             {
@@ -134,7 +141,7 @@ namespace osu.Game.Screens.Ranking.Modern
                             Children = new[]
                             {
                                 createBeatmapInfo(metadata, beatmap, stars),
-                                createScoreArea(scoringMode),
+                                createScoreArea(),
                                 createGrade(),
                                 createHeader(false),
                             }
@@ -144,7 +151,14 @@ namespace osu.Game.Screens.Ranking.Modern
                 }
             };
 
-            performance.BindValueChanged(pp => ppText.Text = pp.NewValue is double value ? Math.Round(value).ToString("N0", CultureInfo.CurrentCulture) : "-", true);
+            // The pp counts up too, from wherever it is once it's known (the server's can come in late).
+            performance.BindValueChanged(pp =>
+            {
+                if (pp.NewValue is not double value)
+                    ppText.Text = "-";
+                else if (countedUp)
+                    ppText.RollTo(value, 1000);
+            }, true);
         }
 
         protected override void LoadComplete()
@@ -167,6 +181,36 @@ namespace osu.Game.Screens.Ranking.Modern
             }
 
             fetchRanks();
+
+            // As lazer's results: once the ring has started filling, the score rolls up (ticking), and the other numbers with it. Only for
+            // a play just set (an older one shows as it is). Scheduled so the counters don't jump to where they end straight away.
+            ScheduleAfterChildren(() =>
+            {
+                using (BeginDelayedSequence(AccuracyCircle.ACCURACY_TRANSFORM_DELAY))
+                {
+                    scoreCounter.FadeIn();
+                    scoreCounter.Current.Value = score.GetDisplayScore(scoringMode.Value);
+
+                    foreach (var (text, target) in countUps)
+                        text.RollTo(target, AccuracyCircle.ACCURACY_TRANSFORM_DURATION);
+                    if (performance.Value is double pp)
+                        ppText.RollTo(pp, AccuracyCircle.ACCURACY_TRANSFORM_DURATION);
+                }
+
+                countedUp = true;
+                scoringMode.BindValueChanged(mode => scoreCounter.Current.Value = score.GetDisplayScore(mode.NewValue));
+
+                if (!details.HasSecondPage)
+                    FinishTransforms(true);
+            });
+        }
+
+        /// <summary>A number that counts up to where it ends.</summary>
+        private CountingText countUp(double target, Func<double, string> format)
+        {
+            var text = new CountingText(format);
+            countUps.Add((text, target));
+            return text;
         }
 
         private void updatePersonalBest()
@@ -452,23 +496,24 @@ namespace osu.Game.Screens.Ranking.Modern
 
         // ── the score ────────────────────────────────────────────────────────────────────────
 
-        private Drawable createScoreArea(IBindable<ScoringMode> scoringMode)
+        private Drawable createScoreArea()
         {
-            var scoreText = new OsuSpriteText
+            // (Lazer's own ticks while it rolls, unless the ring's flair is playing its sounds.)
+            scoreCounter = new ScoreCounter(!details.HasSecondPage)
             {
                 Anchor = Anchor.CentreLeft,
                 Origin = Anchor.CentreLeft,
                 X = 60,
-                Font = OsuFont.Torus.With(size: 160, weight: FontWeight.Light),
-                Colour = NUMBER_GRADIENT,
+                Current = { Value = 0 },
+                Alpha = 0,
+                AlwaysPresent = true,
             };
-            scoringMode.BindValueChanged(mode => scoreText.Text = score.GetDisplayScore(mode.NewValue).ToString("N0", CultureInfo.CurrentCulture), true);
 
             var statistics = score.GetStatisticsForDisplay().ToList();
             var basic = statistics.Where(s => s.MaxCount == null && s.Result.IsBasic()).ToList();
             var extra = statistics.Where(s => s.MaxCount is > 0).ToList();
 
-            ppText = new OsuSpriteText { Font = OsuFont.Torus.With(size: 40), Colour = NUMBER_GRADIENT };
+            ppText = new CountingText(v => Math.Round(v).ToString("N0", CultureInfo.CurrentCulture));
 
             return new Container
             {
@@ -483,7 +528,7 @@ namespace osu.Game.Screens.Ranking.Modern
                         Children = new Drawable[]
                         {
                             new SlantedBox(Color4Extensions.FromHex("171c1a"), 0.75f) { RelativeSizeAxes = Axes.Both },
-                            scoreText,
+                            scoreCounter,
                         }
                     },
                     personalBest = new Container
@@ -506,15 +551,13 @@ namespace osu.Game.Screens.Ranking.Modern
                         }
                     },
                     // Accuracy, combo and pp.
-                    new StatisticBox("ACCURACY", NUMBER_GRADIENT, BACKGROUND_5)
+                    new StatisticBox("ACCURACY", NUMBER_GRADIENT, BACKGROUND_5, countUp(score.Accuracy, v => v.FormatAccuracy().ToString()))
                     {
                         Position = new Vector2(125, 520),
-                        Value = { Text = score.Accuracy.FormatAccuracy() },
                     },
-                    new StatisticBox("COMBO", NUMBER_GRADIENT, BACKGROUND_5)
+                    new StatisticBox("COMBO", NUMBER_GRADIENT, BACKGROUND_5, countUp(score.MaxCombo, v => $"{Math.Round(v):N0}x"))
                     {
                         Position = new Vector2(366, 520),
-                        Value = { Text = $"{score.MaxCombo:N0}x" },
                         Maximum = $"/{score.GetMaximumAchievableCombo():N0}",
                     },
                     new StatisticBox("PP", NUMBER_GRADIENT, BACKGROUND_5, ppText) { Position = new Vector2(607, 520) },
@@ -534,9 +577,9 @@ namespace osu.Game.Screens.Ranking.Modern
                         AutoSizeAxes = Axes.Both,
                         Direction = FillDirection.Horizontal,
                         Spacing = new Vector2(-6, 0),
-                        ChildrenEnumerable = extra.Select(s => new StatisticBox(s.DisplayName.ToUpper(), NUMBER_GRADIENT, BACKGROUND_4, width: 165, height: 70, valueSize: 28)
+                        ChildrenEnumerable = extra.Select(s => new StatisticBox(s.DisplayName.ToUpper(), NUMBER_GRADIENT, BACKGROUND_4, countUp(s.Count, count), width: 165, height: 70,
+                            valueSize: 28)
                         {
-                            Value = { Text = s.Count.ToString("N0", CultureInfo.CurrentCulture) },
                             Maximum = $"/{s.MaxCount:N0}",
                         }),
                     },
@@ -565,11 +608,10 @@ namespace osu.Game.Screens.Ranking.Modern
                 _ => colours.ForHitResult(statistic.Result),
             };
 
-            return new StatisticBox(judgementName(statistic), colour, Color4.Black, width: width, fillAlpha: 0.75f, edge: edge)
-            {
-                Value = { Text = statistic.Count.ToString(CultureInfo.CurrentCulture) },
-            };
+            return new StatisticBox(judgementName(statistic), colour, Color4.Black, countUp(statistic.Count, count), width: width, fillAlpha: 0.75f, edge: edge);
         }
+
+        private static string count(double value) => Math.Round(value).ToString("N0", CultureInfo.CurrentCulture);
 
         /// <summary>osu!'s judgements by their old names (300, 100, 50), as the design has them; other rulesets' as they're called.</summary>
         private LocalisableString judgementName(HitResultDisplayStatistic statistic)
@@ -740,6 +782,52 @@ namespace osu.Game.Screens.Ranking.Modern
                 shape.X = slant;
                 shape.Size = new Vector2(Math.Max(0, DrawWidth - slant), DrawHeight);
             }
+        }
+
+        /// <summary>A number that rolls (eased as lazer's results' counters) to where it ends.</summary>
+        public partial class CountingText : OsuSpriteText
+        {
+            private readonly Func<double, string> format;
+            private double count;
+
+            public double Count
+            {
+                get => count;
+                set
+                {
+                    count = value;
+                    Text = format(value);
+                }
+            }
+
+            public CountingText(Func<double, string> format)
+            {
+                this.format = format;
+                Count = 0;
+            }
+
+            public void RollTo(double target, double duration) => this.TransformTo(nameof(Count), target, duration, AccuracyCircle.ACCURACY_TRANSFORM_EASING);
+        }
+
+        /// <summary>Lazer's score counter (its roll and ticks) in the design's big light numbers.</summary>
+        private partial class ScoreCounter : TotalScoreCounter
+        {
+            public ScoreCounter(bool playSamples)
+                : base(playSamples)
+            {
+                RelativeSizeAxes = Axes.None;
+                AutoSizeAxes = Axes.Both;
+            }
+
+            protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
+            {
+                s.Anchor = Anchor.CentreLeft;
+                s.Origin = Anchor.CentreLeft;
+                // Fixed width, so the digits don't jostle as they roll.
+                s.Font = OsuFont.Torus.With(size: 160, weight: FontWeight.Light, fixedWidth: true);
+                s.Spacing = new Vector2(-14, 0);
+                s.Colour = NUMBER_GRADIENT;
+            });
         }
 
         /// <summary>A labelled number on a slanted box: a label, the value, and what it's out of (on the right).</summary>

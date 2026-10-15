@@ -40,7 +40,13 @@ namespace osu.Game.Tests.Visual.Ranking
         [SetUpSteps]
         public void SetUpSteps()
         {
-            AddStep("load screen", () =>
+            AddStep("load screen", () => loadScreen(false));
+            AddUntilStep("screen loaded", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsLoaded == true);
+        }
+
+        /// <param name="justSet">As a play just set (its numbers count up), rather than one looked at later.</param>
+        private void loadScreen(bool justSet)
+        {
             {
                 var score = TestSceneLegacyRankingPanel.CreateScore();
                 score.TotalScore = 956_789;
@@ -87,7 +93,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
                 var details = new LegacyRankingDetails
                 {
-                    HasSecondPage = false,
+                    HasSecondPage = justSet,
                     PreviousBest = new Bindable<SoloScoreInfo?>(new SoloScoreInfo { TotalScore = 912_345, Accuracy = 0.9681, MaxCombo = 1_120, PP = 261 }),
                     OnlineBeatmap = new Bindable<APIBeatmap?>(new APIBeatmap { BeatmapSet = new APIBeatmapSet { FavouriteCount = 4_231 } }),
                     ExportReplay = () => exported = true,
@@ -106,9 +112,7 @@ namespace osu.Game.Tests.Visual.Ranking
                     },
                     new ModernResultsScreen(score, () => { }, () => { }, details),
                 };
-            });
-
-            AddUntilStep("screen loaded", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsLoaded == true);
+            }
         }
 
         private static readonly string[] names = { "Alice", "mrekk", "Lilian", "Accolibed", "lifeline", "aetrna", "Mrekk2", "Rafis", "Cookiezi", "WhiteCat", "Vaxei", "Chicony" };
@@ -171,6 +175,16 @@ namespace osu.Game.Tests.Visual.Ranking
             AddWaitStep("let it settle", 15);
             AddStep("screenshot", () => Screenshot?.Invoke("modern-main"));
             AddWaitStep("saved", 5);
+        }
+
+        [Test]
+        public void TestCountUp()
+        {
+            AddStep("load as just set", () => loadScreen(true));
+            AddUntilStep("screen loaded", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsLoaded == true);
+            AddWaitStep("partway", 6);
+            AddStep("screenshot", () => Screenshot?.Invoke("modern-counting"));
+            AddUntilStep("score counted up", () => this.ChildrenOfType<ModernResultsScreen.CountingText>().All(t => t.Transforms.Count() == 0));
         }
 
         [Test]
