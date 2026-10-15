@@ -172,6 +172,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ShowStoryboard, true);
             SetDefault(OsuSetting.BeatmapSkins, true);
             SetDefault(OsuSetting.StableLayouts, false);
+            SetDefault(OsuSetting.NewResultsScreen, false);
             SetDefault(OsuSetting.SkinCursorInMenus, false);
             SetDefault(OsuSetting.SectionPassFail, false);
             SetDefault(OsuSetting.StablePermanentSongInfo, false);
@@ -568,6 +569,7 @@ namespace osu.Game.Configuration
         /// With a legacy skin, the results screen (and song select) use osu!stable's layouts.
         /// </summary>
         StableLayouts,
+        NewResultsScreen,
 
         /// <summary>
         /// The skin's cursor (and its trail) in menus too, as osu!stable shows it everywhere.

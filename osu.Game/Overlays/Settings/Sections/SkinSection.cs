@@ -94,6 +94,12 @@ namespace osu.Game.Overlays.Settings.Sections
                 }),
                 new SettingsItemV2(new FormCheckBox
                 {
+                    Caption = "Use the new results screen",
+                    HintText = "The redesigned results screen (osu!'s design team's exploration). osu!stable's layout comes first when that's on with a legacy skin.",
+                    Current = config.GetBindable<bool>(OsuSetting.NewResultsScreen),
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
                     Caption = "Use the skin's cursor in menus",
                     HintText = "The skin's cursor and its trail everywhere, not only in gameplay, as in osu!stable.",
                     Current = config.GetBindable<bool>(OsuSetting.SkinCursorInMenus),

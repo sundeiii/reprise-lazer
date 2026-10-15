@@ -113,6 +113,9 @@ namespace osu.Game.Screens.Ranking
         private SkinManager skinManager { get; set; } = null!;
 
         private Bindable<bool> stableLayouts = null!;
+
+        // The redesigned results screen instead of this one (OsuSetting.NewResultsScreen), when osu!stable's layout isn't shown.
+        private Bindable<bool> newResultsScreen = null!;
         private Drawable lazerContent = null!;
         private StableLayoutContainer stableContent = null!;
         private ReplayDownloadButton? replayButton;
@@ -134,6 +137,9 @@ namespace osu.Game.Screens.Ranking
         private OsuGame? osuGame { get; set; }
 
         private bool stableShown;
+
+        // Whether the redesigned screen is the one shown over this one (else osu!stable's, when either is).
+        private bool modernShown;
 
         public bool StableLayoutShown => stableShown;
 
@@ -379,6 +385,8 @@ namespace osu.Game.Screens.Ranking
 
             stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
             stableLayouts.BindValueChanged(_ => updateLayout());
+            newResultsScreen = config.GetBindable<bool>(OsuSetting.NewResultsScreen);
+            newResultsScreen.BindValueChanged(_ => updateLayout());
             skinManager.CurrentSkin.BindValueChanged(_ => updateLayout());
             SelectedScore.BindValueChanged(_ => updateLayout(), true);
 
@@ -419,12 +427,15 @@ namespace osu.Game.Screens.Ranking
         {
             var score = SelectedScore.Value;
             bool stable = stableLayouts.Value && skinManager.CurrentSkin.Value is LegacySkin && score != null;
+            // The redesigned screen: in the same place over this one (and with the same data), when stable's isn't shown.
+            bool modern = !stable && newResultsScreen.Value && score != null;
+            bool replaced = stable || modern;
 
-            lazerContent.Alpha = stable ? 0 : 1;
-            stableContent.Alpha = stable ? 1 : 0;
+            lazerContent.Alpha = replaced ? 0 : 1;
+            stableContent.Alpha = replaced ? 1 : 0;
 
-            // osu!stable's layout has the skin's back button instead of the game's.
-            BackButtonVisibility.Value = !stable;
+            // osu!stable's layout (and the redesigned screen) have their own back button instead of the game's.
+            BackButtonVisibility.Value = !replaced;
 
             if (stable != stableShown)
             {
@@ -439,10 +450,11 @@ namespace osu.Game.Screens.Ranking
                 }
             }
 
-            if (!stable || score == stableScore)
+            if (!replaced || (score == stableScore && modern == modernShown))
                 return;
 
             stableScore = score;
+            modernShown = modern;
 
             Action? retry = player != null && AllowRetry && score == Score
                 ? () =>
@@ -526,7 +538,9 @@ namespace osu.Game.Screens.Ranking
             };
 
             // Health over the play isn't recorded with a score yet: the graph shows without its line.
-            stableContent.Child = new LegacyRankingScreen(score!, Array.Empty<Vector2>(), retry, watchReplay, details);
+            stableContent.Child = modern
+                ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details)
+                : new LegacyRankingScreen(score!, Array.Empty<Vector2>(), retry, watchReplay, details);
         }
 
         // The player's best on the beatmap other than this play (by score), for the "Beatmap Ranking" row.
