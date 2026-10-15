@@ -5,6 +5,7 @@
 
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -24,7 +25,9 @@ using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Difficulty;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens;
@@ -329,6 +332,43 @@ namespace osu.Game.Tests.Visual.Ranking
             // Its ring's flair and the count-up play out (with their sounds) with the game's own panel underneath.
             AddWaitStep("let the animations play out", 50);
             AddAssert("still shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsAlive == true);
+
+            AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
+        }
+
+        [Test]
+        public void TestPreviousBestOnRelaxLeaderboard()
+        {
+            TestResultsScreen screen = null;
+
+            // The server lists the player's Relax scores with the mode's others: a Relax play's best before it is only among Relax ones.
+            AddStep("set up network requests", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetUserBeatmapScoresRequest userScores)
+                    return false;
+
+                userScores.TriggerSuccess(new GetUserBeatmapScoresRequest.Response
+                {
+                    Scores =
+                    {
+                        new SoloScoreInfo { ID = 11, TotalScore = 999_999, EndedAt = DateTimeOffset.Now.AddDays(-2) },
+                        new SoloScoreInfo { ID = 12, TotalScore = 500_000, EndedAt = DateTimeOffset.Now.AddDays(-1), Mods = new[] { new APIMod { Acronym = "RX" } } },
+                    }
+                });
+                return true;
+            });
+            AddStep("use the new results screen", () => config.SetValue(OsuSetting.NewResultsScreen, true));
+
+            loadResultsScreen(() =>
+            {
+                var score = TestResources.CreateTestScoreInfo();
+                score.Mods = new Mod[] { new OsuModRelax() };
+                score.BeatmapInfo!.OnlineID = 1_234;
+                return screen = createResultsScreen(score);
+            });
+            AddUntilStep("previous best is the Relax one", () =>
+                (typeof(ResultsScreen).GetField("stablePreviousBest", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(screen) as Bindable<SoloScoreInfo>)?.Value?.TotalScore,
+                () => Is.EqualTo(500_000));
 
             AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
         }

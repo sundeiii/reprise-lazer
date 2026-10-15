@@ -561,7 +561,13 @@ namespace osu.Game.Screens.Ranking
 
                 long thisScore = stableStatisticsUpdate.Value?.Score.OnlineID ?? score.OnlineID;
 
+                // Reprise: Relax and Autopilot plays are their own leaderboards; the server lists them with the mode's others (as its scores
+                // with those mods), so only ones with the same of them count.
+                bool relax = score.Mods.Any(m => m.Acronym == @"RX");
+                bool autopilot = score.Mods.Any(m => m.Acronym == @"AP");
+
                 stablePreviousBest.Value = response.Scores
+                                                   .Where(s => s.Mods.Any(m => m.Acronym == @"RX") == relax && s.Mods.Any(m => m.Acronym == @"AP") == autopilot)
                                                    // Not this play (before it's processed, by when it was set and its score).
                                                    .Where(s => thisScore > 0
                                                        ? s.OnlineID != thisScore
