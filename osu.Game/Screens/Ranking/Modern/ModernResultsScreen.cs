@@ -67,9 +67,6 @@ namespace osu.Game.Screens.Ranking.Modern
         private readonly Action? watchReplay;
         private readonly LegacyRankingDetails details;
 
-        /// <summary>Opens the advanced info screen (null: none yet).</summary>
-        public Action? ShowAdvancedInfo { get; init; }
-
         /// <summary>Opens the ranking screen (null: none yet).</summary>
         public Action? ShowRanking { get; init; }
 
@@ -87,6 +84,9 @@ namespace osu.Game.Screens.Ranking.Modern
         private readonly Bindable<double?> performance = new Bindable<double?>();
 
         private Container personalBest = null!;
+        private Container mainPage = null!;
+        private Container pages = null!;
+        private AdvancedInfoPage? advancedPage;
         private OsuSpriteText ppText = null!;
 
         public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
@@ -119,10 +119,21 @@ namespace osu.Game.Screens.Ranking.Modern
                 {
                     // The beatmap's background shows through, darkened a little (the design's 25% black).
                     new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.25f },
-                    createBeatmapInfo(metadata, beatmap, stars),
-                    createScoreArea(scoringMode),
-                    createGrade(),
-                    createHeader(),
+                    pages = new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Child = mainPage = new Container
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            Children = new[]
+                            {
+                                createBeatmapInfo(metadata, beatmap, stars),
+                                createScoreArea(scoringMode),
+                                createGrade(),
+                                createHeader(false),
+                            }
+                        },
+                    },
                     createBottomBar(),
                 }
             };
@@ -160,6 +171,19 @@ namespace osu.Game.Screens.Ranking.Modern
             personalBest.FadeTo(beaten ? 1 : 0, 300, Easing.OutQuint);
         }
 
+        /// <summary>Over to the advanced info, or back from it.</summary>
+        private void toggleAdvancedInfo() => showAdvancedInfo(!(advancedPage?.Alpha > 0));
+
+        /// <summary>The advanced info (made the first time it's shown) or the main page.</summary>
+        private void showAdvancedInfo(bool show)
+        {
+            if (show && advancedPage == null)
+                pages.Add(advancedPage = new AdvancedInfoPage(score, details, () => createHeader(true)) { Alpha = 0 });
+
+            mainPage.FadeTo(show ? 0 : 1, 200, Easing.OutQuint);
+            advancedPage?.FadeTo(show ? 1 : 0, 200, Easing.OutQuint);
+        }
+
         /// <summary>The play's place among the player's country and team on this beatmap.</summary>
         private void fetchRanks()
         {
@@ -176,7 +200,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
         // ── the header: the player and their place ───────────────────────────────────────────
 
-        private Drawable createHeader()
+        /// <param name="advanced">The advanced info's: "← Basic Info" before it, nothing after.</param>
+        private Drawable createHeader(bool advanced)
         {
             var user = score.User;
             int? position = details.UserBestPosition.Value ?? score.Position;
@@ -186,7 +211,7 @@ namespace osu.Game.Screens.Ranking.Modern
                 RelativeSizeAxes = Axes.X,
                 Height = 60,
                 Y = 73,
-                Padding = new MarginPadding { Left = 72, Right = 236 },
+                Padding = advanced ? new MarginPadding { Left = 176, Right = 24 } : new MarginPadding { Left = 72, Right = 236 },
                 Child = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
@@ -269,14 +294,18 @@ namespace osu.Game.Screens.Ranking.Modern
                 Children = new Drawable[]
                 {
                     header,
-                    // "Advanced Info", at the right of the header.
-                    new AdvancedInfoButton(ShowAdvancedInfo)
-                    {
-                        Anchor = Anchor.TopRight,
-                        Origin = Anchor.TopRight,
-                        Position = new Vector2(41, 73),
-                        Alpha = ShowAdvancedInfo != null ? 1 : 0,
-                    },
+                    // "Advanced Info", at the right of the header; on the advanced info, "Basic Info" at its left.
+                    advanced
+                        ? new PageButton("Basic Info", true, () => showAdvancedInfo(false))
+                        {
+                            Position = new Vector2(-100, 73),
+                        }
+                        : new PageButton("Advanced Info", false, () => showAdvancedInfo(true))
+                        {
+                            Anchor = Anchor.TopRight,
+                            Origin = Anchor.TopRight,
+                            Position = new Vector2(41, 73),
+                        },
                 }
             };
         }
@@ -605,10 +634,9 @@ namespace osu.Game.Screens.Ranking.Modern
                         RelativeSizeAxes = Axes.Both,
                     },
                 },
-                new ArrowButton(ShowAdvancedInfo)
+                new ArrowButton(() => showAdvancedInfo(true))
                 {
                     Position = new Vector2(692, 335),
-                    Alpha = ShowAdvancedInfo != null ? 1 : 0,
                 },
             }
         };
@@ -646,7 +674,7 @@ namespace osu.Game.Screens.Ranking.Modern
                         new TabButton("Save Replay", FontAwesome.Solid.Download, Color4Extensions.FromHex("66ccff"), details.ExportReplay),
                         new TabButton("Screenshot", FontAwesome.Solid.Camera, Color4Extensions.FromHex("ff66ab"), () => screenshots?.TakeScreenshotAsync()),
                         new TabButton("Ranking", FontAwesome.Solid.Sitemap, Color4Extensions.FromHex("8c66ff"), ShowRanking),
-                        new TabButton("More Info", FontAwesome.Solid.InfoCircle, Color4Extensions.FromHex("8c66ff"), ShowAdvancedInfo),
+                        new TabButton("More Info", FontAwesome.Solid.InfoCircle, Color4Extensions.FromHex("8c66ff"), toggleAdvancedInfo),
                     }
                 },
                 new FillFlowContainer
@@ -805,10 +833,10 @@ namespace osu.Game.Screens.Ranking.Modern
             }
         }
 
-        /// <summary>"Advanced Info →": a dark box at the header's right.</summary>
-        private partial class AdvancedInfoButton : OsuClickableContainer
+        /// <summary>"Advanced Info →" at the header's right, or "← Basic Info" at its left: a dark box off the screen's edge.</summary>
+        private partial class PageButton : OsuClickableContainer
         {
-            public AdvancedInfoButton(Action? action)
+            public PageButton(string text, bool back, Action action)
             {
                 Action = action;
                 Size = new Vector2(268, 60);
@@ -819,13 +847,15 @@ namespace osu.Game.Screens.Ranking.Modern
                     new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.8f },
                     new OsuSpriteText
                     {
-                        Anchor = Anchor.CentreLeft,
-                        Origin = Anchor.CentreLeft,
-                        X = 42,
-                        Text = "Advanced Info",
+                        Anchor = back ? Anchor.CentreRight : Anchor.CentreLeft,
+                        Origin = back ? Anchor.CentreRight : Anchor.CentreLeft,
+                        X = back ? -24 : 42,
+                        Text = text,
                         Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold),
                     },
-                    new CircledArrow { Anchor = Anchor.CentreLeft, Origin = Anchor.CentreLeft, X = 161 },
+                    back
+                        ? new CircledArrow(FontAwesome.Solid.ArrowLeft) { Anchor = Anchor.CentreRight, Origin = Anchor.CentreRight, X = -118 }
+                        : new CircledArrow { Anchor = Anchor.CentreLeft, Origin = Anchor.CentreLeft, X = 161 },
                 };
             }
         }
@@ -833,7 +863,7 @@ namespace osu.Game.Screens.Ranking.Modern
         /// <summary>The arrow at the grade's right: on to the advanced info.</summary>
         private partial class ArrowButton : OsuClickableContainer
         {
-            public ArrowButton(Action? action)
+            public ArrowButton(Action action)
             {
                 Action = action;
                 Size = new Vector2(42);
@@ -843,7 +873,7 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private partial class CircledArrow : CircularContainer
         {
-            public CircledArrow()
+            public CircledArrow(IconUsage? icon = null)
             {
                 Size = new Vector2(42);
                 Masking = true;
@@ -852,7 +882,7 @@ namespace osu.Game.Screens.Ranking.Modern
                 Children = new Drawable[]
                 {
                     new Box { RelativeSizeAxes = Axes.Both, Alpha = 0, AlwaysPresent = true },
-                    new SpriteIcon { Anchor = Anchor.Centre, Origin = Anchor.Centre, Size = new Vector2(18), Icon = FontAwesome.Solid.ArrowRight },
+                    new SpriteIcon { Anchor = Anchor.Centre, Origin = Anchor.Centre, Size = new Vector2(18), Icon = icon ?? FontAwesome.Solid.ArrowRight },
                 };
             }
         }
