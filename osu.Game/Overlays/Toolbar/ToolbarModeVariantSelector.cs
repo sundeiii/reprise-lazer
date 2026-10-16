@@ -56,9 +56,12 @@ namespace osu.Game.Overlays.Toolbar
         {
             base.LoadComplete();
 
-            ruleset.BindValueChanged(_ => updateState());
-            selectedMods.BindValueChanged(_ => updateState());
-            selectedMods.BindDisabledChanged(_ => updateState(), true);
+            // Scheduled: a screen leases the mods (disabling them) while it loads, off the update thread (multiplayer, playlists),
+            // and fading from there crashes the game.
+            ruleset.BindValueChanged(_ => Scheduler.AddOnce(updateState));
+            selectedMods.BindValueChanged(_ => Scheduler.AddOnce(updateState));
+            selectedMods.BindDisabledChanged(_ => Scheduler.AddOnce(updateState));
+            updateState();
         }
 
         private void updateState()
