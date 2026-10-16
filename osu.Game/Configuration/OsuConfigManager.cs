@@ -173,6 +173,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.BeatmapSkins, true);
             SetDefault(OsuSetting.StableLayouts, false);
             SetDefault(OsuSetting.NewResultsScreen, false);
+            SetDefault(OsuSetting.SongSelectV1, false);
             SetDefault(OsuSetting.SkinCursorInMenus, false);
             SetDefault(OsuSetting.SectionPassFail, false);
             SetDefault(OsuSetting.StablePermanentSongInfo, false);
@@ -570,6 +571,12 @@ namespace osu.Game.Configuration
         /// </summary>
         StableLayouts,
         NewResultsScreen,
+
+        /// <summary>
+        /// Reprise: song select as lazer had it before its redesign (the carousel on the right, the beatmap's wedge and its
+        /// details or leaderboard on the left), instead of the new one.
+        /// </summary>
+        SongSelectV1,
 
         /// <summary>
         /// The skin's cursor (and its trail) in menus too, as osu!stable shows it everywhere.

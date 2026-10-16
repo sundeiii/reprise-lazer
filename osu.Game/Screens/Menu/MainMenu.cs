@@ -139,6 +139,7 @@ namespace osu.Game.Screens.Menu
         [BackgroundDependencyLoader(true)]
         private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, OsuConfigManager config, SessionStatics statics, AudioManager audio)
         {
+            songSelectV1 = config.GetBindable<bool>(OsuSetting.SongSelectV1);
             holdDelay = config.GetBindable<double>(OsuSetting.UIHoldActivationDelay);
             loginDisplayed = statics.GetBindable<bool>(Static.LoginOverlayDisplayed);
             showMobileDisclaimer = config.GetBindable<bool>(OsuSetting.ShowMobileDisclaimer);
@@ -539,7 +540,10 @@ namespace osu.Game.Screens.Menu
         {
         }
 
-        private void loadSongSelect() => this.Push(new SoloSongSelect());
+        // Reprise: lazer's song select from before its redesign when Song Select V1 is on.
+        private Bindable<bool> songSelectV1 = null!;
+
+        private void loadSongSelect() => this.Push(songSelectV1.Value ? new SelectV1.PlaySongSelect() : new SoloSongSelect());
 
         private void loadQuickPlay() => this.Push(new OnlinePlay.Matchmaking.Intro.ScreenIntro(MatchmakingPoolType.QuickPlay));
 

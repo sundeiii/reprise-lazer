@@ -21,6 +21,16 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
         {
             Children = new Drawable[]
             {
+                // Reprise: lazer's song select from before its redesign.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "Song Select V1",
+                    HintText = "Song select as lazer had it before its redesign: the beatmaps on the right, the beatmap's details and leaderboard on the left. Applies the next time song select opens.",
+                    Current = config.GetBindable<bool>(OsuSetting.SongSelectV1),
+                })
+                {
+                    Keywords = new[] { "old", "legacy", "classic", "v1" }
+                },
                 new SettingsItemV2(new FormCheckBox
                 {
                     Caption = UserInterfaceStrings.ShowConvertedBeatmaps,
