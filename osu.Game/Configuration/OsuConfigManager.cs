@@ -174,6 +174,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.StableLayouts, false);
             SetDefault(OsuSetting.NewResultsScreen, false);
             SetDefault(OsuSetting.SongSelectV1, false);
+            SetDefault(OsuSetting.Sounds2023, false);
             SetDefault(OsuSetting.SkinCursorInMenus, false);
             SetDefault(OsuSetting.SectionPassFail, false);
             SetDefault(OsuSetting.StablePermanentSongInfo, false);
@@ -577,6 +578,9 @@ namespace osu.Game.Configuration
         /// details or leaderboard on the left), instead of the new one.
         /// </summary>
         SongSelectV1,
+
+        /// <summary>Reprise: the menu and interface sounds as lazer had them in 2023 (Audio.Sounds2023Store); applies after a restart.</summary>
+        Sounds2023,
 
         /// <summary>
         /// The skin's cursor (and its trail) in menus too, as osu!stable shows it everywhere.

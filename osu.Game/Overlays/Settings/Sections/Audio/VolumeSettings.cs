@@ -20,6 +20,16 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
         {
             Children = new Drawable[]
             {
+                // Reprise: the menu and interface sounds as lazer had them in 2023.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "2023 sound effects",
+                    HintText = "The menu and interface sounds as lazer had them in 2023 (the main menu's buttons, notifications, overlays, the music player). Applies after restarting the game.",
+                    Current = config.GetBindable<bool>(OsuSetting.Sounds2023),
+                })
+                {
+                    Keywords = new[] { "old", "classic", "2023", "sfx", "samples" }
+                },
                 new SettingsItemV2(new FormSliderBar<double>
                 {
                     Caption = AudioSettingsStrings.MasterVolume,

@@ -15,6 +15,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
+using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
@@ -29,6 +30,10 @@ namespace osu.Game.Overlays
 {
     public partial class NowPlayingOverlay : OsuFocusedOverlayContainer, INamedOverlayComponent
     {
+        // Reprise: the music player had sounds of its own in 2023.
+        protected override string? PopInSampleName => Sounds2023Store.Enabled ? @"UI/now-playing-pop-in" : base.PopInSampleName;
+        protected override string? PopOutSampleName => Sounds2023Store.Enabled ? @"UI/now-playing-pop-out" : base.PopOutSampleName;
+
         public const double TRACK_DRAG_SEEK_DEBOUNCE = 40;
 
         public IconUsage Icon => OsuIcon.Music;

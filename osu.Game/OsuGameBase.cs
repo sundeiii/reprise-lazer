@@ -309,6 +309,8 @@ namespace osu.Game
                 VersionHash = $"{Version}-{RuntimeInfo.OS}".ComputeMD5Hash();
             }
 
+            // Reprise: lazer's 2023 menu and interface sounds, in front of osu!'s current ones, when they're picked.
+            Resources.AddStore(new Sounds2023Store(LocalConfig.Get<bool>(OsuSetting.Sounds2023)));
             Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));
             // This game's own (osu!stable's font and textures for the stable layouts).
             Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), @"Resources"));
