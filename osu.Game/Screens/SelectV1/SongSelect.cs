@@ -672,6 +672,8 @@ namespace osu.Game.Screens.SelectV1
             FilterControl.Activate();
 
             ModSelect.SelectedMods.BindTo(selectedMods);
+            // (Today's mod select works out the multiplier with the ruleset it's given, as the new song select gives it.)
+            ModSelect.Ruleset.BindTo(Ruleset);
 
             beginLooping();
         }
@@ -723,6 +725,7 @@ namespace osu.Game.Screens.SelectV1
             // required due to https://github.com/ppy/osu-framework/issues/3218
             ModSelect.SelectedMods.Disabled = false;
             ModSelect.SelectedMods.BindTo(selectedMods);
+            ModSelect.Ruleset.BindTo(Ruleset);
 
             Carousel.AllowSelection = true;
 
@@ -776,6 +779,7 @@ namespace osu.Game.Screens.SelectV1
             transferRulesetValue();
 
             ModSelect.SelectedMods.UnbindFrom(selectedMods);
+            ModSelect.Ruleset.UnbindFrom(Ruleset);
 
             playExitingTransition();
             base.OnSuspending(e);

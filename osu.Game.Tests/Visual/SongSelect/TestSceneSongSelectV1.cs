@@ -16,6 +16,7 @@ using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays;
+using osu.Game.Overlays.Mods;
 using osu.Game.Overlays.Toolbar;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
@@ -34,7 +35,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         private BeatmapManager beatmaps = null!;
         private RealmRulesetStore rulesets = null!;
         private RealmDetachedBeatmapStore beatmapStore = null!;
-        private PlaySongSelect songSelect = null!;
+        private TestPlaySongSelect songSelect = null!;
 
         [Cached]
         private readonly LeaderboardManager leaderboardManager = new LeaderboardManager();
@@ -98,13 +99,22 @@ namespace osu.Game.Tests.Visual.SongSelect
                     beatmaps.Import(TestResources.CreateTestBeatmapSetInfo(4, rulesets.AvailableRulesets.Where(r => r.OnlineID == 0).ToArray()));
             });
 
-            AddStep("load Song Select V1", () => Stack.Push(songSelect = new PlaySongSelect()));
+            AddStep("load Song Select V1", () => Stack.Push(songSelect = new TestPlaySongSelect()));
             AddUntilStep("wait for load", () => Stack.CurrentScreen == songSelect && songSelect.IsLoaded);
             AddUntilStep("a beatmap is selected", () => !Beatmap.IsDefault);
             AddUntilStep("carousel shows the sets", () => songSelect.ChildrenOfType<Screens.SelectV1.Carousel.DrawableCarouselBeatmapSet>().Count(), () => Is.GreaterThan(0));
             AddWaitStep("let it settle", 15);
             AddStep("screenshot", () => Screenshot?.Invoke("song-select-v1"));
             AddWaitStep("saved", 5);
+
+            // The mod select's multiplier (and ranked state) needs the ruleset: it showed 1.00x whatever the mods.
+            AddAssert("mod select has the ruleset", () => songSelect.ModSelectOverlay.Ruleset.Value, () => Is.EqualTo(Ruleset.Value));
+            AddAssert("mod select has the beatmap", () => songSelect.ModSelectOverlay.Beatmap.Value, () => Is.EqualTo(Beatmap.Value));
+        }
+
+        private partial class TestPlaySongSelect : PlaySongSelect
+        {
+            public ModSelectOverlay ModSelectOverlay => ModSelect;
         }
     }
 }
