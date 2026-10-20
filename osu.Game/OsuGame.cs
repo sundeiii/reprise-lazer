@@ -125,7 +125,6 @@ namespace osu.Game
         public Toolbar Toolbar { get; private set; }
 
         private Bindable<bool> autoHideToolbar;
-        private double? toolbarAutoHideTime;
         private InputManager autoHideInputManager;
 
         private const float toolbar_reveal_edge = 5;
@@ -189,12 +188,19 @@ namespace osu.Game
 
         private DialogOverlay dialogOverlay;
 
-        private bool localUserRestrictionStateInitialised;
-        private bool restrictedLoginPopupShown;
-        private bool unrestrictedLoginPopupShown;
+        // In an object of its own rather than as fields here: tosu (https://github.com/tosuapp/tosu) finds this game in memory by OsuGame's
+        // fields being laid out like ppy's (tabletLogNotifyOn* right before ScalingContainerTargetDrawSize), and more bools or nullables here move it.
+        private readonly LocalUserRestrictionState restrictionState = new LocalUserRestrictionState();
 
-        private int? lastRefreshRestrictionUserId;
-        private bool? lastRefreshRestrictionState;
+        private class LocalUserRestrictionState
+        {
+            public bool Initialised;
+            public bool RestrictedPopupShown;
+            public bool UnrestrictedPopupShown;
+
+            public int? LastUserId;
+            public bool? LastState;
+        }
 
         private ScheduledDelegate localUserRestrictionRefreshSchedule;
         private const double local_user_restriction_refresh_interval = 60000;
@@ -1358,39 +1364,39 @@ namespace osu.Game
 
                 if (!newIsRealUser)
                 {
-                    localUserRestrictionStateInitialised = false;
-                    restrictedLoginPopupShown = false;
-                    unrestrictedLoginPopupShown = false;
-                    lastRefreshRestrictionUserId = null;
-                    lastRefreshRestrictionState = null;
+                    restrictionState.Initialised = false;
+                    restrictionState.RestrictedPopupShown = false;
+                    restrictionState.UnrestrictedPopupShown = false;
+                    restrictionState.LastUserId = null;
+                    restrictionState.LastState = null;
                     return;
                 }
 
                 if (oldIsRealUser && oldUser.Id != newUser.Id)
                 {
-                    localUserRestrictionStateInitialised = false;
-                    restrictedLoginPopupShown = false;
-                    unrestrictedLoginPopupShown = false;
-                    lastRefreshRestrictionUserId = newUser.Id;
-                    lastRefreshRestrictionState = newUser.IsRestricted == true;
+                    restrictionState.Initialised = false;
+                    restrictionState.RestrictedPopupShown = false;
+                    restrictionState.UnrestrictedPopupShown = false;
+                    restrictionState.LastUserId = newUser.Id;
+                    restrictionState.LastState = newUser.IsRestricted == true;
                 }
 
                 bool newRestricted = newUser.IsRestricted == true;
 
-                if (lastRefreshRestrictionUserId != newUser.Id)
+                if (restrictionState.LastUserId != newUser.Id)
                 {
-                    lastRefreshRestrictionUserId = newUser.Id;
-                    lastRefreshRestrictionState = newRestricted;
+                    restrictionState.LastUserId = newUser.Id;
+                    restrictionState.LastState = newRestricted;
                 }
 
-                if (!localUserRestrictionStateInitialised)
+                if (!restrictionState.Initialised)
                 {
-                    localUserRestrictionStateInitialised = true;
+                    restrictionState.Initialised = true;
 
-                    if (newRestricted && !restrictedLoginPopupShown)
+                    if (newRestricted && !restrictionState.RestrictedPopupShown)
                     {
-                        restrictedLoginPopupShown = true;
-                        unrestrictedLoginPopupShown = false;
+                        restrictionState.RestrictedPopupShown = true;
+                        restrictionState.UnrestrictedPopupShown = false;
 
                         waitForReady(() => dialogOverlay, overlay => overlay.Push(new RestrictedAccountDialog(newUser)));
                     }
@@ -1398,10 +1404,10 @@ namespace osu.Game
                     return;
                 }
 
-                if (newRestricted && !restrictedLoginPopupShown)
+                if (newRestricted && !restrictionState.RestrictedPopupShown)
                 {
-                    restrictedLoginPopupShown = true;
-                    unrestrictedLoginPopupShown = false;
+                    restrictionState.RestrictedPopupShown = true;
+                    restrictionState.UnrestrictedPopupShown = false;
 
                     waitForReady(() => dialogOverlay, overlay => overlay.Push(new RestrictedAccountDialog(newUser)));
                 }
@@ -1603,8 +1609,8 @@ namespace osu.Game
             {
                 if (!API.IsLoggedIn || API.LocalUser.Value == null || API.LocalUser.Value.Id == APIUser.SYSTEM_USER_ID)
                 {
-                    lastRefreshRestrictionUserId = null;
-                    lastRefreshRestrictionState = null;
+                    restrictionState.LastUserId = null;
+                    restrictionState.LastState = null;
 
                     scheduleLocalUserRestrictionRefresh();
                     return;
@@ -1613,7 +1619,7 @@ namespace osu.Game
                 int currentUserId = API.LocalUser.Value.Id;
 
                 Logger.Log(
-                    $"[restriction-refresh] queued /me for user={currentUserId}, currentLocalRestricted={API.LocalUser.Value.IsRestricted}, lastUser={lastRefreshRestrictionUserId}, lastState={lastRefreshRestrictionState}",
+                    $"[restriction-refresh] queued /me for user={currentUserId}, currentLocalRestricted={API.LocalUser.Value.IsRestricted}, lastUser={restrictionState.LastUserId}, lastState={restrictionState.LastState}",
                     LoggingTarget.Network
                 );
 
@@ -1641,28 +1647,28 @@ namespace osu.Game
 
                         bool isRestricted = me.IsRestricted == true;
 
-                        if (lastRefreshRestrictionUserId != me.Id)
+                        if (restrictionState.LastUserId != me.Id)
                         {
-                            lastRefreshRestrictionUserId = me.Id;
-                            lastRefreshRestrictionState = isRestricted;
+                            restrictionState.LastUserId = me.Id;
+                            restrictionState.LastState = isRestricted;
                             return;
                         }
 
-                        bool? previousRestricted = lastRefreshRestrictionState;
-                        lastRefreshRestrictionState = isRestricted;
+                        bool? previousRestricted = restrictionState.LastState;
+                        restrictionState.LastState = isRestricted;
 
                         if (previousRestricted == false && isRestricted)
                         {
-                            restrictedLoginPopupShown = true;
-                            unrestrictedLoginPopupShown = false;
+                            restrictionState.RestrictedPopupShown = true;
+                            restrictionState.UnrestrictedPopupShown = false;
 
                             waitForReady(() => dialogOverlay, overlay => overlay.Push(new RestrictedAccountDialog(me)));
                         }
 
                         if (previousRestricted == true && !isRestricted)
                         {
-                            unrestrictedLoginPopupShown = true;
-                            restrictedLoginPopupShown = false;
+                            restrictionState.UnrestrictedPopupShown = true;
+                            restrictionState.RestrictedPopupShown = false;
 
                             waitForReady(() => dialogOverlay, overlay => overlay.Push(new UnrestrictedAccountDialog(me)));
                         }
@@ -2037,6 +2043,9 @@ namespace osu.Game
             GlobalCursorDisplay.ShowCursor = (ScreenStack.CurrentScreen as IOsuScreen)?.CursorVisible ?? false;
             updateAutoHideToolbar();
         }
+
+        // Declared after ScalingContainerTargetDrawSize so it's laid out after it (see restrictionState).
+        private double? toolbarAutoHideTime;
 
         private void updateAutoHideToolbar()
         {

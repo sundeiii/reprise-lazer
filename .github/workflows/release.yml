@@ -210,12 +210,22 @@ jobs:
             --verbosity normal \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -p:Version=${{ needs.version.outputs.cleanVersion }} \
+            -p:Version=${{ needs.version.outputs.cleanVersion }}-reprise \
             -p:FileVersion=${{ needs.version.outputs.fileVersion }} \
             -p:AssemblyVersion=${{ needs.version.outputs.assemblyVersion }} \
             -p:InformationalVersion=${{ needs.version.outputs.version }} \
             -p:ContinuousIntegrationBuild=true \
             -p:SentryDsn="${RINARI_SENTRY_DSN:-}"
+
+      # tosu reads lazer's memory through field offsets, by the version in osu!.deps.json ("osu!/<version>-reprise" above; it reads
+      # the part before the dash). ppy's offsets don't fit our classes, so they're worked out from this build and shipped in the game folder.
+      - name: Generate tosu offsets
+        if: matrix.runtime == 'win-x64'
+        shell: bash
+        run: |
+          curl -sfL https://raw.githubusercontent.com/tosuapp/tosu/master/packages/tosu/src/assets/offsets.json -o tosu-template.json
+          dotnet run -c Release --project Tools/TosuOffsets/TosuOffsets.csproj -- \
+            "publish/${{ matrix.runtime }}" tosu-template.json "publish/${{ matrix.runtime }}/tosu-offsets.json"
 
       - name: Set executable permissions
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
@@ -347,6 +357,12 @@ jobs:
 
           echo "Verified Velopack assets:"
           ls -lh release-assets
+
+      # For a stock tosu: saved as <tosu folder>\.cache\<version>.json it's used instead of downloading ppy's.
+      - name: Add tosu offsets to release assets
+        if: matrix.runtime == 'win-x64'
+        shell: bash
+        run: cp "publish/${{ matrix.runtime }}/tosu-offsets.json" "release-assets/tosu-offsets-${{ needs.version.outputs.cleanVersion }}.json"
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
