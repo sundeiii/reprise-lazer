@@ -313,6 +313,7 @@ namespace osu.Game.Screens.Ranking
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
                 bool shouldFlair = !useCleanResultsScreen && showProfileUpdate;
+                gameFlair = shouldFlair;
 
                 ScorePanelList.AddScore(Score, shouldFlair);
                 // this is mostly for medal display.
@@ -537,9 +538,13 @@ namespace osu.Game.Screens.Ranking
                 },
             };
 
+            // Reprise: the redesigned screen plays the results' sounds (score ticks, the rank, applause) itself when the game's own
+            // panel underneath doesn't (after watching a replay of the play): for the play just finished, not ones looked at after.
+            bool modernSounds = modern && player != null && score == Score && !gameFlair;
+
             // Health over the play isn't recorded with a score yet: the graph shows without its line.
             stableContent.Child = modern
-                ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details)
+                ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details, modernSounds)
                 : new LegacyRankingScreen(score!, Array.Empty<Vector2>(), retry, watchReplay, details);
         }
 
@@ -717,12 +722,15 @@ namespace osu.Game.Screens.Ranking
 
         private PoolableSkinnableSample? rankApplauseSound;
 
+        // Whether the game's own panel plays the results' sounds (its flair): a play just set, not a replay of one.
+        private bool gameFlair;
+
         public void PlayApplause(ScoreRank rank)
         {
             const double applause_volume = 0.8f;
 
-            // None after watching a replay.
-            if (!this.IsCurrentScreen() || player is ReplayPlayer)
+            // None after watching a replay (Reprise: but with the redesigned screen, which plays them for the replay too).
+            if (!this.IsCurrentScreen() || (player is ReplayPlayer && !modernShown))
                 return;
 
             // Reprise: one already playing is taken out first (disposing it while it's still here crashes the next update; two grade

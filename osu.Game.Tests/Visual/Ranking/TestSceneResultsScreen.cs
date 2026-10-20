@@ -374,6 +374,28 @@ namespace osu.Game.Tests.Visual.Ranking
         }
 
         [Test]
+        public void TestNewResultsScreenAfterReplay()
+        {
+            TestResultsScreen screen = null;
+
+            AddStep("use the new results screen", () => config.SetValue(OsuSetting.NewResultsScreen, true));
+            // After watching a replay the game's own panel plays no sounds: the new screen's ring plays them (and the applause).
+            AddStep("load results after a replay", () =>
+            {
+                var score = TestResources.CreateTestScoreInfo();
+                Child = resultsContainer = new TestResultsContainer(screen = createResultsScreen(score), new ReplayPlayer(new Score { ScoreInfo = score }));
+            });
+            AddUntilStep("wait for loaded", () => screen.IsLoaded);
+            AddUntilStep("new screen shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
+            AddAssert("its ring plays the sounds", () => this.ChildrenOfType<ModernResultsScreen>().Single().ChildrenOfType<AccuracyCircle>().Single()
+                                                              .ChildrenOfType<PoolableSkinnableSample>().Any());
+            AddWaitStep("let the animations play out", 50);
+            AddAssert("still shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsAlive == true);
+
+            AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
+        }
+
+        [Test]
         public void TestStableLayoutOnLegacySkin()
         {
             TestResultsScreen screen = null;
@@ -597,13 +619,14 @@ namespace osu.Game.Tests.Visual.Ranking
         private partial class TestResultsContainer : Container
         {
             [Cached(typeof(Player))]
-            public readonly Player Player = new TestPlayer();
+            public readonly Player Player;
 
             [Cached(typeof(UserStatisticsWatcher))]
             public readonly UserStatisticsWatcher UserStatisticsWatcher;
 
-            public TestResultsContainer(IScreen screen)
+            public TestResultsContainer(IScreen screen, Player player = null)
             {
+                Player = player ?? new TestPlayer();
                 RelativeSizeAxes = Axes.Both;
                 OsuScreenStack stack;
 

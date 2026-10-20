@@ -102,8 +102,13 @@ namespace osu.Game.Screens.Ranking.Modern
         private readonly List<(CountingText Text, double Target)> countUps = new List<(CountingText, double)>();
         private bool countedUp;
 
-        public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
+        // Whether this screen's grade ring plays the results' sounds (score ticks, the rank, applause): only when the game's own
+        // panel underneath doesn't, as two playing them at once doubled them up (and crashed).
+        private readonly bool sounds;
+
+        public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null, bool sounds = false)
         {
+            this.sounds = sounds;
             this.score = score;
             this.retry = retry;
             this.watchReplay = watchReplay;
@@ -694,14 +699,14 @@ namespace osu.Game.Screens.Ranking.Modern
                     Size = new Vector2(623),
                     Colour = Color4Extensions.FromHex("333333"),
                 },
-                // Lazer's ring, scaled up whole (its grade drawn at its own size inside it, so it grows with it). Without its flair: the game's own
-                // results underneath play the sounds (two rings asking for applause crashed the game).
+                // Lazer's ring, scaled up whole (its grade drawn at its own size inside it, so it grows with it). Its flair (sounds) only when
+                // the game's own results underneath don't play them: after a replay (two rings asking for applause crashed the game).
                 new Container
                 {
                     Position = new Vector2(37, 35),
                     Size = new Vector2(230),
                     Scale = new Vector2(645 / 230f),
-                    Child = new AccuracyCircle(score)
+                    Child = new AccuracyCircle(score, withFlair: sounds)
                     {
                         RelativeSizeAxes = Axes.Both,
                     },
