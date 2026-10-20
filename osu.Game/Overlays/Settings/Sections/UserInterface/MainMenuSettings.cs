@@ -28,6 +28,16 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
             Children = new Drawable[]
             {
+                // Reprise: lazer's startup screen from 2023.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "2023 startup screen",
+                    HintText = "\"this is osu!lazer, the next major update coming to osu!\" with a tip of the day, before the intro, as lazer had it in 2023. Shows the next time the game starts.",
+                    Current = config.GetBindable<bool>(OsuSetting.Disclaimer2023),
+                })
+                {
+                    Keywords = new[] { "disclaimer", "old", "2023", "startup", "intro" }
+                },
                 new SettingsItemV2(new FormCheckBox
                 {
                     Caption = UserInterfaceStrings.ShowMenuTips,
