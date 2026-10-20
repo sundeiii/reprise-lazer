@@ -1,0 +1,2 @@
+<!-- Tools are plain console apps: don't pick up the game's osu!framework build properties. -->
+<Project />
