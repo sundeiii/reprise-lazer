@@ -36,9 +36,12 @@ namespace osu.Game.Screens
         private ScheduledDelegate spinnerShow;
 
         // Reprise: lazer's 2023 startup screen first, when it's picked (it goes on to the intro by itself).
-        protected virtual OsuScreen CreateLoadableScreen() => showDisclaimer ? new Disclaimer(getIntroSequence()) : getIntroSequence();
+        protected virtual OsuScreen CreateLoadableScreen() => ShowDisclaimer ? new Disclaimer(getIntroSequence()) : getIntroSequence();
 
         private bool showDisclaimer;
+
+        /// <summary>Whether the 2023 startup screen comes first (the setting; tests go straight to the intro).</summary>
+        protected virtual bool ShowDisclaimer => showDisclaimer;
 
         private IntroScreen getIntroSequence()
         {

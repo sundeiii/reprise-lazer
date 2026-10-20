@@ -175,7 +175,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.NewResultsScreen, false);
             SetDefault(OsuSetting.SongSelectV1, false);
             SetDefault(OsuSetting.Sounds2023, false);
-            SetDefault(OsuSetting.Disclaimer2023, false);
+            SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.SkinCursorInMenus, false);
             SetDefault(OsuSetting.SectionPassFail, false);
             SetDefault(OsuSetting.StablePermanentSongInfo, false);

@@ -202,6 +202,9 @@ namespace osu.Game.Tests.Visual
         {
             protected override ShaderPrecompiler CreateShaderPrecompiler() => new TestShaderPrecompiler();
 
+            // Straight to the intro (Reprise's 2023 startup screen is on by default).
+            protected override bool ShowDisclaimer => false;
+
             private partial class TestShaderPrecompiler : ShaderPrecompiler
             {
                 protected override bool AllLoaded => true;
