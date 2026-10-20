@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Development;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -56,12 +57,23 @@ namespace osu.Game.Overlays.Toolbar
         {
             base.LoadComplete();
 
-            // Scheduled: a screen leases the mods (disabling them) while it loads, off the update thread (multiplayer, playlists),
-            // and fading from there crashes the game.
-            ruleset.BindValueChanged(_ => Scheduler.AddOnce(updateState));
-            selectedMods.BindValueChanged(_ => Scheduler.AddOnce(updateState));
-            selectedMods.BindDisabledChanged(_ => Scheduler.AddOnce(updateState));
+            ruleset.BindValueChanged(_ => requestUpdate());
+            selectedMods.BindValueChanged(_ => requestUpdate());
+            selectedMods.BindDisabledChanged(_ => requestUpdate());
             updateState();
+        }
+
+        /// <summary>
+        /// At once on the update thread. Off it (a screen leases the mods, disabling them, while it loads: multiplayer, playlists), fading
+        /// would crash the game, so it's scheduled there. Not always scheduled: while hidden (a ruleset without Relax/Autopilot) this
+        /// isn't updated, so its scheduler doesn't run, and switching back to such a ruleset never showed it again.
+        /// </summary>
+        private void requestUpdate()
+        {
+            if (ThreadSafety.IsUpdateThread)
+                updateState();
+            else
+                Scheduler.AddOnce(updateState);
         }
 
         private void updateState()
