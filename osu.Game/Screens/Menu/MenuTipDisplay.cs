@@ -122,6 +122,10 @@ namespace osu.Game.Screens.Menu
 
         private LocalisableString getRandomTip()
         {
+            // Reprise: 2023's tips with the 2023 interface.
+            if (Interface2023.Enabled)
+                return Disclaimer.TIPS[RNG.Next(0, Disclaimer.TIPS.Length)];
+
             int tipIndex = RNG.Next(0, available_tips);
 
             switch (tipIndex)

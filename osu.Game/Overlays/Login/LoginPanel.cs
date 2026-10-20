@@ -166,11 +166,18 @@ namespace osu.Game.Overlays.Login
                                 Text = LoginPanelStrings.SignedIn,
                                 Font = OsuFont.GetFont(size: 18, weight: FontWeight.Bold),
                             },
-                            new UserRankPanel(api.LocalUser.Value)
-                            {
-                                RelativeSizeAxes = Axes.X,
-                                Action = RequestHide
-                            },
+                            // Reprise: the 2023 interface's user card.
+                            Interface2023.Enabled
+                                ? new UserGridPanel(api.LocalUser.Value)
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Action = RequestHide
+                                }
+                                : new UserRankPanel(api.LocalUser.Value)
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Action = RequestHide
+                                },
                             dropdown = new UserDropdown { RelativeSizeAxes = Axes.X },
                         },
                     };

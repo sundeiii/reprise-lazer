@@ -171,11 +171,11 @@ namespace osu.Game.Screens.Menu
 
             buttonArea.AddRange(new Drawable[]
             {
-                new MainMenuButton(ButtonSystemStrings.Settings, string.Empty, OsuIcon.Settings, new Color4(85, 85, 85, 255), (_, _) => OnSettings?.Invoke(), Key.O, Key.S)
+                new MainMenuButton(ButtonSystemStrings.Settings, string.Empty, Interface2023.Pick(OsuIcon.Settings, FontAwesome.Solid.Cog), new Color4(85, 85, 85, 255), (_, _) => OnSettings?.Invoke(), Key.O, Key.S)
                 {
                     Padding = new MarginPadding { Right = WEDGE_WIDTH },
                 },
-                backButton = new MainMenuButton(ButtonSystemStrings.Back, @"back-to-top", OsuIcon.PrevCircle, new Color4(51, 58, 94, 255), (_, _) =>
+                backButton = new MainMenuButton(ButtonSystemStrings.Back, @"back-to-top", Interface2023.Pick(OsuIcon.PrevCircle, Interface2023.LeftCircle), new Color4(51, 58, 94, 255), (_, _) =>
                 {
                     switch (State)
                     {
@@ -214,12 +214,12 @@ namespace osu.Game.Screens.Menu
             // Reprise: with the 2023 sounds, each button its own 2023 click (solo, multi, browse, edit), as they had then.
             static string click(string now, string then) => Sounds2023Store.Enabled ? then : now;
 
-            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Solo, click(@"button-default-select", @"button-solo-select"), OsuIcon.Player, new Color4(102, 68, 204, 255), (_, _) => OnSolo?.Invoke(), Key.P)
+            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Solo, click(@"button-default-select", @"button-solo-select"), Interface2023.Pick(OsuIcon.Player, FontAwesome.Solid.User), new Color4(102, 68, 204, 255), (_, _) => OnSolo?.Invoke(), Key.P)
             {
                 Padding = new MarginPadding { Left = WEDGE_WIDTH },
             });
-            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Multi, click(@"button-default-select", @"button-generic-select"), OsuIcon.Online, new Color4(94, 63, 186, 255), (_, _) => State = ButtonSystemState.Multi, Key.M));
-            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Playlists, click(@"button-default-select", @"button-generic-select"), OsuIcon.Tournament, new Color4(94, 63, 186, 255), onPlaylists, Key.L));
+            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Multi, click(@"button-default-select", @"button-generic-select"), Interface2023.Pick(OsuIcon.Online, FontAwesome.Solid.Users), new Color4(94, 63, 186, 255), (_, _) => State = ButtonSystemState.Multi, Key.M));
+            buttonsPlay.Add(new MainMenuButton(ButtonSystemStrings.Playlists, click(@"button-default-select", @"button-generic-select"), Interface2023.Pick(OsuIcon.Tournament, Interface2023.Charts), new Color4(94, 63, 186, 255), onPlaylists, Key.L));
             buttonsPlay.Add(new DailyChallengeButton(@"button-daily-select", new Color4(94, 63, 186, 255), onDailyChallenge, Key.D));
             buttonsPlay.ForEach(b => b.VisibleState = ButtonSystemState.Play);
 
@@ -240,17 +240,25 @@ namespace osu.Game.Screens.Menu
             buttonsEdit.Add(new MainMenuButton(SkinEditorStrings.SkinEditor.ToLower(), @"button-default-select", OsuIcon.SkinB, new Color4(220, 160, 0, 255), (_, _) => OnEditSkin?.Invoke(), Key.S));
             buttonsEdit.ForEach(b => b.VisibleState = ButtonSystemState.Edit);
 
-            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Play, @"button-play-select", OsuIcon.Logo, new Color4(102, 68, 204, 255), (_, _) => State = ButtonSystemState.Play, Key.P, Key.M,
+            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Play, @"button-play-select", Interface2023.Pick(OsuIcon.Logo, Interface2023.Logo), new Color4(102, 68, 204, 255), (_, _) => State = ButtonSystemState.Play, Key.P, Key.M,
                 Key.L)
             {
                 Padding = new MarginPadding { Left = WEDGE_WIDTH },
             });
-            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Edit, click(@"button-play-select", @"button-edit-select"), OsuIcon.EditCircle, new Color4(238, 170, 0, 255), (_, _) => State = ButtonSystemState.Edit, Key.E));
-            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Browse, click(@"button-default-select", @"button-direct-select"), OsuIcon.Beatmap, new Color4(165, 204, 0, 255), (_, _) => OnBeatmapListing?.Invoke(), Key.B,
+            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Edit, click(@"button-play-select", @"button-edit-select"), Interface2023.Pick(OsuIcon.EditCircle, Interface2023.EditCircle), new Color4(238, 170, 0, 255),
+                // (In 2023, Edit went straight to the beatmap editor.)
+                (_, _) =>
+                {
+                    if (Interface2023.Enabled)
+                        OnEditBeatmap?.Invoke();
+                    else
+                        State = ButtonSystemState.Edit;
+                }, Key.E));
+            buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Browse, click(@"button-default-select", @"button-direct-select"), Interface2023.Pick(OsuIcon.Beatmap, Interface2023.ChevronDownCircle), new Color4(165, 204, 0, 255), (_, _) => OnBeatmapListing?.Invoke(), Key.B,
                 Key.D));
 
             if (host.CanExit)
-                buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Exit, string.Empty, OsuIcon.CrossCircle, new Color4(238, 51, 153, 255), (_, e) => OnExit?.Invoke(e), Key.Q));
+                buttonsTopLevel.Add(new MainMenuButton(ButtonSystemStrings.Exit, string.Empty, Interface2023.Pick(OsuIcon.CrossCircle, Interface2023.CrossCircle), new Color4(238, 51, 153, 255), (_, e) => OnExit?.Invoke(e), Key.Q));
 
             buttonArea.AddRange(buttonsMulti);
             buttonArea.AddRange(buttonsPlay);

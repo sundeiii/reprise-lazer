@@ -28,6 +28,16 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
 
             Children = new Drawable[]
             {
+                // Reprise: lazer's interface from 2023.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "2023 interface",
+                    HintText = "The main menu, toolbar, tips and signed-in panel as lazer had them in 2023: the old icons (the toolbar's hexagons), Edit going straight to the editor, 2023's tips. Applies after restarting the game.",
+                    Current = config.GetBindable<bool>(OsuSetting.Interface2023),
+                })
+                {
+                    Keywords = new[] { "old", "classic", "2023", "toolbar", "icons", "menu" }
+                },
                 // Reprise: lazer's startup screen from 2023.
                 new SettingsItemV2(new FormCheckBox
                 {

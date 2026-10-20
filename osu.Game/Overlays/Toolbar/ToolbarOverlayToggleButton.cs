@@ -45,7 +45,12 @@ namespace osu.Game.Overlays.Toolbar
                 {
                     TooltipMain = named.Title;
                     TooltipSub = named.Description;
-                    SetIcon(named.Icon);
+
+                    // Reprise: the 2023 interface's hexagon icons.
+                    if (Interface2023.Enabled && Interface2023.HexaconFor(named) is string hexacon)
+                        SetIcon(new Interface2023.Hexacon(hexacon));
+                    else
+                        SetIcon(named.Icon);
                 }
             }
         }

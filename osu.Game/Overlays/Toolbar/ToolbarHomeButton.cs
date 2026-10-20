@@ -21,7 +21,11 @@ namespace osu.Game.Overlays.Toolbar
         {
             TooltipMain = ToolbarStrings.HomeHeaderTitle;
             TooltipSub = ToolbarStrings.HomeHeaderDescription;
-            SetIcon(OsuIcon.Home);
+            // Reprise: the 2023 interface's hexagon icon.
+            if (Interface2023.Enabled)
+                SetIcon(new Interface2023.Hexacon(@"home"));
+            else
+                SetIcon(OsuIcon.Home);
         }
     }
 }

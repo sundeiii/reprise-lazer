@@ -228,9 +228,10 @@ namespace osu.Game.Screens.Menu
                 });
         }
 
-        private string getRandomTip()
-        {
-            string[] tips =
+        private string getRandomTip() => TIPS[RNG.Next(0, TIPS.Length)];
+
+        /// <summary>2023's tips (Reprise: the main menu's tips too, with the 2023 interface).</summary>
+        public static readonly string[] TIPS =
             {
                 "You can press Ctrl-T anywhere in the game to toggle the toolbar!",
                 "You can press Ctrl-O anywhere in the game to access options!",
@@ -249,8 +250,5 @@ namespace osu.Game.Screens.Menu
                 "Toggle advanced frame / thread statistics with Ctrl-F11!",
                 "Take a look under the hood at performance counters and enable verbose performance logging with Ctrl-F2!",
             };
-
-            return tips[RNG.Next(0, tips.Length)];
-        }
     }
 }

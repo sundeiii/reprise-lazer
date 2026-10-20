@@ -311,6 +311,8 @@ namespace osu.Game
 
             // Reprise: lazer's 2023 menu and interface sounds, in front of osu!'s current ones, when they're picked.
             Resources.AddStore(new Sounds2023Store(LocalConfig.Get<bool>(OsuSetting.Sounds2023)));
+            // Reprise: the 2023 interface (its icons are added as a font below).
+            Interface2023.Apply(LocalConfig.Get<bool>(OsuSetting.Interface2023));
             Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));
             // This game's own (osu!stable's font and textures for the stable layouts).
             Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), @"Resources"));
@@ -513,6 +515,8 @@ namespace osu.Game
 
         protected virtual void InitialiseFonts()
         {
+            // Reprise: 2023's icon font, for the 2023 interface's main menu (osu!'s resources no longer have it).
+            AddFont(Resources, @"Fonts2023/osuFont");
             AddFont(Resources, @"Fonts/Aller/Aller-Light");
             AddFont(Resources, @"Fonts/Aller/Aller-Regular");
             AddFont(Resources, @"Fonts/Aller/Aller-Bold");
