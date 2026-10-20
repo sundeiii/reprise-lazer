@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
+using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
 using osu.Framework.Development;
 using osu.Framework.Extensions.Color4Extensions;
@@ -117,6 +119,19 @@ namespace osu.Game.Overlays.Toolbar
             }
 
             selectedMods.Value = mods;
+
+            // As the mod select's toggles sound: on for Relax/Autopilot, off back to vanilla.
+            (acronym != null ? sampleOn : sampleOff)?.Play();
+        }
+
+        private Sample? sampleOn;
+        private Sample? sampleOff;
+
+        [BackgroundDependencyLoader]
+        private void load(AudioManager audio)
+        {
+            sampleOn = audio.Samples.Get(@"UI/check-on");
+            sampleOff = audio.Samples.Get(@"UI/check-off");
         }
 
         private static Mod? createMod(RulesetInfo ruleset, string acronym) =>
