@@ -1,3 +1,6 @@
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
 // Writes tosu's lazer offsets file (https://github.com/tosuapp/tosu, packages/tosu/src/assets/offsets.json) for a published build.
 // tosu reads lazer's memory through field offsets of ppy's builds; our classes have other fields, so the offsets are worked out here
 // from the published assemblies themselves: they're loaded into this process (same runtime, so the same field layout as in the game)
@@ -147,4 +150,9 @@ static string readTosuVersion(string gameDir)
         throw new InvalidOperationException($"{key} has no -suffix; tosu would read its version wrong (publish with -p:Version=<version>-lazer)");
 
     return key[(key.IndexOf('/') + 1)..dash];
+}
+
+// The class the top-level statements above are compiled into (named, for the code file checks).
+internal partial class Program
+{
 }

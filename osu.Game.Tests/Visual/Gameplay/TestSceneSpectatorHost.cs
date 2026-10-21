@@ -36,6 +36,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        [FlakyTest] // Reprise: fails now and then on CI's runners only (another runner each time), never locally.
         public void TestClientSendsCorrectRuleset()
         {
             AddUntilStep("spectator client sending frames", () => spectatorClient.WatchedUserStates.ContainsKey(dummy_user_id));
@@ -43,6 +44,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        [FlakyTest] // Reprise: fails now and then on CI's runners only (another runner each time), never locally.
         public void TestRestart()
         {
             AddAssert("spectator client sees playing state", () => spectatorClient.WatchedUserStates[dummy_user_id].State == SpectatedUserState.Playing);
