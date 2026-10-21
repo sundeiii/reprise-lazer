@@ -34,6 +34,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Collections;
 using osu.Game.Configuration;
 using osu.Game.Database;
+using osu.Game.Graphics;
 using osu.Game.Graphics.Carousel;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Cursor;
@@ -134,9 +135,6 @@ namespace osu.Game.Screens.Select
 
         public override bool? ApplyModTrackAdjustments => true;
 
-        // osu!stable's footer replaces it with a legacy skin (OsuSetting.StableLayouts).
-        public override bool ShowFooter => !stableFooterShown;
-
         // osu!stable has no toolbar: it's hidden while osu!stable's layout is shown.
         public override bool HideOverlaysOnEnter => stableFooterShown;
 
@@ -181,6 +179,11 @@ namespace osu.Game.Screens.Select
 
         private IDisposable? modSelectOverlayRegistration;
 
+        protected SongSelect()
+        {
+            FooterContent.Value = ScreenFooterContent.Argon(leftButtons: CreateFooterButtons);
+        }
+
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
 
@@ -207,7 +210,7 @@ namespace osu.Game.Screens.Select
 
             AddRangeInternal(new Drawable[]
             {
-                new GlobalScrollAdjustsVolume(),
+                new ScrollAdjustsVolume(),
                 onlineLookupSource,
                 mainContent = new Container
                 {
@@ -264,7 +267,6 @@ namespace osu.Game.Screens.Select
                                                     wedgesContainer = new FillFlowContainer
                                                     {
                                                         RelativeSizeAxes = Axes.Both,
-                                                        Spacing = new Vector2(0f, 4f),
                                                         Direction = FillDirection.Vertical,
                                                         Children = new Drawable[]
                                                         {
@@ -272,6 +274,11 @@ namespace osu.Game.Screens.Select
                                                             {
                                                                 TopPadding = TopPadding,
                                                             }),
+                                                            new InputBlockingContainer
+                                                            {
+                                                                RelativeSizeAxes = Axes.X,
+                                                                Height = 4
+                                                            },
                                                             new ShearAligningWrapper(detailsArea = new BeatmapDetailsArea()),
                                                         },
                                                     },
@@ -383,7 +390,7 @@ namespace osu.Game.Screens.Select
             LoadComponent(modSelectOverlay = CreateModSelectOverlay());
 
             configBackgroundBlur = config.GetBindable<bool>(OsuSetting.SongSelectBackgroundBlur);
-            configBackgroundBlur.BindValueChanged(e =>
+            configBackgroundBlur.BindValueChanged(_ =>
             {
                 if (!this.IsCurrentScreen())
                     return;
@@ -414,7 +421,7 @@ namespace osu.Game.Screens.Select
         /// </summary>
         protected abstract void OnStart();
 
-        public override IReadOnlyList<ScreenFooterButton> CreateFooterButtons() => new ScreenFooterButton[]
+        public virtual IReadOnlyList<ScreenFooterButton> CreateFooterButtons() => new ScreenFooterButton[]
         {
             new FooterButtonMods(modSelectOverlay)
             {
@@ -846,6 +853,7 @@ namespace osu.Game.Screens.Select
             modSelectOverlay.SelectedMods.UnbindFrom(Mods);
             modSelectOverlay.Ruleset.UnbindFrom(Ruleset);
             modSelectOverlay.Beatmap.UnbindFrom(Beatmap);
+            modSelectOverlay.Hide();
 
             updateWedgeVisibility();
 
@@ -955,6 +963,7 @@ namespace osu.Game.Screens.Select
         public bool IsFiltering => carousel.IsFiltering || filterDebounce?.State == ScheduledDelegate.RunState.Waiting;
 
         private const double filter_delay = 250;
+        public const double REVEAL_BACKGROUND_DELAY = 200;
 
         private ScheduledDelegate? filterDebounce;
 
@@ -1079,7 +1088,7 @@ namespace osu.Game.Screens.Select
 
                     Footer?.Hide();
                     stableFooterContainer.FadeOut(200, Easing.OutQuint);
-                }, 200);
+                }, REVEAL_BACKGROUND_DELAY);
             }
 
             return base.OnMouseDown(e);
@@ -1324,7 +1333,6 @@ namespace osu.Game.Screens.Select
 
                 if (this.IsCurrentScreen())
                 {
-                    Footer?.Hide();
                     osuGame?.Toolbar.Hide();
                 }
             }
@@ -1335,7 +1343,6 @@ namespace osu.Game.Screens.Select
 
                 if (this.IsCurrentScreen())
                 {
-                    Footer?.Show();
                     osuGame?.Toolbar.Show();
                 }
             }
@@ -1366,8 +1373,8 @@ namespace osu.Game.Screens.Select
             carousel.StableLayout = stable;
             FilterControl.Colour = stable ? Colour4.Transparent : Colour4.White;
 
-            // osu!stable's footer has the skin's back button: not the game's as well (it shows when coming back to this screen otherwise).
-            BackButtonVisibility.Value = !stable;
+            // osu!stable's footer replaces the game's (OsuSetting.StableLayouts), with the skin's back button: not the game's as well.
+            FooterContent.Value = stable ? ScreenFooterContent.Legacy(showBackButton: false) : ScreenFooterContent.Argon(leftButtons: CreateFooterButtons);
 
             if (stable)
             {

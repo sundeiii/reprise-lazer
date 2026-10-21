@@ -632,11 +632,17 @@ namespace osu.Game.Overlays.BeatmapSet
         {
             var titleText = new RomanisableString(set.TitleUnicode, set.Title);
             var artistText = new RomanisableString(set.ArtistUnicode, set.Artist);
+            var titleSearchTerm = new RomanisableString(
+                BeatmapListingOverlay.EscapeKeywordSearchTerm(set.TitleUnicode),
+                BeatmapListingOverlay.EscapeKeywordSearchTerm(set.Title));
+            var artistSearchTerm = new RomanisableString(
+                BeatmapListingOverlay.EscapeKeywordSearchTerm(set.ArtistUnicode),
+                BeatmapListingOverlay.EscapeKeywordSearchTerm(set.Artist));
 
             title.Clear();
-            title.AddLink(titleText, LinkAction.SearchBeatmapSet, LocalisableString.Interpolate($@"title=""""{titleText}"""""));
+            title.AddLink(titleText, LinkAction.SearchBeatmapSet, LocalisableString.Interpolate($@"title=""""{titleSearchTerm}"""""));
             title.AddText(@" ");
-            title.AddLink(artistText, LinkAction.SearchBeatmapSet, LocalisableString.Interpolate($@"artist=""""{artistText}"""""), null, t => t.Font = OsuFont.GetFont(size: 18));
+            title.AddLink(artistText, LinkAction.SearchBeatmapSet, LocalisableString.Interpolate($@"artist=""""{artistSearchTerm}"""""), null, t => t.Font = OsuFont.GetFont(size: 18));
 
             if (set.TrackId != null)
             {
@@ -816,7 +822,7 @@ namespace osu.Game.Overlays.BeatmapSet
             };
 
             if (!string.IsNullOrEmpty(set.Source))
-                rows.Add(detail(@"Source", f => f.AddLink(set.Source, LinkAction.SearchBeatmapSet, $@"source=""""{set.Source}""""")));
+                rows.Add(detail(@"Source", f => f.AddLink(set.Source, LinkAction.SearchBeatmapSet, $@"source=""""{BeatmapListingOverlay.EscapeKeywordSearchTerm(set.Source)}""""")));
 
             rows.Add(detail(@"Genre", f =>
             {

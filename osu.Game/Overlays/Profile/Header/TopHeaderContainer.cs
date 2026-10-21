@@ -38,7 +38,7 @@ namespace osu.Game.Overlays.Profile.Header
         private OverlayColourProvider colourProvider = null!;
 
         private Box background = null!;
-        private UserCoverBackground cover = null!;
+        private CoverBackground cover = null!;
         private SupporterIcon supporterTag = null!;
         private UpdateableAvatar avatar = null!;
         private OsuSpriteText usernameText = null!;
@@ -253,7 +253,7 @@ namespace osu.Game.Overlays.Profile.Header
         {
             var user = data?.User;
 
-            cover.User = user;
+            cover.Model = user;
             avatar.User = user;
             usernameText.Text = user?.Username ?? string.Empty;
             openUserExternally.Link = $@"https://osu.reprise.pw/users/{user?.Id ?? 0}";
@@ -295,7 +295,7 @@ namespace osu.Game.Overlays.Profile.Header
                 colourProvider.ColoursChanged -= updateColours;
         }
 
-        private partial class ProfileCoverBackground : UserCoverBackground
+        private partial class ProfileCoverBackground : CoverBackground
         {
             protected override double LoadDelay => 0;
 

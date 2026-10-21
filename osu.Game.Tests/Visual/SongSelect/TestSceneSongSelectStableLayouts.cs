@@ -20,6 +20,7 @@ using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
+using osu.Game.Screens.Footer;
 using osu.Game.Screens.Select.Filter;
 using osu.Game.Screens.Select;
 using osu.Game.Skinning.Select;
@@ -58,12 +59,12 @@ namespace osu.Game.Tests.Visual.SongSelect
             ImportBeatmapForRuleset(0);
 
             AddUntilStep("stable footer shown", () => SongSelect.ChildrenOfType<LegacyFooter>().Any(f => f.IsLoaded));
-            AddAssert("screen footer off", () => !SongSelect.ShowFooter);
+            AddAssert("screen footer off", () => SongSelect.FooterContent.Value.Mode != ScreenFooterContent.FooterMode.Argon);
             AddUntilStep("screen footer hidden", () => ScreenFooter.State.Value == Visibility.Hidden);
 
             AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, false));
             AddUntilStep("stable footer gone", () => !SongSelect.ChildrenOfType<LegacyFooter>().Any());
-            AddAssert("screen footer on", () => SongSelect.ShowFooter);
+            AddAssert("screen footer on", () => SongSelect.FooterContent.Value.Mode == ScreenFooterContent.FooterMode.Argon);
             AddUntilStep("screen footer shown", () => ScreenFooter.State.Value == Visibility.Visible);
 
             AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
@@ -316,7 +317,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddUntilStep("footer rebuilt", () => SongSelect.ChildrenOfType<LegacyFooter>().SingleOrDefault(f => f.IsLoaded) is LegacyFooter f && f != footer);
             AddUntilStep("top rebuilt", () => SongSelect.ChildrenOfType<LegacySongSelectTop>().SingleOrDefault(t => t.IsLoaded) is LegacySongSelectTop t && t != top);
-            AddAssert("screen footer still off", () => !SongSelect.ShowFooter);
+            AddAssert("screen footer still off", () => SongSelect.FooterContent.Value.Mode != ScreenFooterContent.FooterMode.Argon);
             // The beatmap list's panels (reused, not remade) take the new skin's images too.
             AddUntilStep("list panel's bar remade", () => panel!.Bar != bar);
 

@@ -41,6 +41,8 @@ namespace osu.Game.Overlays.Toolbar
         private readonly VariantButton relax;
         private readonly VariantButton autopilot;
 
+        private readonly Dictionary<string, bool> hasAutopilot = new Dictionary<string, bool>();
+
         public ToolbarModeVariantSelector()
         {
             RelativeSizeAxes = Axes.Y;
@@ -88,12 +90,14 @@ namespace osu.Game.Overlays.Toolbar
                 return;
 
             string? variant = currentVariant();
-            bool hasAutopilot = createMod(current!, "AP") != null;
+            // Asked once per ruleset (it makes all of the ruleset's mods), not on every mod change.
+            if (!hasAutopilot.TryGetValue(current!.ShortName, out bool autopilotAvailable))
+                hasAutopilot[current.ShortName] = autopilotAvailable = createMod(current, "AP") != null;
 
             vanilla.Active = variant == null;
             relax.Active = variant == "RX";
             autopilot.Active = variant == "AP";
-            autopilot.Alpha = hasAutopilot ? 1 : 0;
+            autopilot.Alpha = autopilotAvailable ? 1 : 0;
 
             this.FadeColour(selectedMods.Disabled ? Colour4.Gray : Colour4.White, 300);
         }

@@ -159,7 +159,7 @@ namespace osu.Game.Screens.Menu
             AddRangeInternal(new[]
             {
                 SeasonalUIConfig.ENABLED ? new MainMenuSeasonalLighting() : Empty(),
-                new GlobalScrollAdjustsVolume(),
+                new ScrollAdjustsVolume(),
                 stableMenuContainer = new Container { RelativeSizeAxes = Axes.Both },
                 buttonsContainer = new ParallaxContainer
                 {

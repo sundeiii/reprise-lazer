@@ -8,7 +8,6 @@ using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.Online.API;
 using osu.Game.Scoring;
-using osu.Framework.Logging;
 
 namespace osu.Game.Online
 {
@@ -59,22 +58,6 @@ namespace osu.Game.Online
                 || (!string.IsNullOrEmpty(s.Hash) && s.Hash == hash))
                 && !s.DeletePending), (items, _) =>
             {
-                Logger.Log(
-                    $"Replay tracker result: count={items.Count}, " +
-                    $"OnlineID={onlineId}, LegacyOnlineID={legacyOnlineId}, Hash={hash}"
-                );
-
-                foreach (var item in items)
-                {
-                    Logger.Log(
-                        $"Matched local replay: " +
-                        $"ID={item.ID}, " +
-                        $"OnlineID={item.OnlineID}, " +
-                        $"LegacyOnlineID={item.LegacyOnlineID}, " +
-                        $"Hash={item.Hash}"
-                    );
-                }
-
                 // Reprise: only one on the same beatmap is this score's replay (another server's score can have the same id).
                 if (items.AsEnumerable().Any(s => ScoreManager.SameBeatmap(s, beatmapHash)))
                     Schedule(() => UpdateState(DownloadState.LocallyAvailable));

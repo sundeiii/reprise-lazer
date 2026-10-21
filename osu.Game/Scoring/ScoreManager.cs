@@ -212,7 +212,9 @@ namespace osu.Game.Scoring
             => Realm.Run(realm => realm.All<ScoreInfo>()
                                        // this basically inlines `ModelExtension.MatchesOnlineID(IScoreInfo, IScoreInfo)`,
                                        // because that method can't be used here, as realm can't translate it to its query language.
-                                       .Where(s => s.OnlineID == model.OnlineID || s.LegacyOnlineID == model.LegacyOnlineID)
+                                       // Reprise: only a real id (> 0) matches: an unset one (-1) would match every local score without one,
+                                       // all of them then read in to check their beatmap.
+                                       .Where(s => (s.OnlineID > 0 && s.OnlineID == model.OnlineID) || (s.LegacyOnlineID > 0 && s.LegacyOnlineID == model.LegacyOnlineID))
                                        // Reprise: on the same beatmap (see SameBeatmap).
                                        .AsEnumerable()
                                        .Any(s => SameBeatmap(s, model.BeatmapHash)));

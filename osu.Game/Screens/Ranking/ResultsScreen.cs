@@ -36,9 +36,9 @@ using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Placeholders;
 using osu.Game.Overlays;
-using osu.Game.Overlays.Volume;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
+using osu.Game.Screens.Footer;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
 using osu.Game.Screens.Ranking.Statistics;
@@ -228,7 +228,6 @@ namespace osu.Game.Screens.Ranking
                                     RelativeSizeAxes = Axes.Both,
                                     Children = new Drawable[]
                                     {
-                                        new GlobalScrollAdjustsVolume(),
                                         Score != null && useCleanResultsScreen
                                             ? new FillFlowContainer
                                             {
@@ -436,7 +435,7 @@ namespace osu.Game.Screens.Ranking
             stableContent.Alpha = replaced ? 1 : 0;
 
             // osu!stable's layout (and the redesigned screen) have their own back button instead of the game's.
-            BackButtonVisibility.Value = !replaced;
+            FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: !replaced);
 
             if (stable != stableShown)
             {
@@ -1022,16 +1021,6 @@ namespace osu.Game.Screens.Ranking
 
         public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
-        }
-
-        protected override bool OnScroll(ScrollEvent e)
-        {
-            // Match stable behaviour of only alt-scroll adjusting volume.
-            // This is the same behaviour as the song selection screen.
-            if (!e.CurrentState.Keyboard.AltPressed)
-                return true;
-
-            return base.OnScroll(e);
         }
 
         protected partial class VerticalScrollContainer : OsuScrollContainer

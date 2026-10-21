@@ -408,12 +408,12 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("stable layout shown", () => this.ChildrenOfType<LegacyRankingScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
             // Like stable's: no toolbar and the skin's back button only.
             AddAssert("toolbar hidden on entering", () => screen.HideOverlaysOnEnter);
-            AddAssert("game's back button hidden", () => !screen.BackButtonVisibility.Value);
+            AddAssert("game's back button hidden", () => !screen.FooterContent.Value.BackButton);
 
             AddStep("stop using stable layouts", () => config.SetValue(OsuSetting.StableLayouts, false));
             AddAssert("stable layout hidden", () => this.ChildrenOfType<LegacyRankingScreen>().All(s => s.Parent?.Alpha == 0));
             AddAssert("toolbar back", () => !screen.HideOverlaysOnEnter);
-            AddAssert("game's back button back", () => screen.BackButtonVisibility.Value);
+            AddAssert("game's back button back", () => screen.FooterContent.Value.BackButton);
 
             AddStep("use stable layouts", () => config.SetValue(OsuSetting.StableLayouts, true));
             AddStep("set lazer skin", () => skins.CurrentSkinInfo.Value = skins.CurrentSkinInfo.Default);

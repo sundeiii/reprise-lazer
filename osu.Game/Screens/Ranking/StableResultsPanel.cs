@@ -158,10 +158,10 @@ namespace osu.Game.Screens.Ranking
                         Masking = true,
                         Children = new Drawable[]
                         {
-                            new UserCoverBackground
+                            new CoverBackground
                             {
                                 RelativeSizeAxes = Axes.Both,
-                                User = score.User,
+                                Model = score.User,
                                 Colour = Color4.White.Opacity(0.45f),
                             },
                             new Box
