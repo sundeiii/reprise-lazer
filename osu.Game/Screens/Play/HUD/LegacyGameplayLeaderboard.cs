@@ -195,10 +195,15 @@ namespace osu.Game.Screens.Play.HUD
             addExplosion(@"scoreboard-explosion-1", at, 700, e => e.ScaleTo(new Vector2(1, 1.3f), 700, Easing.Out));
         }
 
+        /// <summary>How many explosions have been shown (they're gone within 0.7 seconds: for tests).</summary>
+        public int ExplosionsShown { get; private set; }
+
         private void addExplosion(string name, Vector2 at, double fade, Action<Sprite> grow)
         {
             if (getTexture(name) is not Texture texture)
                 return;
+
+            ExplosionsShown++;
 
             var explosion = new Sprite
             {

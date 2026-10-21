@@ -65,8 +65,8 @@ jobs:
           solution: ./osu.Desktop.slnf
           caches-home: inspectcode
           verbosity: WARN
-          # Reprise: warnings and errors (suggestions in code from before this fork are tens of thousands, over code scanning's limit).
-          sEverity: WARNING
+          # Reprise: errors (warnings in code from before this fork are tens of thousands, over code scanning's limit).
+          sEverity: ERROR
 
   test:
     name: Test
