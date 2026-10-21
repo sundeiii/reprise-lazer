@@ -88,6 +88,11 @@ namespace osu.Game.Online.Leaderboards
         [Resolved]
         private ScoreManager scoreManager { get; set; } = null!;
 
+        /// <summary>
+        /// Reprise: "Use these mods" puts the score's mods on through this (Song Select V1, which isn't the <see cref="SongSelect"/> this otherwise uses).
+        /// </summary>
+        public Action<Mod[]> UseMods { get; init; }
+
         public LeaderboardScore(ScoreInfo score, int? rank, bool isOnlineScope = true, bool highlightFriend = true)
         {
             Score = score;
@@ -456,7 +461,9 @@ namespace osu.Game.Online.Leaderboards
                 // system mods should never be copied across regardless of anything.
                 var copyableMods = Score.Mods.Where(m => m.Type != ModType.System).ToArray();
 
-                if (copyableMods.Length > 0 && songSelect != null)
+                if (copyableMods.Length > 0 && UseMods != null)
+                    items.Add(new OsuMenuItem(SongSelectStrings.UseTheseMods, MenuItemType.Highlighted, () => UseMods(copyableMods)));
+                else if (copyableMods.Length > 0 && songSelect != null)
                     items.Add(new OsuMenuItem(SongSelectStrings.UseTheseMods, MenuItemType.Highlighted, () => songSelect.Mods.Value = copyableMods));
 
                 if (Score.OnlineID > 0)

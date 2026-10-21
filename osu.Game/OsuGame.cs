@@ -478,6 +478,9 @@ namespace osu.Game
 
             Ruleset.ValueChanged += r => configRuleset.Value = r.NewValue.ShortName;
 
+            // Reprise: Relax or Autopilot back on as it was (now that the mode is the one it was in).
+            Add(new ModeVariantMemory());
+
             configUserActivity = SessionStatics.GetBindable<UserActivity>(Static.UserOnlineActivity);
 
             configSkin = LocalConfig.GetBindable<string>(OsuSetting.Skin);
@@ -1701,12 +1704,20 @@ namespace osu.Game
             }
         }
 
+        /// <summary>Reprise: whether "Connected to reprise.pw" shows after logging in (not in test games, whose notifications are counted).</summary>
+        protected virtual bool ShowServerInfo => true;
+
         private void showServerInfoNotification()
         {
+            if (!ShowServerInfo)
+                return;
+
             Scheduler.AddDelayed(() =>
             {
                 string currentServerUrl = API.Endpoints.APIUrl;
-                Notifications.Post(new ServerInfoNotification(currentServerUrl));
+
+                // Reprise: only a toast (not kept in the notifications, nor flashing the taskbar every start).
+                Notifications.Post(new ServerInfoNotification(currentServerUrl) { IsImportant = false, Transient = true });
             }, 2000);
         }
 

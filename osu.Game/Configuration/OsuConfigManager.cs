@@ -179,6 +179,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.Sounds2023, false);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
+            SetDefault(OsuSetting.ModeVariant, string.Empty);
             SetDefault(OsuSetting.SkinCursorInMenus, false);
             SetDefault(OsuSetting.SectionPassFail, false);
             SetDefault(OsuSetting.StablePermanentSongInfo, false);
@@ -588,6 +589,9 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: lazer's 2023 startup screen ("this is osu!lazer, the next major update coming to osu!") before the intro.</summary>
         Disclaimer2023,
+
+        /// <summary>Reprise: Relax ("RX") or Autopilot ("AP") when it was last on, else empty (Configuration.ModeVariantMemory).</summary>
+        ModeVariant,
 
         /// <summary>Reprise: the main menu, toolbar, tips and signed-in panel as lazer had them in 2023 (Graphics.Interface2023); after a restart.</summary>
         Interface2023,

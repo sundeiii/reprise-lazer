@@ -126,14 +126,26 @@ namespace osu.Game.Screens.SelectV1.Leaderboards
                 Schedule(() => SetErrorState((LeaderboardState)scores.FailState));
         }
 
+        // Reprise: "Use these mods" (right-click on a score).
+        [Resolved]
+        private Bindable<IReadOnlyList<Mod>> selectedMods { get; set; } = null!;
+
+        private void useMods(Mod[] scoreMods)
+        {
+            if (!selectedMods.Disabled)
+                selectedMods.Value = scoreMods;
+        }
+
         protected override LeaderboardScore CreateDrawableScore(ScoreInfo model, int index) => new LeaderboardScore(model, index, IsOnlineScope, Scope != BeatmapLeaderboardScope.Friend)
         {
-            Action = () => ScoreSelected?.Invoke(model)
+            Action = () => ScoreSelected?.Invoke(model),
+            UseMods = useMods,
         };
 
         protected override LeaderboardScore CreateDrawableTopScore(ScoreInfo model) => new LeaderboardScore(model, model.Position, false, Scope != BeatmapLeaderboardScope.Friend)
         {
-            Action = () => ScoreSelected?.Invoke(model)
+            Action = () => ScoreSelected?.Invoke(model),
+            UseMods = useMods,
         };
     }
 }

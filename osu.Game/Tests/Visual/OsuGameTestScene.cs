@@ -162,6 +162,9 @@ namespace osu.Game.Tests.Visual
 
             protected override Loader CreateLoader() => new TestLoader();
 
+            // Reprise: no "Connected to reprise.pw" (tests count the notifications).
+            protected override bool ShowServerInfo => false;
+
             public new void PerformFromScreen(Action<IScreen> action, IEnumerable<Type> validScreens = null) => base.PerformFromScreen(action, validScreens);
 
             public TestOsuGame(Storage storage, IAPIProvider api, string[] args = null)
