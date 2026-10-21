@@ -142,7 +142,8 @@ namespace osu.Game.Tests.Visual.Online
             assertVisiblePanelCount<UserPanel>(3);
 
             AddStep("change to online stream", () => this.ChildrenOfType<FriendOnlineStreamControl>().Single().Current.Value = OnlineStatus.Online);
-            assertVisiblePanelCount<UserPanel>(0);
+            // Reprise: recently online counts as online (osu!stable players have no presence): flyte.
+            assertVisiblePanelCount<UserPanel>(1);
 
             AddStep("bring a friend online", () =>
             {

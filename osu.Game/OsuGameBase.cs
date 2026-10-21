@@ -592,7 +592,8 @@ namespace osu.Game
             // may be non-null for certain tests
             Storage ??= host.Storage;
 
-            LocalConfig ??= UseDevelopmentServer
+            // Reprise: a debug build's settings are its own (game.dev.ini) as in osu!, though it uses reprise.pw (UseDevelopmentServer is off).
+            LocalConfig ??= DebugUtils.IsDebugBuild
                 ? new DevelopmentOsuConfigManager(Storage)
                 : new OsuConfigManager(Storage);
 

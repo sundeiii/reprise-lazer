@@ -123,7 +123,8 @@ namespace osu.Game.Rulesets.Osu.Tests.Mods
                 }
             },
             Autoplay = true,
-            PassCondition = () => Player.ScoreProcessor.TotalScore.Value == 850_000,
+            // Reprise: 0.01x off per 0.1 changed (osu!: 0.05x).
+            PassCondition = () => Player.ScoreProcessor.TotalScore.Value == 970_000,
         });
 
         [Test]
@@ -153,7 +154,8 @@ namespace osu.Game.Rulesets.Osu.Tests.Mods
                 }
             },
             Autoplay = true,
-            PassCondition = () => Player.ScoreProcessor.TotalScore.Value == 630_000,
+            // Reprise: 0.01x off per 0.1 changed (osu!: 0.05x): 0.98 * 0.94.
+            PassCondition = () => Player.ScoreProcessor.TotalScore.Value == 921_200,
         });
 
         private bool checkObjectsPreempt(double target)

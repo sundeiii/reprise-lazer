@@ -1043,9 +1043,10 @@ namespace osu.Game.Tests.Visual.UserInterface
             assertCustomisationToggleState(disabled: false, active: false);
             AddAssert("setting items created", () => modSelectOverlay.ChildrenOfType<ISettingsItem>().Any());
 
+            // Reprise: Difficulty Adjust takes 0.01x off per 0.1 changed in each setting (osu!: 0.05x).
             AddStep("modify DA", () => SelectedMods.Value.OfType<OsuModDifficultyAdjust>().Single().CircleSize.Value = 3.9f);
             AddAssert("mod multiplier is correct", () => this.ChildrenOfType<RankingInformationDisplay>().Single().ModMultiplier.Value,
-                () => Is.EqualTo(0.95).Within(Precision.FLOAT_EPSILON));
+                () => Is.EqualTo(0.99).Within(Precision.FLOAT_EPSILON));
 
             AddStep("replace DA completely", () =>
             {
@@ -1059,7 +1060,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 };
             });
             AddAssert("mod multiplier is correct", () => this.ChildrenOfType<RankingInformationDisplay>().Single().ModMultiplier.Value,
-                () => Is.EqualTo(0.81).Within(Precision.FLOAT_EPSILON));
+                () => Is.EqualTo(0.98 * 0.98).Within(Precision.FLOAT_EPSILON));
 
             AddStep("change beatmap", () =>
             {
@@ -1074,7 +1075,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                 modSelectOverlay.Beatmap.Value = beatmap;
             });
             AddAssert("mod multiplier is correct", () => this.ChildrenOfType<RankingInformationDisplay>().Single().ModMultiplier.Value,
-                () => Is.EqualTo(0.24).Within(Precision.FLOAT_EPSILON));
+                () => Is.EqualTo(0.92 * 0.88).Within(Precision.FLOAT_EPSILON));
         }
 
         private void waitForColumnLoad() => AddUntilStep("all column content loaded", () =>

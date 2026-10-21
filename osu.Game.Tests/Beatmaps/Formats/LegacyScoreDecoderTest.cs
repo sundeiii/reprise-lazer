@@ -662,7 +662,8 @@ namespace osu.Game.Tests.Beatmaps.Formats
             Assert.Multiple(() =>
             {
                 Assert.That(decodedAfterEncode.ScoreInfo.TotalScoreWithoutMods, Is.EqualTo(1_000_000));
-                Assert.That(decodedAfterEncode.ScoreInfo.TotalScore, Is.EqualTo(750_000));
+                // Reprise: Difficulty Adjust takes 0.01x off per 0.1 changed (osu!: 0.05x).
+                Assert.That(decodedAfterEncode.ScoreInfo.TotalScore, Is.EqualTo(950_000));
             });
         }
 

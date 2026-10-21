@@ -172,7 +172,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
         {
             var user = data?.User;
             bool restricted = user?.IsRestricted == true;
-            bool hasStatistics = user?.Statistics != null;
+            bool hasStatistics = user?.HasStatistics == true;
 
             medalInfo.Content.Text = restricted ? "-" : user?.Achievements?.Length.ToString() ?? "0";
             ppInfo.Content.Text = !restricted && hasStatistics

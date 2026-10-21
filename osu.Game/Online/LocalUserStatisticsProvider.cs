@@ -100,7 +100,7 @@ namespace osu.Game.Online
 
             request.Success += u =>
             {
-                if (u.Statistics == null)
+                if (!u.HasStatistics)
                 {
                     statisticsCache.Remove(ruleset.ShortName);
                     return;

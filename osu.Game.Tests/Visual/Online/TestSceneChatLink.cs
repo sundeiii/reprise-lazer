@@ -48,11 +48,24 @@ namespace osu.Game.Tests.Visual.Online
             Add(chatManager);
         }
 
+        private string? originalWebsiteRootUrl;
+
         [SetUp]
         public void Setup() => Schedule(() =>
         {
+            // Reprise: the game's is reprise.pw (osu!'s debug builds use dev.ppy.sh, as these links do).
+            originalWebsiteRootUrl ??= MessageFormatter.WebsiteRootUrl;
+            MessageFormatter.WebsiteRootUrl = "dev.ppy.sh";
+
             textContainer.Clear();
         });
+
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            if (originalWebsiteRootUrl != null)
+                MessageFormatter.WebsiteRootUrl = originalWebsiteRootUrl;
+        }
 
         [TestCase("test!")]
         [TestCase("dev.ppy.sh!")]

@@ -135,6 +135,9 @@ namespace osu.Game.Skinning.Select
         /// The skin's "songselect-bottom", or (lazer's default legacy skin has none) stable's default look:
         /// a dark bar with a thin coloured line along its top.
         /// </summary>
+        /// <summary>The name of stable 2015's own bottom (a skin's can look the same).</summary>
+        public const string STABLE_2015_BOTTOM = @"Stable 2015 bottom";
+
         private static Drawable createBottom(ISkinSource skin, Texture? stableBottom)
         {
             // Stable 2015's is always its own (101 high, stretched across); skins' came later.
@@ -142,6 +145,7 @@ namespace osu.Game.Skinning.Select
             {
                 return new Sprite
                 {
+                    Name = STABLE_2015_BOTTOM,
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomLeft,
                     Texture = stableBottom,

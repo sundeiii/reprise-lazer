@@ -254,16 +254,24 @@ namespace osu.Game.Online.API.Requests.Responses
         [JsonProperty(@"statistics")]
         public UserStatistics Statistics
         {
-            get => statistics;
+            get => statistics ??= new UserStatistics();
             set
             {
-                if (statistics != null)
+                HasStatistics = value != null;
+
+                if (value != null && statistics != null)
                     // we may already have rank history populated
                     value.RankHistory = statistics.RankHistory;
 
                 statistics = value;
             }
         }
+
+        /// <summary>
+        /// Reprise: whether the server sent statistics (a player can have none in a mode); <see cref="Statistics"/> is never null, as in osu!.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasStatistics { get; private set; }
 
         // Only provided via /users/ batch lookups. Usually implicitly comes inside `UserStatistics`.
         [JsonProperty(@"global_rank")]

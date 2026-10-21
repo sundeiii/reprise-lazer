@@ -58,8 +58,9 @@ namespace osu.Game.Graphics.Cursor
 
         private bool expand = true;
 
-        [Resolved]
-        private ISkinSource skin { get; set; } = null!;
+        // Not everywhere a menu cursor is shown has skins (test scenes, ...): then it's the game's own cursor.
+        [Resolved(CanBeNull = true)]
+        private ISkinSource? skin { get; set; }
 
         private Bindable<bool> enabled = null!;
         private Container expandTarget = null!;
@@ -75,7 +76,8 @@ namespace osu.Game.Graphics.Cursor
             base.LoadComplete();
 
             enabled.BindValueChanged(_ => reload(), true);
-            skin.SourceChanged += onSkinChanged;
+            if (skin != null)
+                skin.SourceChanged += onSkinChanged;
         }
 
         private void onSkinChanged() => Schedule(reload);
@@ -83,12 +85,12 @@ namespace osu.Game.Graphics.Cursor
         // Straight from the old cursor to the new one (switching off in between showed the game's own cursor for a frame).
         private void reload()
         {
-            var cursor = enabled.Value ? skin.GetTexture(@"cursor") : null;
+            var cursor = enabled.Value ? skin?.GetTexture(@"cursor") : null;
 
             ClearInternal();
             TrailTexture = null;
 
-            if (cursor == null)
+            if (skin == null || cursor == null)
             {
                 Active.Value = false;
                 return;

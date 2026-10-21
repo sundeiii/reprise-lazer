@@ -25,40 +25,20 @@ namespace osu.Game.Tests.Beatmaps
             metadataLookup = new BeatmapUpdaterMetadataLookup(apiMetadataSourceMock.Object, localCachedMetadataSourceMock.Object);
         }
 
+        // Reprise: reprise.pw is the authority for a beatmap's status (the local cache has osu!'s), so it's asked first and alone when it can
+        // be; the local cache is only for when it can't be (TestPreferOnlineFetchFallsBackToLocalCacheIfOnlineSourceUnavailable).
         [Test]
-        public void TestLocalCacheQueriedFirst()
+        public void TestAPIQueriedFirst([Values] bool preferOnlineFetch)
         {
             var localLookupResult = new OnlineBeatmapMetadata
             {
                 BeatmapID = 123456,
-                BeatmapStatus = BeatmapOnlineStatus.Ranked,
-                BeatmapSetStatus = BeatmapOnlineStatus.Ranked,
+                BeatmapStatus = BeatmapOnlineStatus.Loved,
+                BeatmapSetStatus = BeatmapOnlineStatus.Loved,
             };
             localCachedMetadataSourceMock.Setup(src => src.Available).Returns(true);
             localCachedMetadataSourceMock.Setup(src => src.TryLookup(It.IsAny<BeatmapInfo>(), out localLookupResult))
                                          .Returns(true);
-
-            apiMetadataSourceMock.Setup(src => src.Available).Returns(true);
-
-            var beatmap = new BeatmapInfo { OnlineID = 123456 };
-            var beatmapSet = new BeatmapSetInfo(beatmap.Yield());
-            beatmap.BeatmapSet = beatmapSet;
-
-            metadataLookup.Update(beatmapSet, preferOnlineFetch: false);
-
-            Assert.That(beatmap.Status, Is.EqualTo(BeatmapOnlineStatus.Ranked));
-            Assert.That(beatmapSet.Status, Is.EqualTo(BeatmapOnlineStatus.Ranked));
-            localCachedMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata>.IsAny!), Times.Once);
-            apiMetadataSourceMock.Verify(src => src.TryLookup(It.IsAny<BeatmapInfo>(), out It.Ref<OnlineBeatmapMetadata>.IsAny!), Times.Never);
-        }
-
-        [Test]
-        public void TestAPIQueriedSecond()
-        {
-            OnlineBeatmapMetadata? localLookupResult = null;
-            localCachedMetadataSourceMock.Setup(src => src.Available).Returns(true);
-            localCachedMetadataSourceMock.Setup(src => src.TryLookup(It.IsAny<BeatmapInfo>(), out localLookupResult))
-                                         .Returns(false);
 
             var onlineLookupResult = new OnlineBeatmapMetadata
             {
@@ -74,11 +54,11 @@ namespace osu.Game.Tests.Beatmaps
             var beatmapSet = new BeatmapSetInfo(beatmap.Yield());
             beatmap.BeatmapSet = beatmapSet;
 
-            metadataLookup.Update(beatmapSet, preferOnlineFetch: false);
+            metadataLookup.Update(beatmapSet, preferOnlineFetch);
 
             Assert.That(beatmap.Status, Is.EqualTo(BeatmapOnlineStatus.Ranked));
             Assert.That(beatmapSet.Status, Is.EqualTo(BeatmapOnlineStatus.Ranked));
-            localCachedMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Once);
+            localCachedMetadataSourceMock.Verify(src => src.TryLookup(It.IsAny<BeatmapInfo>(), out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Never);
             apiMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Once);
         }
 
@@ -165,8 +145,10 @@ namespace osu.Game.Tests.Beatmaps
 
             Assert.That(beatmap.Status, Is.EqualTo(BeatmapOnlineStatus.None));
             Assert.That(beatmapSet.Status, Is.EqualTo(BeatmapOnlineStatus.None));
-            Assert.That(beatmap.OnlineID, Is.EqualTo(-1));
-            localCachedMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Once);
+            // Reprise: the ID from the .osu stays, for a later lookup (the server may learn of the beatmap later).
+            Assert.That(beatmap.OnlineID, Is.EqualTo(123456));
+            // Reprise: the server not knowing it is the answer (not osu!'s local cache).
+            localCachedMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Never);
             apiMetadataSourceMock.Verify(src => src.TryLookup(beatmap, out It.Ref<OnlineBeatmapMetadata?>.IsAny!), Times.Once);
         }
 

@@ -130,11 +130,12 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddStep(@"Set Difficulty Adjust", () => changeMods([difficultyAdjustMod]));
             assertModsMultiplier(1);
 
+            // Reprise: Difficulty Adjust takes 0.01x off per 0.1 changed in each setting (osu!: 0.05x).
             AddStep("Adjust AR", () => difficultyAdjustMod.ApproachRate.Value = 3.3f);
-            assertModsMultiplier(0.85);
+            assertModsMultiplier(0.97);
 
             AddStep("Adjust HP", () => difficultyAdjustMod.DrainRate.Value = 6.5f);
-            assertModsMultiplier(0.6375);
+            assertModsMultiplier(0.97 * 0.95);
 
             AddStep("Change beatmap", () =>
             {
@@ -148,7 +149,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                 };
                 Beatmap.Value = beatmap;
             });
-            assertModsMultiplier(0.75);
+            assertModsMultiplier(0.95);
         }
 
         [Test]

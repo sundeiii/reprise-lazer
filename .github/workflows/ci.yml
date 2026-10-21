@@ -185,6 +185,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # GitHub's xcode-27 image defaults to Xcode 27.0, and the iOS workload needs 27.1 (also installed there).
+      - name: Select Xcode 27.1
+        run: sudo xcode-select -s /Applications/Xcode_27.1.app
+
       - name: Install .NET Workloads
         run: dotnet workload install ios
 

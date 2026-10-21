@@ -267,9 +267,15 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddStep("later stable", () => Config.SetValue(OsuSetting.StableLayoutVersion, StableLayoutVersion.Later));
             AddUntilStep("not 2015's bottom", () => SongSelect.ChildrenOfType<LegacyFooter>().SingleOrDefault() is { IsLoaded: true } && stableBottom() == null);
 
-            // Automatic: 2015's for a skin without its own song select top or bottom (as this one).
+            // Automatic: 2015's for a skin without its own song select top or bottom, else the later one (the default legacy skin has them
+            // in Reprise's resources, not in osu!'s).
             AddStep("automatic", () => Config.SetValue(OsuSetting.StableLayoutVersion, StableLayoutVersion.Automatic));
-            AddUntilStep("2015's bottom again", () => stableBottom() != null);
+            AddUntilStep("2015's bottom by the skin", () =>
+            {
+                var skin = skins.CurrentSkin.Value;
+                bool skinHasOwn = skin.GetTexture(@"songselect-top") != null || skin.GetTexture(@"songselect-bottom") != null;
+                return SongSelect.ChildrenOfType<LegacyFooter>().SingleOrDefault() is { IsLoaded: true } && (stableBottom() != null) != skinHasOwn;
+            });
 
             AddStep("reset", () =>
             {
@@ -281,7 +287,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
         // Stable 2015's own bottom (101 high, stretched across).
         private Sprite? stableBottom() => SongSelect.ChildrenOfType<LegacyFooter>().SingleOrDefault(f => f.IsLoaded)?.ChildrenOfType<Sprite>()
-                                                    .FirstOrDefault(s => s.Height == 101 && s.Texture != null && s.RelativeSizeAxes == Axes.X);
+                                                    .FirstOrDefault(s => s.Name == LegacyFooter.STABLE_2015_BOTTOM && s.Texture != null);
 
         [Test]
         public void TestRebuiltForAnotherLegacySkin()

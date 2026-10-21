@@ -83,7 +83,8 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("pp display faded out", () =>
             {
                 var ppDisplay = this.ChildrenOfType<PerformanceStatistic>().Single();
-                return ppDisplay.Alpha == 0.5 && ppDisplay.TooltipText == ResultsScreenStrings.NoPPForUnrankedBeatmaps;
+                // Reprise: shown as what it would be worth.
+                return ppDisplay.Alpha == 0.5 && ppDisplay.TooltipText == "pp if ranked (not counted)";
             });
         }
 

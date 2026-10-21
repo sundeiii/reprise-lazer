@@ -7,7 +7,11 @@ namespace osu.Game.Rulesets
 {
     public interface ILegacyRuleset
     {
-        const int MAX_LEGACY_RULESET_ID = 3000;
+        /// <summary>
+        /// Reprise: reprise.pw's modes, osu!'s four and the Relax/Autopilot ones (<see cref="RulesetInfo.CATCH_RELAX_ONLINE_ID"/>); osu!'s is 3.
+        /// Others (custom rulesets) aren't the server's, so they don't submit scores.
+        /// </summary>
+        const int MAX_LEGACY_RULESET_ID = RulesetInfo.CATCH_RELAX_ONLINE_ID;
 
         /// <summary>
         /// Identifies the server-side ID of a legacy ruleset.
