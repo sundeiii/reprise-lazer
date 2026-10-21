@@ -32,12 +32,6 @@ jobs:
       - name: Restore Packages
         run: dotnet restore osu.Desktop/osu.Desktop.csproj
 
-      - name: Restore inspectcode cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ github.workspace }}/inspectcode
-          key: inspectcode-${{ hashFiles('.config/dotnet-tools.json', '.github/workflows/ci.yml', 'osu.sln*', 'osu*.slnf', '.editorconfig', '.globalconfig', 'CodeAnalysis/*', '**/*.csproj', '**/*.props') }}
-
       - name: Dotnet code style
         run: dotnet build -c Debug  osu.Desktop/osu.Desktop.csproj -p:EnforceCodeStyleInBuild=true
 
@@ -54,19 +48,8 @@ jobs:
           done <<< $(dotnet codefilesanity)
           exit $exit_code
 
-      - name: InspectCode
-        uses: JetBrains/ReSharper-InspectCode@v0.12
-        with:
-          # this is WTF tier but if you don't specify *both* of these the defaults assume `build: true`
-          build: false
-          no-build: true
-          tool-version: '2026.2.1'
-          # As osu!'s: the desktop projects (osu.sln has the mobile ones too, which the runner can't load: tens of thousands of results).
-          solution: ./osu.Desktop.slnf
-          caches-home: inspectcode
-          verbosity: WARN
-          # Reprise: errors (warnings in code from before this fork are tens of thousands, over code scanning's limit).
-          sEverity: ERROR
+      # Reprise: no InspectCode. Its findings in this code (tens of thousands of warnings from before the fork) are more than GitHub's code
+      # scanning takes (25000), so it could only fail; the code style build and CodeFileSanity above still check.
 
   test:
     name: Test
