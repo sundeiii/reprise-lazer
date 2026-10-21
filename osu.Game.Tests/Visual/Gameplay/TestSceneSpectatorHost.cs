@@ -45,7 +45,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         {
             AddUntilStep("spectator client sending frames", () => spectatorClient.WatchedUserStates.ContainsKey(dummy_user_id));
             // Reprise: waited for, as the state arrives a moment after the frames start (slower CI runners checked too early).
-            AddUntilStep("spectator client sent correct ruleset", () => spectatorClient.WatchedUserStates[dummy_user_id].RulesetID == Ruleset.Value.OnlineID);
+            AddUntilStep("spectator client sent correct ruleset", () => spectatorClient.WatchedUserStates[dummy_user_id].RulesetID, () => Is.EqualTo(Ruleset.Value.OnlineID));
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddUntilStep("spectator client sees playing state again", () => spectatorClient.WatchedUserStates[dummy_user_id].State == SpectatedUserState.Playing);
 
             AddWaitStep("wait", 5);
-            AddUntilStep("spectator client still sees playing state", () => spectatorClient.WatchedUserStates[dummy_user_id].State == SpectatedUserState.Playing);
+            AddUntilStep("spectator client still sees playing state", () => spectatorClient.WatchedUserStates[dummy_user_id].State, () => Is.EqualTo(SpectatedUserState.Playing));
         }
 
         public override void TearDownSteps()

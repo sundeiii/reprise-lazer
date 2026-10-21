@@ -83,8 +83,9 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             AddStep("own score first", () => provider.Scores.Last().DisplayOrder.Value = -1);
             AddUntilStep("the first ones shown again", () => entryAlpha("player0") > 0);
-            AddAssert("passing explodes", () => this.ChildrenOfType<osu.Framework.Graphics.Sprites.Sprite>()
-                                                    .Count(sp => sp.Blending == BlendingParameters.Additive && sp.Texture != null) == 2);
+            // Waited for: the explosion comes a frame or so after the pass (slower CI runners checked too early).
+            AddUntilStep("passing explodes", () => this.ChildrenOfType<osu.Framework.Graphics.Sprites.Sprite>()
+                                                       .Count(sp => sp.Blending == BlendingParameters.Additive && sp.Texture != null), () => Is.EqualTo(2));
             AddUntilStep("own entry light blue when first", () => this.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == "player7").Parent!
                                                                    .ChildrenOfType<osu.Framework.Graphics.Sprites.Sprite>().First().Colour.TopLeft.Linear.B > 0.5f);
         }
