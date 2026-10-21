@@ -61,7 +61,8 @@ jobs:
           build: false
           no-build: true
           tool-version: '2026.2.1'
-          solution: ./osu.sln
+          # As osu!'s: the desktop projects (osu.sln has the mobile ones too, which the runner can't load: tens of thousands of results).
+          solution: ./osu.Desktop.slnf
           caches-home: inspectcode
           verbosity: WARN
 
