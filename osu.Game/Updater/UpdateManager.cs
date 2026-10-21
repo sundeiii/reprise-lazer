@@ -239,15 +239,16 @@ namespace osu.Game.Updater
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours, ChangelogOverlay changelog, INotificationOverlay notificationOverlay)
+        private void load(OsuColour colours, WhatsNewOverlay whatsNew, INotificationOverlay notificationOverlay)
         {
             Icon = FontAwesome.Solid.CheckSquare;
             IconContent.Colour = colours.BlueDark;
 
+            // Reprise: the release's notes (reprise.pw's changelog has no lazer builds).
             Activated = delegate
             {
                 notificationOverlay.Hide();
-                changelog.ShowBuild(version);
+                whatsNew.ShowFor(version);
                 return true;
             };
         }

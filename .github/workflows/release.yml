@@ -403,6 +403,20 @@ jobs:
           find release-files -maxdepth 2 -type f -print
           ls -al release-files
 
+      # What's new: the titles of this release's commits since the previous release (the game shows them after updating:
+      # Updater.WhatsNewOverlay). CI-only commits are left out.
+      - name: Write release notes
+        shell: bash
+        run: |
+          PREV=$(git describe --tags --abbrev=0 --match 'v*-lazer' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          RANGE="${PREV:+$PREV..}${GITHUB_REF_NAME}"
+          {
+            echo "## What's new"
+            echo
+            git log --no-merges --format='- %s' "$RANGE" | grep -v '^- CI:' | head -50
+          } > release-notes.md
+          cat release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -412,6 +426,7 @@ jobs:
           files: release-files/**
           draft: false
           prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
+          body_path: release-notes.md
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

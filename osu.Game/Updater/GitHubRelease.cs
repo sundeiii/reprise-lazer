@@ -21,6 +21,10 @@ namespace osu.Game.Updater
         [JsonProperty("assets")]
         public List<GitHubAsset> Assets { get; set; }
 
+        // Reprise: the release notes (Updater.WhatsNewOverlay).
+        [JsonProperty("body")]
+        public string Body { get; set; }
+
         [JsonProperty("prerelease")]
         public bool Prerelease { get; set; }
 

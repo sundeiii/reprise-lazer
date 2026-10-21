@@ -1342,6 +1342,8 @@ namespace osu.Game
             loadComponentSingleFile(new MessageNotifier(), Add, true);
             loadComponentSingleFile(Settings = new SettingsOverlay(), leftFloatingOverlayContent.Add, true);
             loadComponentSingleFile(changelogOverlay = new ChangelogOverlay(), overlayContent.Add, true);
+            // Reprise: what's new after an update (release notes from GitHub; reprise.pw's changelog has no lazer builds).
+            loadComponentSingleFile(new WhatsNewOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(userProfile = new UserProfileOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(beatmapSetOverlay = new BeatmapSetOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(wikiOverlay = new WikiOverlay(), overlayContent.Add, true);
@@ -1501,7 +1503,12 @@ namespace osu.Game
 
             // only show a notification if we've previously saved a version to the config file (ie. not the first run).
             if (IsDeployedBuild && !string.IsNullOrEmpty(lastVersion) && version != lastVersion)
+            {
                 Notifications.Post(new UpdateCompleteNotification(version));
+
+                // Reprise: and what's new in it, once past the startup screens.
+                waitForReady(() => Dependencies.Get<WhatsNewOverlay>(), whatsNew => whatsNew.ShowFor(version));
+            }
 
             // finally, update the version stored to the configuration.
             // this MUST happen after `applyConfigMigrations()` call, as it relies on comparing the previous version.
