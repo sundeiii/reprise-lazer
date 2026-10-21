@@ -347,3 +347,7 @@ FodyWeavers.xsd
 
 .idea/.idea.osu.Desktop/.idea/misc.xml
 .idea/.idea.osu.Android/.idea/deploymentTargetDropDown.xml
+
+# Reprise: our own builds of packages (nuget.config)
+!/LocalPackages/
+!/LocalPackages/*.nupkg

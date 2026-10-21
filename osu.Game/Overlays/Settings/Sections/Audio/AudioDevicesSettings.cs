@@ -48,6 +48,23 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 });
 
                 legacyAudio.Current.ValueChanged += _ => onDeviceChanged(string.Empty);
+
+                // Reprise: WASAPI's exclusive mode (Reprise's build of osu-framework).
+                SettingsItemV2 exclusiveItem;
+
+                Add(exclusiveItem = new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "Exclusive mode",
+                    HintText = "Takes the audio device for the game alone, for the lowest latency: nothing else (Discord, the browser, ...) can be heard on it "
+                               + "while the game runs. When the device can't be had alone, it's shared as usual. Re-check your audio offset after changing this.",
+                    Current = audio.UseWasapiExclusive,
+                })
+                {
+                    Keywords = new[] { "wasapi", "latency", "exclusive", "low latency" },
+                });
+
+                // Only with WASAPI (not legacy audio).
+                legacyAudio.Current.BindValueChanged(legacy => exclusiveItem.Alpha = legacy.NewValue ? 0 : 1, true);
             }
 
             audio.OnNewDevice += onDeviceChanged;
