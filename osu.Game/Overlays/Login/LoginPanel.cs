@@ -178,6 +178,8 @@ namespace osu.Game.Overlays.Login
                                     RelativeSizeAxes = Axes.X,
                                     Action = RequestHide
                                 },
+                            // Reprise: the 2023 card has no rank: it's on a line under it (in the mode played, Relax/Autopilot's with them on).
+                            Interface2023.Enabled ? new ModeRankLine() : Empty(),
                             dropdown = new UserDropdown { RelativeSizeAxes = Axes.X },
                         },
                     };
