@@ -9,6 +9,7 @@ using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Spectator;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mania;
+using osu.Game.Screens.Play;
 using osu.Game.Tests.Visual.Spectator;
 
 namespace osu.Game.Tests.Visual.Gameplay
@@ -62,6 +63,23 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             AddWaitStep("wait", 5);
             AddUntilStep("spectator client still sees playing state", () => spectatorClient.WatchedUserStates[dummy_user_id].State, () => Is.EqualTo(SpectatedUserState.Playing));
+        }
+
+        /// <summary>
+        /// Reprise: leaving a play ends it more than once, the last time from its disposal, which can come after the next play began
+        /// (a quick restart): that mustn't end the next one.
+        /// </summary>
+        [Test]
+        public void TestLateEndOfAnotherPlayIgnored()
+        {
+            AddUntilStep("playing", () => spectatorClient.WatchedUserStates.TryGetValue(dummy_user_id, out var state) && state.State == SpectatedUserState.Playing);
+
+            AddStep("another play ends late", () => spectatorClient.EndPlaying(null, new GameplayState(Beatmap.Value.Beatmap, Ruleset.Value.CreateInstance())));
+            AddWaitStep("wait", 5);
+            AddAssert("still playing", () => spectatorClient.WatchedUserStates[dummy_user_id].State, () => Is.EqualTo(SpectatedUserState.Playing));
+
+            AddStep("this play ends", () => spectatorClient.EndPlaying(null, Player.GameplayState));
+            AddUntilStep("not playing", () => spectatorClient.WatchedUserStates[dummy_user_id].State, () => Is.Not.EqualTo(SpectatedUserState.Playing));
         }
 
         public override void TearDownSteps()

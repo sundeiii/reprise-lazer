@@ -276,6 +276,11 @@ namespace osu.Game.Online.Spectator
                 if (!isPlaying)
                     return;
 
+                // Reprise: only the play that began ends it. Leaving a play calls this more than once, the last from its disposal (which can
+                // be asynchronous): after a quick restart, that came after the next play had begun and ended it (spectators saw a quit).
+                if (state.ScoreProcessor != currentScoreProcessor)
+                    return;
+
                 if (pendingFrames.Count > 0)
                     purgePendingFrames();
 
