@@ -137,7 +137,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -160,6 +159,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -177,7 +178,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -211,6 +211,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -230,7 +232,6 @@ namespace osu.Game.Tests.Visual.Ranking
             var scores = new List<ScoreInfo>();
             var soloScores = new List<SoloScoreInfo>();
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () =>
             {
                 for (int i = 0; i < 30; ++i)
@@ -276,9 +277,11 @@ namespace osu.Game.Tests.Visual.Ranking
                 };
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () => LoadScreen(new SoloResultsScreen(scores[0])));
             AddUntilStep("wait for loaded", () => ((Drawable)Stack.CurrentScreen).IsLoaded);
-            AddAssert("local user best shown", () => this.ChildrenOfType<ScorePanel>().Any(p => p.Score.UserID == API.LocalUser.Value.Id));
+            AddUntilStep("local user best shown", () => this.ChildrenOfType<ScorePanel>().Any(p => p.Score.UserID == API.LocalUser.Value.Id));
         }
 
         [Test]
@@ -286,7 +289,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -309,6 +311,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -326,7 +330,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -362,6 +365,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -380,7 +385,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -417,6 +421,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -435,7 +441,6 @@ namespace osu.Game.Tests.Visual.Ranking
         {
             ScoreInfo localScore = null!;
 
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -471,6 +476,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
@@ -487,7 +494,6 @@ namespace osu.Game.Tests.Visual.Ranking
         [Test]
         public void TestOnlineLeaderboardDeduplication()
         {
-            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("set up request handling", () => dummyAPI.HandleRequest = req =>
             {
                 switch (req)
@@ -523,6 +529,8 @@ namespace osu.Game.Tests.Visual.Ranking
                 return false;
             });
 
+            // Reprise: fetched once the requests are handled (fetched before, it could get the previous test's scores).
+            AddStep("set leaderboard to global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(importedBeatmap, importedBeatmap.Ruleset, BeatmapLeaderboardScope.Global, null)));
             AddStep("show results", () =>
             {
                 var localScore = TestResources.CreateTestScoreInfo(importedBeatmap);
