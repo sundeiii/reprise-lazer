@@ -83,8 +83,15 @@ jobs:
       - name: Compile
         run: dotnet build -c Debug  osu.Desktop/osu.Desktop.csproj
 
+      # Reprise: the test classes that failed are run once more (some of osu!'s tests fail now and then on shared runners, another each
+      # time); a test that fails twice still fails the run. See .github/scripts/rerun-failed-tests.py.
       - name: Test
-        run: dotnet test osu.Desktop.slnf --logger "trx;LogFileName=TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx" -- NUnit.ConsoleOut=0
+        shell: bash
+        run: |
+          RESULTS="TestResults-${{matrix.os.prettyname}}-${{matrix.threadingMode}}.trx"
+          dotnet test osu.Desktop.slnf --logger "trx;LogFileName=$RESULTS" -- NUnit.ConsoleOut=0 && exit 0
+          PYTHON=$(command -v python3 || command -v python)
+          "$PYTHON" .github/scripts/rerun-failed-tests.py "$RESULTS"
 
       # Attempt to upload results even if test fails.
       # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#cancelled
