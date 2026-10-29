@@ -251,7 +251,9 @@ namespace osu.Game.Online.API.Requests.Responses
         /// <remarks>
         /// This returns null when accessed from <see cref="IAPIProvider.LocalUser"/>. Use <see cref="LocalUserStatisticsProvider"/> instead.
         /// </remarks>
-        [JsonProperty(@"statistics")]
+        // Replace: the getter never returns null, so Json.NET would otherwise fill that object in place and never call the
+        // setter, leaving HasStatistics false for every response.
+        [JsonProperty(@"statistics", ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public UserStatistics Statistics
         {
             get => statistics ??= new UserStatistics();
