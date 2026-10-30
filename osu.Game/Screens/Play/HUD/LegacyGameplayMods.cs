@@ -19,16 +19,17 @@ namespace osu.Game.Screens.Play.HUD
 {
     /// <summary>
     /// osu!stable's mod icons in gameplay (with a legacy skin and <see cref="OsuSetting.StableLayouts"/>, instead of the game's): the
-    /// skin's "selection-mod-*", the first centred on (610, 94) of stable's 640x480 field, which stays centred on wide screens (290
-    /// right of the middle, under the score), each next one 10 to the left (1.6 times all in the 1024x768 layout), each popping in
-    /// half a second after the one before; fading out over 5 seconds, except in replays. From the 2015 client (Class63).
+    /// skin's "selection-mod-*", the first centred on (610, 94) of stable's 640x480 field: 30 in from the right edge, under the score,
+    /// as the client keeps it on wide screens (its coordinates there are scaled by height/480, not centred). Each next one 10 to the
+    /// left (1.6 times all in the 1024x768 layout), each popping in half a second after the one before; fading out over 5 seconds,
+    /// except in replays. From the 2015 client (Class63).
     /// </summary>
     public partial class LegacyGameplayMods : CompositeDrawable
     {
         private const float spacing = 10 * 1.6f;
 
-        /// <summary>The first icon's centre, from the top centre of the 1024x768 layout.</summary>
-        private static readonly Vector2 first_position = new Vector2((610 - 320) * 1.6f, 94 * 1.6f);
+        /// <summary>The first icon's centre, from the top right corner of the 1024x768 layout.</summary>
+        private static readonly Vector2 first_position = new Vector2(-(640 - 610) * 1.6f, 94 * 1.6f);
 
         private readonly IRulesetInfo ruleset;
         private readonly IReadOnlyList<Mod> mods;
@@ -110,7 +111,7 @@ namespace osu.Game.Screens.Play.HUD
                 // Each in a holder centred where stable centres it, the icon centred in it so it pops in from its middle as in stable.
                 icons.Add(new Container
                 {
-                    Anchor = Anchor.TopCentre,
+                    Anchor = Anchor.TopRight,
                     Origin = Anchor.Centre,
                     Size = icon.Size * icon.Scale,
                     Position = first_position - new Vector2(spacing * index, 0),
