@@ -19,16 +19,16 @@ namespace osu.Game.Screens.Play.HUD
 {
     /// <summary>
     /// osu!stable's mod icons in gameplay (with a legacy skin and <see cref="OsuSetting.StableLayouts"/>, instead of the game's): the
-    /// skin's "selection-mod-*", placed where the game's own mod display is (the HUD's top right corner, 10 in from its edges), the
-    /// first rightmost and each next one 10 (stable's units) to the left, each popping in half a second after the one before; fading
-    /// out over 5 seconds, except in replays. From the 2015 client.
+    /// skin's "selection-mod-*", the first centred on (610, 94) of stable's 640x480 field, which stays centred on wide screens (290
+    /// right of the middle, under the score), each next one 10 to the left (1.6 times all in the 1024x768 layout), each popping in
+    /// half a second after the one before; fading out over 5 seconds, except in replays. From the 2015 client (Class63).
     /// </summary>
     public partial class LegacyGameplayMods : CompositeDrawable
     {
         private const float spacing = 10 * 1.6f;
 
-        /// <summary>The game's mod display's distance from the HUD's top right corner (HUDOverlay's top right elements' margin).</summary>
-        private const float corner_margin = 10;
+        /// <summary>The first icon's centre, from the top centre of the 1024x768 layout.</summary>
+        private static readonly Vector2 first_position = new Vector2((610 - 320) * 1.6f, 94 * 1.6f);
 
         private readonly IRulesetInfo ruleset;
         private readonly IReadOnlyList<Mod> mods;
@@ -101,23 +101,19 @@ namespace osu.Game.Screens.Play.HUD
             int index = 0;
             bool replay = isReplay();
 
-            // The game's margin in screen pixels, in the 1024x768 space the icons are sized in.
-            float margin = corner_margin * 768 / Math.Max(1, DrawHeight);
-
             foreach (var icon in LegacyRankingMods.CreateIcons(ruleset, mods, skin))
             {
                 icon.Anchor = Anchor.Centre;
                 icon.Origin = Anchor.Centre;
                 icon.Alpha = 0;
 
-                // Each in a holder at the top right corner (as the game's mod display), the icon centred in it so it pops in from its
-                // middle as in stable.
+                // Each in a holder centred where stable centres it, the icon centred in it so it pops in from its middle as in stable.
                 icons.Add(new Container
                 {
-                    Anchor = Anchor.TopRight,
-                    Origin = Anchor.TopRight,
+                    Anchor = Anchor.TopCentre,
+                    Origin = Anchor.Centre,
                     Size = icon.Size * icon.Scale,
-                    Position = new Vector2(-(margin + spacing * index), margin),
+                    Position = first_position - new Vector2(spacing * index, 0),
                     Child = icon,
                 });
 
