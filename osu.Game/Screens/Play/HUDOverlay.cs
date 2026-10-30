@@ -260,8 +260,10 @@ namespace osu.Game.Screens.Play
             // (a scorebar-bg framing the playfield, say) line up with the score and the rest only there.
             bool legacy = skinManager?.CurrentSkin.Value is LegacySkin;
 
-            // osu!stable's own mod icons replace the game's then (LegacyGameplayMods).
-            ModDisplay.Alpha = legacy && stableLayouts.Value ? 0 : 1;
+            // osu!stable's own mod icons replace the game's then (LegacyGameplayMods). Otherwise the game's are left to their own
+            // fades (shown at the start, gone after two seconds unless watching a replay).
+            if (legacy && stableLayouts.Value)
+                ModDisplay.Alpha = 0;
 
             foreach (var components in new Drawable[] { mainComponents, rulesetComponents })
             {
