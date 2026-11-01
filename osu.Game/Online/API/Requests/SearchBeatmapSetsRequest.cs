@@ -40,6 +40,10 @@ namespace osu.Game.Online.API.Requests
         [CanBeNull]
         public IReadOnlyCollection<ScoreRank> Ranks { get; }
 
+        /// <summary>Reprise: the Relax/Autopilot mode played (its short name, osurx, ...), null for vanilla.</summary>
+        [CanBeNull]
+        public string Variant { get; init; }
+
         private readonly string query;
         private readonly RulesetInfo ruleset;
         private readonly Cursor cursor;
@@ -110,6 +114,9 @@ namespace osu.Game.Online.API.Requests
                 req.AddParameter("played", Played.ToString().ToLowerInvariant());
 
             req.AddParameter("nsfw", ExplicitContent == SearchExplicit.Show ? "true" : "false");
+
+            // Reprise: the Relax/Autopilot mode played (osurx, ...; vn for none), whose pp the recommended difficulty is from.
+            req.AddParameter("variant", Variant ?? "vn");
 
             if (cursor != null)
                 req.AddCursor(cursor);

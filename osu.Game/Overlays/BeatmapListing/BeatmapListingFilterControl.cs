@@ -17,10 +17,13 @@ using osu.Framework.Localisation;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps.Drawables.Cards;
 using osu.Game.Configuration;
+using osu.Game.Extensions;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osuTK;
 using osuTK.Graphics;
 
@@ -80,6 +83,35 @@ namespace osu.Game.Overlays.BeatmapListing
         private IAPIProvider api { get; set; }
 
         private IBindable<APIUser> apiUser;
+
+        // Reprise: the RX/AP switch (the mods), which picks the pp the recommended difficulty is from.
+        [Resolved]
+        private IBindable<IReadOnlyList<Mod>> selectedMods { get; set; }
+
+        [Resolved]
+        private IBindable<RulesetInfo> gameRuleset { get; set; }
+
+        [Resolved]
+        private RulesetStore rulesets { get; set; }
+
+        private IBindable<IReadOnlyList<Mod>> mods;
+
+        /// <summary>
+        /// Reprise: the Relax/Autopilot mode played in the listing's ruleset (the profile's default one when it shows any), as the
+        /// recommended difficulty label works it out.
+        /// </summary>
+        private string variant
+        {
+            get
+            {
+                var ruleset = searchControl.Ruleset.Value.IsLegacyRuleset()
+                    ? searchControl.Ruleset.Value
+                    : rulesets.GetRuleset(api.LocalUser.Value.PlayMode) ?? gameRuleset.Value;
+                return ruleset?.CreateSpecialRulesetByMods(selectedMods.Value)?.ShortName;
+            }
+        }
+
+        private static string variantMod(IReadOnlyList<Mod> mods) => mods.FirstOrDefault(m => m.Acronym is @"RX" or @"AP")?.Acronym;
 
         public BeatmapListingFilterControl()
         {
@@ -191,6 +223,15 @@ namespace osu.Game.Overlays.BeatmapListing
 
             apiUser = api.LocalUser.GetBoundCopy();
             apiUser.BindValueChanged(_ => queueUpdateSearch());
+
+            // Reprise: recommended maps for the mode now played. Scheduled: the mods change off the update thread too.
+            mods = selectedMods.GetBoundCopy();
+            mods.BindValueChanged(e =>
+            {
+                if (searchControl.General.Contains(SearchGeneral.Recommended)
+                    && variantMod(e.OldValue) != variantMod(e.NewValue))
+                    Schedule(() => queueUpdateSearch());
+            });
         }
 
         public void TakeFocus() => searchControl.TakeFocus();
@@ -247,7 +288,10 @@ namespace osu.Game.Overlays.BeatmapListing
                 searchControl.Extra,
                 searchControl.Ranks,
                 searchControl.Played.Value,
-                searchControl.ExplicitContent.Value);
+                searchControl.ExplicitContent.Value)
+            {
+                Variant = variant,
+            };
 
             getSetsRequest.Success += response =>
             {

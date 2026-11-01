@@ -10,6 +10,7 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Game.Online;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Users;
 
 namespace osu.Game.Beatmaps
@@ -30,7 +31,19 @@ namespace osu.Game.Beatmaps
         [Resolved]
         private RulesetStore rulesets { get; set; } = null!;
 
+        [Resolved]
+        private IBindable<IReadOnlyList<Mod>> selectedMods { get; set; } = null!;
+
         private readonly Dictionary<string, double> recommendedDifficultyMapping = new Dictionary<string, double>();
+
+        // Reprise: the Relax/Autopilot modes' statistics (LocalUserStatisticsProvider fetches them as rulesets: osurx, ...).
+        private static readonly HashSet<string> special_rulesets = new HashSet<string>
+        {
+            RulesetInfo.OSU_RELAX_MODE_SHORTNAME,
+            RulesetInfo.OSU_AUTOPILOT_MODE_SHORTNAME,
+            RulesetInfo.TAIKO_RELAX_MODE_SHORTNAME,
+            RulesetInfo.CATCH_RELAX_MODE_SHORTNAME,
+        };
 
         /// <returns>
         /// Rulesets ordered descending by their respective recommended difficulties.
@@ -44,6 +57,7 @@ namespace osu.Game.Beatmaps
                     return Enumerable.Empty<string>();
 
                 return recommendedDifficultyMapping
+                       .Where(pair => !special_rulesets.Contains(pair.Key))
                        .OrderByDescending(pair => pair.Value)
                        .Select(pair => pair.Key)
                        .Where(r => !r.Equals(gameRuleset.Value.ShortName, StringComparison.Ordinal))
@@ -71,6 +85,10 @@ namespace osu.Game.Beatmaps
             base.LoadComplete();
 
             statisticsProvider.StatisticsUpdated += onStatisticsUpdated;
+
+            // Reprise: switching to Relax/Autopilot (or back) recommends from that mode's pp. Scheduled: the mods change off the
+            // update thread too (a screen taking them while it loads), and the listing's label is updated from this.
+            selectedMods.BindValueChanged(_ => Scheduler.AddOnce(() => StarRatingUpdated?.Invoke()));
         }
 
         private void onStatisticsUpdated(UserStatisticsUpdate update) => updateMapping(update.Ruleset, update.NewStatistics);
@@ -79,15 +97,26 @@ namespace osu.Game.Beatmaps
         {
             // algorithm taken from https://github.com/ppy/osu-web/blob/027026fccc91525e39cee5d2f369f1b343eb1bf1/app/Models/UserStatistics/Model.php#L93-L94
             recommendedDifficultyMapping[ruleset.ShortName] =
-                ruleset.ShortName == @"taiko"
+                ruleset.ShortName is @"taiko" or RulesetInfo.TAIKO_RELAX_MODE_SHORTNAME
                     ? Math.Pow((double)(statistics.PP ?? 0), 0.35) * 0.27
                     : Math.Pow((double)(statistics.PP ?? 0), 0.4) * 0.195;
 
             StarRatingUpdated?.Invoke();
         }
 
-        public double? GetRecommendedStarRatingFor(RulesetInfo ruleset)
-            => recommendedDifficultyMapping.TryGetValue(ruleset.ShortName, out double starRating) ? starRating : null;
+        public double? GetRecommendedStarRatingFor(RulesetInfo ruleset) => recommendationFor(ruleset.ShortName);
+
+        /// <summary>
+        /// Reprise: the recommendation for a ruleset, from the Relax/Autopilot mode's pp while that's played (the RX/AP switch), as
+        /// the website's (its beatmap listing filters by it when lazer says which it plays).
+        /// </summary>
+        private double? recommendationFor(string shortName)
+        {
+            if (rulesets.GetRuleset(shortName)?.CreateSpecialRulesetByMods(selectedMods.Value) is RulesetInfo variant)
+                return recommendedDifficultyMapping.TryGetValue(variant.ShortName, out double variantRating) ? variantRating : null;
+
+            return recommendedDifficultyMapping.TryGetValue(shortName, out double starRating) ? starRating : null;
+        }
 
         /// <summary>
         /// Find the recommended difficulty from a selection of available difficulties for the current local user.
@@ -101,7 +130,7 @@ namespace osu.Game.Beatmaps
         {
             foreach (string r in orderedRulesets)
             {
-                if (!recommendedDifficultyMapping.TryGetValue(r, out double recommendation))
+                if (recommendationFor(r) is not double recommendation)
                     continue;
 
                 BeatmapInfo? beatmapInfo = beatmaps.Where(b => b.Ruleset.ShortName.Equals(r, StringComparison.Ordinal)).MinBy(b =>
