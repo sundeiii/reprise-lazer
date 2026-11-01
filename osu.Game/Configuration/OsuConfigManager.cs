@@ -177,6 +177,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.NewResultsScreen, false);
             SetDefault(OsuSetting.SongSelectV1, false);
             SetDefault(OsuSetting.Sounds2023, false);
+            SetDefault(OsuSetting.StableSounds, true);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
             SetDefault(OsuSetting.ModeVariant, string.Empty);
@@ -586,6 +587,9 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: the menu and interface sounds as lazer had them in 2023 (Audio.Sounds2023Store); applies after a restart.</summary>
         Sounds2023,
+
+        /// <summary>Reprise: osu!stable's typing, chat highlight and multiplayer join/leave sounds (Audio.StableSoundsStore); applies after a restart.</summary>
+        StableSounds,
 
         /// <summary>Reprise: lazer's 2023 startup screen ("this is osu!lazer, the next major update coming to osu!") before the intro.</summary>
         Disclaimer2023,

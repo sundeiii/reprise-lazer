@@ -15,6 +15,7 @@ using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Platform;
+using osu.Game.Audio;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Online.API;
@@ -168,6 +169,9 @@ namespace osu.Game.Online.Chat
         {
             private readonly Message message;
             private readonly Channel channel;
+
+            // Reprise: stable's chat highlight sound, which a private message is too.
+            public override string PopInSampleName => StableSoundsStore.Enabled ? "UI/notification-mention" : base.PopInSampleName;
 
             public PrivateMessageNotification(Message message, Channel channel)
                 : base(message.Sender)

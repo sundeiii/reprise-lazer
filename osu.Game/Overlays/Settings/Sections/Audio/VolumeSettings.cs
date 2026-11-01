@@ -30,6 +30,16 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 {
                     Keywords = new[] { "old", "classic", "2023", "sfx", "samples" }
                 },
+                // Reprise: osu!stable's typing, chat highlight and multiplayer room sounds.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "osu!stable typing and chat sounds",
+                    HintText = "Typing, private messages and mentions, and players joining or leaving a multiplayer room sound as in osu!stable. Applies after restarting the game.",
+                    Current = config.GetBindable<bool>(OsuSetting.StableSounds),
+                })
+                {
+                    Keywords = new[] { "stable", "classic", "keyboard", "typing", "chat", "pm", "multiplayer", "sfx", "samples" }
+                },
                 new SettingsItemV2(new FormSliderBar<double>
                 {
                     Caption = AudioSettingsStrings.MasterVolume,
