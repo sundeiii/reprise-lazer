@@ -164,10 +164,13 @@ namespace osu.Game.Screens.Play
 
         protected override void Dispose(bool isDisposing)
         {
-            failSample.Stop();
-            failSample.Dispose();
-            track.RemoveAdjustment(AdjustableProperty.Frequency, trackFreq);
-            track.RemoveAdjustment(AdjustableProperty.Volume, volumeAdjustment);
+            // Disposed before it loaded (the replay closed first): there's no sample or track yet.
+            // ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+            failSample?.Stop();
+            failSample?.Dispose();
+            track?.RemoveAdjustment(AdjustableProperty.Frequency, trackFreq);
+            track?.RemoveAdjustment(AdjustableProperty.Volume, volumeAdjustment);
+            // ReSharper restore ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
             base.Dispose(isDisposing);
         }
     }

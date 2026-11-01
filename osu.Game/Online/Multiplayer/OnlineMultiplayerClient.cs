@@ -152,12 +152,12 @@ namespace osu.Game.Online.Multiplayer
 
         protected override Task LeaveRoomInternal()
         {
-            if (!IsConnected.Value)
+            // The connection can go while IsConnected still says it's there (the server restarting): leaving is then a no-op.
+            var hub = connection;
+            if (!IsConnected.Value || hub == null)
                 return Task.FromCanceled(new CancellationToken(true));
 
-            Debug.Assert(connection != null);
-
-            return connection.InvokeAsync(nameof(IMultiplayerServer.LeaveRoom));
+            return hub.InvokeAsync(nameof(IMultiplayerServer.LeaveRoom));
         }
 
         public override async Task InvitePlayer(int userId)

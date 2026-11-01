@@ -410,16 +410,23 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.Queue
         {
             Logger.Log($"[RankedPlayDebug] Loading matchmaking pools for type={poolType}", LoggingTarget.Network);
 
-            MatchmakingPool[] pools;
+            MatchmakingPool[] pools = Array.Empty<MatchmakingPool>();
 
-            try
+            // While the server restarts the connection still counts as there but can't be used, and nothing asks again once
+            // it's back: try a few more times before showing no pools.
+            for (int attempt = 1; attempt <= 5; attempt++)
             {
-                pools = await client.GetMatchmakingPoolsOfType(poolType).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, $"[RankedPlayDebug] Failed to load matchmaking pools for type={poolType}");
-                pools = Array.Empty<MatchmakingPool>();
+                try
+                {
+                    pools = await client.GetMatchmakingPoolsOfType(poolType).ConfigureAwait(false);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"[RankedPlayDebug] Failed to load matchmaking pools for type={poolType} (attempt {attempt}): {ex.Message}", LoggingTarget.Network);
+                    if (attempt < 5)
+                        await Task.Delay(TimeSpan.FromSeconds(2 * attempt)).ConfigureAwait(false);
+                }
             }
 
             Logger.Log(
