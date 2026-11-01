@@ -61,7 +61,10 @@ namespace osu.Game.Overlays.Notifications
             }
         }
 
-        public LocalisableString CompletionText { get; set; } = "Task has completed!";
+        /// <summary>Reprise: the completion text nothing has set, which an import replaces with what it imported.</summary>
+        public const string DEFAULT_COMPLETION_TEXT = "Task has completed!";
+
+        public LocalisableString CompletionText { get; set; } = DEFAULT_COMPLETION_TEXT;
 
         private float progress;
 

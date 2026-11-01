@@ -173,7 +173,10 @@ namespace osu.Game.Database
                 }
                 else
                 {
-                    if (string.IsNullOrEmpty(notification.CompletionText.ToString()))
+                    // Reprise: a notification nobody named (a file opened or dropped on the game) said "Task has completed!", not what came in.
+                    string completionText = notification.CompletionText.ToString();
+
+                    if (string.IsNullOrEmpty(completionText) || completionText == ProgressNotification.DEFAULT_COMPLETION_TEXT)
                     {
                         if (tasks.Length > imported.Count)
                             notification.CompletionText = $"Imported {imported.Count} of {tasks.Length} {HumanisedModelName}s.";

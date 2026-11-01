@@ -11,6 +11,7 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Game.Audio;
 using osu.Game.Beatmaps.Timing;
 using osu.Game.Configuration;
@@ -133,10 +134,20 @@ namespace osu.Game.Screens.Play
         {
             var classic = skinManager.DefaultClassicSkin;
 
-            pass.Texture = skin.GetTexture(@"section-pass") ?? classic.GetTexture(@"section-pass");
-            fail.Texture = skin.GetTexture(@"section-fail") ?? classic.GetTexture(@"section-fail");
+            setTexture(pass, skin.GetTexture(@"section-pass") ?? classic.GetTexture(@"section-pass"));
+            setTexture(fail, skin.GetTexture(@"section-fail") ?? classic.GetTexture(@"section-fail"));
             passSample = skin.GetSample(new SampleInfo(@"sectionpass")) ?? classic.GetSample(new SampleInfo(@"sectionpass"));
             failSample = skin.GetSample(new SampleInfo(@"sectionfail")) ?? classic.GetSample(new SampleInfo(@"sectionfail"));
+        }
+
+        /// <summary>
+        /// A sprite keeps the size of the first texture it got: another skin's (or another grade's) would be stretched to it, so it's
+        /// sized to each texture.
+        /// </summary>
+        private static void setTexture(Sprite sprite, Texture? texture)
+        {
+            sprite.Texture = texture;
+            sprite.Size = texture == null ? Vector2.Zero : new Vector2(texture.DisplayWidth, texture.DisplayHeight);
         }
 
         protected override void Update()
@@ -191,7 +202,8 @@ namespace osu.Game.Screens.Play
             if (texture == null)
                 return;
 
-            grade.Texture = gradeGlow.Texture = texture;
+            setTexture(grade, texture);
+            setTexture(gradeGlow, texture);
 
             // Stable's: in 0.3 seconds from 0.4 after the break starts, out by 0.7 before it ends; a copy growing and fading as it comes.
             using (grade.BeginAbsoluteSequence(breakPeriod.StartTime))
