@@ -34,7 +34,7 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 new SettingsItemV2(new FormCheckBox
                 {
                     Caption = "osu!stable typing and chat sounds",
-                    HintText = "Typing, private messages and mentions, and players joining or leaving a multiplayer room sound as in osu!stable. Applies after restarting the game.",
+                    HintText = "Typing, private messages and mentions, and players joining or leaving a multiplayer room sound as in osu!stable, from your skin when it's a stable skin that has them. Applies after restarting the game.",
                     Current = config.GetBindable<bool>(OsuSetting.StableSounds),
                 })
                 {

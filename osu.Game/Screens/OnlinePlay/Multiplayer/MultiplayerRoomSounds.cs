@@ -6,7 +6,9 @@ using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics.Containers;
+using osu.Game.Audio;
 using osu.Game.Online.Multiplayer;
+using osu.Game.Skinning;
 
 namespace osu.Game.Screens.OnlinePlay.Multiplayer
 {
@@ -15,17 +17,20 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         [Resolved]
         private MultiplayerClient client { get; set; } = null!;
 
+        private AudioManager audio = null!;
+
+        // Reprise: joining and leaving are looked up when played (StableSoundsStore.Get: a stable skin's own match-join/match-leave).
+        [Resolved(canBeNull: true)]
+        private SkinManager? skins { get; set; }
+
         private Sample? hostChangedSample;
-        private Sample? userJoinedSample;
-        private Sample? userLeftSample;
         private Sample? userKickedSample;
 
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
+            this.audio = audio;
             hostChangedSample = audio.Samples.Get(@"Multiplayer/host-changed");
-            userJoinedSample = audio.Samples.Get(@"Multiplayer/player-joined");
-            userLeftSample = audio.Samples.Get(@"Multiplayer/player-left");
             userKickedSample = audio.Samples.Get(@"Multiplayer/player-kicked");
         }
 
@@ -40,10 +45,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         }
 
         private void onUserJoined(MultiplayerRoomUser user)
-            => Scheduler.AddOnce(() => userJoinedSample?.Play());
+            => Scheduler.AddOnce(() => StableSoundsStore.Get(audio, skins, @"Multiplayer/player-joined")?.Play());
 
         private void onUserLeft(MultiplayerRoomUser user)
-            => Scheduler.AddOnce(() => userLeftSample?.Play());
+            => Scheduler.AddOnce(() => StableSoundsStore.Get(audio, skins, @"Multiplayer/player-left")?.Play());
 
         private void onUserKicked(MultiplayerRoomUser user)
             => Scheduler.AddOnce(() => userKickedSample?.Play());

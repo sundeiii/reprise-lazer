@@ -17,11 +17,13 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Framework.Threading;
+using osu.Game.Audio;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Resources.Localisation.Web;
+using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
 using NotificationsStrings = osu.Game.Localisation.NotificationsStrings;
@@ -49,6 +51,10 @@ namespace osu.Game.Overlays
 
         [Resolved]
         private AudioManager audio { get; set; } = null!;
+
+        // Reprise: a stable skin's own chat highlight (StableSoundsStore.Get).
+        [Resolved(canBeNull: true)]
+        private SkinManager? skins { get; set; }
 
         [Resolved]
         private OsuGame? game { get; set; }
@@ -279,7 +285,7 @@ namespace osu.Game.Overlays
 
             if (lastSamplePlayback == null || Time.Current - lastSamplePlayback > OsuGameBase.SAMPLE_DEBOUNCE_TIME)
             {
-                audio.Samples.Get(sampleName)?.Play();
+                StableSoundsStore.Get(audio, skins, sampleName)?.Play();
                 lastSamplePlayback = Time.Current;
             }
         }

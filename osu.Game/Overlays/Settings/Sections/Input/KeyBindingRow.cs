@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
-using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics;
@@ -17,6 +16,7 @@ using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
+using osu.Game.Audio;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -26,6 +26,7 @@ using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
+using osu.Game.Skinning;
 using osuTK;
 using osuTK.Input;
 using CommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
@@ -102,7 +103,11 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
         private KeyButton? bindTarget;
 
-        private Sample?[]? keypressSamples;
+        private AudioManager audio = null!;
+
+        // Reprise: looked up when played (StableSoundsStore.Get: a stable skin's own key press sounds).
+        [Resolved(canBeNull: true)]
+        private SkinManager? skins { get; set; }
 
         private const float spacing = 5;
 
@@ -244,9 +249,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
                 updateIsDefaultValue();
             }, true);
 
-            keypressSamples = new Sample[4];
-            for (int i = 0; i < keypressSamples.Length; i++)
-                keypressSamples[i] = audioManager.Samples.Get($@"Keyboard/key-press-{1 + i}");
+            audio = audioManager;
         }
 
         protected override void LoadComplete()
@@ -365,7 +368,7 @@ namespace osu.Game.Overlays.Settings.Sections.Input
 
             Debug.Assert(bindTarget != null);
 
-            keypressSamples?[RNG.Next(0, keypressSamples.Length)]?.Play();
+            StableSoundsStore.Get(audio, skins, $@"Keyboard/key-press-{1 + RNG.Next(0, 4)}")?.Play();
 
             bindTarget.UpdateKeyCombination(KeyCombination.FromInputState(e.CurrentState), KeyCombination.FromKey(e.Key));
             if (!isModifier(e.Key)) finalise();

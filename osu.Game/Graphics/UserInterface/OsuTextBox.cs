@@ -17,9 +17,11 @@ using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
+using osu.Game.Audio;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics.Containers;
 using osu.Game.Overlays;
+using osu.Game.Skinning;
 using osuTK;
 
 namespace osu.Game.Graphics.UserInterface
@@ -63,7 +65,13 @@ namespace osu.Game.Graphics.UserInterface
             Deselect
         }
 
-        private Dictionary<FeedbackSampleType, Sample?[]> sampleMap = new Dictionary<FeedbackSampleType, Sample?[]>();
+        // Reprise: the samples' names, looked up when played (StableSoundsStore.Get: a stable skin's own typing sounds, which follow a skin change).
+        private Dictionary<FeedbackSampleType, string[]> sampleMap = new Dictionary<FeedbackSampleType, string[]>();
+
+        private AudioManager audio = null!;
+
+        [Resolved(canBeNull: true)]
+        private SkinManager? skins { get; set; }
 
         /// <summary>
         /// Whether all text should be selected when the <see cref="OsuTextBox"/> gains focus.
@@ -93,22 +101,24 @@ namespace osu.Game.Graphics.UserInterface
             Placeholder.Colour = colourProvider?.Foreground1 ?? new Color4(180, 180, 180, 255);
 
             // Note that `KeyBindingRow` uses similar logic for input feedback, so remember to update there if changing here.
-            var textAddedSamples = new Sample?[4];
-            for (int i = 0; i < textAddedSamples.Length; i++)
-                textAddedSamples[i] = audio.Samples.Get($@"Keyboard/key-press-{1 + i}");
+            this.audio = audio;
 
-            sampleMap = new Dictionary<FeedbackSampleType, Sample?[]>
+            var textAddedSamples = new string[4];
+            for (int i = 0; i < textAddedSamples.Length; i++)
+                textAddedSamples[i] = $@"Keyboard/key-press-{1 + i}";
+
+            sampleMap = new Dictionary<FeedbackSampleType, string[]>
             {
                 { FeedbackSampleType.TextAdd, textAddedSamples },
-                { FeedbackSampleType.TextAddCaps, new[] { audio.Samples.Get(@"Keyboard/key-caps") } },
-                { FeedbackSampleType.TextRemove, new[] { audio.Samples.Get(@"Keyboard/key-delete") } },
-                { FeedbackSampleType.TextConfirm, new[] { audio.Samples.Get(@"Keyboard/key-confirm") } },
-                { FeedbackSampleType.TextInvalid, new[] { audio.Samples.Get(@"Keyboard/key-invalid") } },
-                { FeedbackSampleType.CaretMove, new[] { audio.Samples.Get(@"Keyboard/key-movement") } },
-                { FeedbackSampleType.SelectCharacter, new[] { audio.Samples.Get(@"Keyboard/select-char") } },
-                { FeedbackSampleType.SelectWord, new[] { audio.Samples.Get(@"Keyboard/select-word") } },
-                { FeedbackSampleType.SelectAll, new[] { audio.Samples.Get(@"Keyboard/select-all") } },
-                { FeedbackSampleType.Deselect, new[] { audio.Samples.Get(@"Keyboard/deselect") } }
+                { FeedbackSampleType.TextAddCaps, new[] { @"Keyboard/key-caps" } },
+                { FeedbackSampleType.TextRemove, new[] { @"Keyboard/key-delete" } },
+                { FeedbackSampleType.TextConfirm, new[] { @"Keyboard/key-confirm" } },
+                { FeedbackSampleType.TextInvalid, new[] { @"Keyboard/key-invalid" } },
+                { FeedbackSampleType.CaretMove, new[] { @"Keyboard/key-movement" } },
+                { FeedbackSampleType.SelectCharacter, new[] { @"Keyboard/select-char" } },
+                { FeedbackSampleType.SelectWord, new[] { @"Keyboard/select-word" } },
+                { FeedbackSampleType.SelectAll, new[] { @"Keyboard/select-all" } },
+                { FeedbackSampleType.Deselect, new[] { @"Keyboard/deselect" } }
             };
         }
 
@@ -296,7 +306,7 @@ namespace osu.Game.Graphics.UserInterface
             if (samples.Length == 0)
                 return null;
 
-            return samples[RNG.Next(0, samples.Length)]?.GetChannel();
+            return StableSoundsStore.Get(audio, skins, samples[RNG.Next(0, samples.Length)])?.GetChannel();
         }
 
         protected void PlayFeedbackSample(FeedbackSampleType feedbackSample) => Schedule(() =>

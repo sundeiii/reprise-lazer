@@ -6,8 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using osu.Framework.Audio;
+using osu.Framework.Audio.Sample;
 using osu.Framework.IO.Stores;
 using osu.Game.Configuration;
+using osu.Game.Skinning;
 
 namespace osu.Game.Audio
 {
@@ -46,6 +49,22 @@ namespace osu.Game.Audio
         {
             Enabled = enabled;
             sounds = new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(StableSoundsStore).Assembly), @"Resources/SamplesStable");
+        }
+
+        /// <summary>Stable's name for a sound the game plays ("Keyboard/key-press-1" → "key-press-1"), which a stable skin has its own of, or null when it isn't one of stable's (or they're off).</summary>
+        public static string? StableName(string name) =>
+            Enabled && files.TryGetValue(name, out string? file) ? Path.GetFileNameWithoutExtension(file) : null;
+
+        /// <summary>
+        /// A sound the game plays (its name, "Keyboard/key-press-1"): the current skin's own when it's a stable skin that has it, as stable
+        /// plays them, otherwise stable's default (or the game's own when stable's are off). Looked up when played, so a skin change applies at once.
+        /// </summary>
+        public static ISample? Get(AudioManager audio, SkinManager? skins, string name)
+        {
+            if (skins?.CurrentSkin.Value is LegacySkin skin && StableName(name) is string stableName && skin.GetSample(new SampleInfo(stableName)) is ISample skinned)
+                return skinned;
+
+            return audio.Samples.Get(name);
         }
 
         /// <summary>Stable's file for a sample the game asks for ("Samples/Keyboard/key-press-1.wav"), or null to leave it to the game's own.</summary>

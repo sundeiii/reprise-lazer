@@ -46,6 +46,18 @@ namespace osu.Game.Tests.NonVisual
         }
 
         [Test]
+        public void TestStableNamesForSkins()
+        {
+            using var store = new StableSoundsStore(true);
+
+            // The names a stable skin has its own of.
+            Assert.That(StableSoundsStore.StableName(@"Keyboard/key-press-3"), Is.EqualTo(@"key-press-3"));
+            Assert.That(StableSoundsStore.StableName(@"UI/notification-mention"), Is.EqualTo(@"match-start"));
+            Assert.That(StableSoundsStore.StableName(@"Multiplayer/player-joined"), Is.EqualTo(@"match-join"));
+            Assert.That(StableSoundsStore.StableName(@"Keyboard/key-invalid"), Is.Null);
+        }
+
+        [Test]
         public void TestOffAnswersNothing()
         {
             using var store = new StableSoundsStore(false);
