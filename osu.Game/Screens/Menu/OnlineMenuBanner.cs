@@ -15,6 +15,7 @@ using osu.Framework.Input.Events;
 using osu.Framework.Threading;
 using osu.Framework.Utils;
 using osu.Game.Graphics.Containers;
+using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 
@@ -36,6 +37,9 @@ namespace osu.Game.Screens.Menu
         private int displayIndex = -1;
 
         private ScheduledDelegate? nextDisplay;
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -69,7 +73,7 @@ namespace osu.Game.Screens.Menu
             if (!FetchOnlineContent)
                 return;
 
-            var request = new GetMenuContentRequest();
+            var request = new GetMenuContentRequest(api.Endpoints.WebsiteUrl);
             Task.Run(request.Perform)
                 .ContinueWith(r =>
                 {
