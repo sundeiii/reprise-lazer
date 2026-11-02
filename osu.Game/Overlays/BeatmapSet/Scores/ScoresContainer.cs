@@ -3,6 +3,8 @@
 
 #nullable disable
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -17,7 +19,9 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.Leaderboards;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play.Leaderboards;
 using osuTK;
@@ -49,7 +53,23 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
         [Resolved]
         private RulesetStore rulesets { get; set; }
 
+        /// <summary>
+        /// Reprise: with Relax or Autopilot on (the toolbar's switch), the scores are that mode's (osurx, ...), as song select's.
+        /// </summary>
+        [Resolved(CanBeNull = true)]
+        private IBindable<IReadOnlyList<Mod>> selectedMods { get; set; }
+
         private GetScoresRequest getScoresRequest;
+
+        /// <summary>The leaderboard's ruleset: the beatmap's, or its Relax/Autopilot mode when that's on.</summary>
+        private IRulesetInfo requestRuleset
+        {
+            get
+            {
+                var beatmapRuleset = Beatmap.Value.Ruleset;
+                return rulesets.GetRuleset(beatmapRuleset.OnlineID)?.ForMods(selectedMods?.Value ?? Array.Empty<Mod>()) ?? beatmapRuleset;
+            }
+        }
 
         private CancellationTokenSource loadCancellationSource;
 
@@ -84,7 +104,7 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                     MD5Hash = apiBeatmap.MD5Hash
                 };
 
-                var scores = value.Scores.Select(s => s.ToScoreInfo(rulesets, beatmapInfo)).OrderByTotalScore().ToArray();
+                var scores = value.Scores.Select(s => s.ToScoreInfo(rulesets, beatmapInfo)).OrderByServerOr(variant).ToArray();
                 var topScore = scores.First();
 
                 scoreTable.DisplayScores(scores, apiBeatmap.Status.GrantsPerformancePoints());
@@ -216,6 +236,15 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
 
             modSelector.SelectedMods.CollectionChanged += (_, _) => getScores();
 
+            // Turning Relax or Autopilot on or off is another leaderboard.
+            selectedMods?.BindValueChanged(mods =>
+            {
+                if (Beatmap.Value?.Ruleset is not IRulesetInfo beatmapRuleset || rulesets.GetRuleset(beatmapRuleset.OnlineID) is not RulesetInfo r)
+                    return;
+                if (r.ForMods(mods.OldValue ?? Array.Empty<Mod>()).ShortName != r.ForMods(mods.NewValue ?? Array.Empty<Mod>()).ShortName)
+                    getScores();
+            });
+
             Beatmap.BindValueChanged(onBeatmapChanged);
             user.BindValueChanged(onUserChanged, true);
         }
@@ -276,9 +305,11 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
             Show();
             loading.Show();
 
-            getScoresRequest = new GetScoresRequest(Beatmap.Value, Beatmap.Value.Ruleset, scope.Value, modSelector.SelectedMods);
+            var ruleset = requestRuleset;
+            getScoresRequest = new GetScoresRequest(Beatmap.Value, ruleset, scope.Value, modSelector.SelectedMods);
             getScoresRequest.Success += scores =>
             {
+                variant = ruleset.ShortName != Beatmap.Value.Ruleset.ShortName;
                 Scores = scores;
 
                 if (!scores.Scores.Any())
@@ -287,6 +318,9 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
 
             api.Queue(getScoresRequest);
         }
+
+        /// <summary>Whether the scores shown are a Relax/Autopilot mode's (kept in the server's order).</summary>
+        private bool variant;
 
         private bool userIsSupporter => api.IsLoggedIn && api.LocalUser.Value.IsSupporter;
     }
