@@ -459,6 +459,14 @@ namespace osu.Game.Screens.Ranking
         {
             const double applauseVolume = 0.8f;
 
+            // Reprise: not while hidden under the redesigned results screen or osu!stable's layout (the game's grade ring plays it then,
+            // so it played twice).
+            for (Drawable? d = this; d != null; d = d.Parent)
+            {
+                if (d.Alpha <= 0)
+                    return;
+            }
+
             rankApplauseSound?.Dispose();
 
             var applauseSamples = new List<string>();
