@@ -7,7 +7,7 @@ using System;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
-using osu.Framework.Audio.Sample;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -30,23 +30,18 @@ namespace osu.Game.Screens.Menu
 
         protected override string BeatmapFile => "triangles.osz";
 
-        [Resolved]
-        private AudioManager audio { get; set; }
+        /// <summary>
+        /// Reprise: when the theme's mixed-in "welcome to osu!" voice is over (the song comes back as the rulesets come in).
+        /// </summary>
+        private const double voice_end = 1400;
 
-        private Sample welcome;
+        private readonly BindableDouble voiceMute = new BindableDouble(1);
 
         private TrianglesIntroSequence intro;
 
         public IntroTriangles([CanBeNull] Func<MainMenu> createNextScreen = null)
             : base(createNextScreen)
         {
-        }
-
-        [BackgroundDependencyLoader]
-        private void load()
-        {
-            if (MenuVoice.Value)
-                welcome = audio.Samples.Get(@"Intro/welcome");
         }
 
         protected override void LogoArriving(OsuLogo logo, bool resuming)
@@ -75,15 +70,15 @@ namespace osu.Game.Screens.Menu
                     if (DidLoadMenu)
                         return;
 
+                    // Reprise: no "welcome to osu!" voice. Without the theme, the same delay as IntroCircles (its voice isn't played);
+                    // with it, the theme is silent while its mixed-in voice plays.
                     if (!UsingThemedIntro)
-                    {
-                        // If the user has requested no theme, fallback to the same intro voice and delay as IntroCircles.
-                        // The triangles intro voice and theme are combined which makes it impossible to use.
-                        welcome?.Play();
                         Scheduler.AddDelayed(StartTrack, IntroCircles.TRACK_START_DELAY);
-                    }
                     else
+                    {
+                        muteVoice();
                         StartTrack();
+                    }
 
                     // no-op for the case of themed intro, no harm in calling for both scenarios as a safety measure.
                     decouplingClock.Start();
@@ -91,8 +86,24 @@ namespace osu.Game.Screens.Menu
             }
         }
 
+        private void muteVoice()
+        {
+            voiceMute.Value = 0;
+            Track.AddAdjustment(AdjustableProperty.Volume, voiceMute);
+            Scheduler.AddDelayed(unmuteVoice, voice_end);
+        }
+
+        private void unmuteVoice()
+        {
+            voiceMute.Value = 1;
+            Track?.RemoveAdjustment(AdjustableProperty.Volume, voiceMute);
+        }
+
         public override void OnSuspending(ScreenTransitionEvent e)
         {
+            // Reprise: never leave the theme silent (it plays on in the menu).
+            unmuteVoice();
+
             base.OnSuspending(e);
 
             // important as there is a clock attached to a track which will likely be disposed before returning to this screen.
@@ -205,7 +216,7 @@ namespace osu.Game.Screens.Menu
 
                     using (BeginDelayedSequence(text_4))
                     {
-                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to osu!");
+                        welcomeText.FadeIn().OnComplete(t => t.Text = "welcome to reprise");
                         welcomeText.TransformTo(nameof(welcomeText.Spacing), new Vector2(50, 0), 5000);
                     }
 
