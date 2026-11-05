@@ -316,6 +316,8 @@ namespace osu.Game
             Resources.AddStore(new Sounds2023Store(LocalConfig.Get<bool>(OsuSetting.Sounds2023)));
             // Reprise: the 2023 interface (its icons are added as a font below).
             Interface2023.Apply(LocalConfig.Get<bool>(OsuSetting.Interface2023));
+            // Reprise: our own versions of osu!'s resources (the main menu logo), in front of osu!'s.
+            Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), @"Resources/Overrides"));
             Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));
             // This game's own (osu!stable's font and textures for the stable layouts).
             Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), @"Resources"));
