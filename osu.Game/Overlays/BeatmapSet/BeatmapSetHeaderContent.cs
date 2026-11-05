@@ -873,6 +873,14 @@ namespace osu.Game.Overlays.BeatmapSet
                             updateDetails(set, beatmap);
                         }, creationParameters: t => t.Colour = colours.Content2);
                     }
+                    else if (tagsExpanded)
+                    {
+                        f.AddLink(@"show less", () =>
+                        {
+                            tagsExpanded = false;
+                            updateDetails(set, beatmap);
+                        }, creationParameters: t => t.Colour = colours.Content2);
+                    }
                 }));
             }
 
@@ -1347,10 +1355,14 @@ namespace osu.Game.Overlays.BeatmapSet
                         Action = () => header.game?.PresentBeatmap(set, b => b.OnlineID == header.Picker.Beatmap.Value?.OnlineID);
                         break;
 
+                    // Reprise: dark, filling with its green as the download goes (full while it's imported).
                     case DownloadState.Downloading:
                     case DownloadState.Importing:
-                        AddText(@"Downloading...");
+                        AddText(state == DownloadState.Importing ? @"Importing..." : @"Downloading...");
                         Enabled.Value = false;
+
+                        if (header.downloadTracker != null)
+                            ShowProgress(header.downloadTracker.Progress);
                         break;
                 }
             }

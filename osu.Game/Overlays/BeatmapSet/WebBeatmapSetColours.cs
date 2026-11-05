@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -222,8 +223,10 @@ namespace osu.Game.Overlays.BeatmapSet
     public partial class WebPillButton : OsuClickableContainer
     {
         private readonly Box background;
+        private readonly Box progressFill;
         private readonly FillFlowContainer content;
         private Color4 colour;
+        private IBindable<double>? progress;
 
         public Color4 BackgroundColour
         {
@@ -231,8 +234,22 @@ namespace osu.Game.Overlays.BeatmapSet
             set
             {
                 colour = value;
-                background.Colour = value;
+                background.Colour = progress != null ? dimmed : value;
+                progressFill.Colour = value;
             }
+        }
+
+        private Color4 dimmed => colour.Darken(1.2f);
+
+        /// <summary>
+        /// Reprise: darkens the button and fills it with its colour from the left as <paramref name="value"/> goes from 0 to 1 (a download).
+        /// </summary>
+        public void ShowProgress(IBindable<double> value)
+        {
+            progress = value.GetBoundCopy();
+            background.Colour = dimmed;
+            progressFill.Alpha = 1;
+            progress.BindValueChanged(p => progressFill.ResizeWidthTo((float)Math.Clamp(p.NewValue, 0, 1), 200, Easing.OutQuint), true);
         }
 
         public WebPillButton()
@@ -245,6 +262,7 @@ namespace osu.Game.Overlays.BeatmapSet
             Children = new Drawable[]
             {
                 background = new Box { RelativeSizeAxes = Axes.Both },
+                progressFill = new Box { RelativeSizeAxes = Axes.Both, Width = 0, Alpha = 0 },
                 content = new FillFlowContainer
                 {
                     Anchor = Anchor.Centre,
@@ -303,13 +321,15 @@ namespace osu.Game.Overlays.BeatmapSet
 
         protected override bool OnHover(HoverEvent e)
         {
-            background.FadeColour(colour.Lighten(0.1f), 120);
+            if (progress == null)
+                background.FadeColour(colour.Lighten(0.1f), 120);
             return base.OnHover(e);
         }
 
         protected override void OnHoverLost(HoverLostEvent e)
         {
-            background.FadeColour(colour, 120);
+            if (progress == null)
+                background.FadeColour(colour, 120);
             base.OnHoverLost(e);
         }
     }
