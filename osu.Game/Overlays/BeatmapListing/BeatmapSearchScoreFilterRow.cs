@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
@@ -13,6 +14,7 @@ using osu.Game.Online.Leaderboards;
 using osu.Game.Resources.Localisation.Web;
 using osu.Game.Scoring;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Overlays.BeatmapListing
 {
@@ -71,11 +73,12 @@ namespace osu.Game.Overlays.BeatmapListing
 
             protected override LocalisableString LabelFor(ScoreRank value) => value.GetLocalisableDescription();
 
-            // The website's: half faded, 80% under the mouse, whole when chosen (with the dot).
+            // The website's: half faded, 80% under the mouse, whole when chosen (with the dot). Through the colour, as the categories' pills
+            // (the tab control resets the alpha of every item it lays out).
             protected override void UpdateState()
             {
                 base.UpdateState();
-                this.FadeTo(Active.Value ? 1 : IsHovered ? 0.8f : 0.5f, 120, Easing.OutQuint);
+                this.FadeColour(Color4.White.Opacity(Active.Value ? 1 : IsHovered ? 0.8f : 0.5f), 120, Easing.OutQuint);
             }
         }
     }

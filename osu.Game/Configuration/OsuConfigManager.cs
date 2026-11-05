@@ -151,6 +151,7 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.ExternalLinkWarning, true);
             SetDefault(OsuSetting.PreferNoVideo, false);
+            SetDefault(OsuSetting.BeatmapSetCoverExpanded, false);
 
             SetDefault(OsuSetting.ShowOnlineExplicitContent, false);
 
@@ -646,6 +647,11 @@ namespace osu.Game.Configuration
         /// Reprise: whether this config has been moved to the Circles intro (once, on updating).
         /// </summary>
         IntroCirclesDefaultApplied,
+
+        /// <summary>
+        /// Reprise: whether a beatmap set's page opens with its cover expanded (as it was last left).
+        /// </summary>
+        BeatmapSetCoverExpanded,
     }
 
     public enum ResultScreenStyle

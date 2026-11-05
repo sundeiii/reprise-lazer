@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Shapes;
@@ -11,6 +12,7 @@ using osu.Game.Beatmaps.Drawables.Cards.Web;
 using osu.Game.Graphics;
 using osu.Game.Resources.Localisation.Web;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Overlays.BeatmapListing
 {
@@ -97,10 +99,11 @@ namespace osu.Game.Overlays.BeatmapListing
                 }
             }
 
-            // The website's: 55% faded, 85% under the mouse, whole when chosen.
+            // The website's: 55% faded, 85% under the mouse, whole when chosen. Through the colour, not the alpha: the tab control shows
+            // (alpha 1) every item that fits whenever it lays them out, which left them all looking chosen until each was hovered.
             protected override void UpdateState()
             {
-                this.FadeTo(Active.Value ? 1 : IsHovered ? 0.85f : 0.55f, 120, Easing.OutQuint);
+                this.FadeColour(Color4.White.Opacity(Active.Value ? 1 : IsHovered ? 0.85f : 0.55f), 120, Easing.OutQuint);
             }
         }
     }

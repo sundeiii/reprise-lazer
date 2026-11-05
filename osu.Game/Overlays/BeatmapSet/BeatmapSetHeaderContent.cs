@@ -108,8 +108,6 @@ namespace osu.Game.Overlays.BeatmapSet
         [Resolved]
         private BeatmapModelDownloader? downloader { get; set; }
 
-        private Bindable<bool> preferNoVideo = null!;
-
         public BeatmapSetHeaderContent()
         {
             RelativeSizeAxes = Axes.X;
@@ -404,7 +402,8 @@ namespace osu.Game.Overlays.BeatmapSet
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            preferNoVideo = config.GetBindable<bool>(OsuSetting.PreferNoVideo);
+            // Reprise: the cover stays as it was last left (expanded or not), from one beatmap set to the next.
+            coverExpanded.BindTo(config.GetBindable<bool>(OsuSetting.BeatmapSetCoverExpanded));
 
             titleBackground.Colour = colours.Background4;
             bodyBackground.Colour = colours.Background5;
@@ -436,6 +435,7 @@ namespace osu.Game.Overlays.BeatmapSet
         {
             Picker.BeatmapSet = rulesetSelector.BeatmapSet = beatmapAvailability.BeatmapSet = set;
             coverImage.OnlineInfo = set;
+            tagsExpanded = false;
 
             downloadTracker?.RemoveAndDisposeImmediately();
             downloadTracker = null;
@@ -854,18 +854,34 @@ namespace osu.Game.Overlays.BeatmapSet
 
             if (tags.Length > 0)
             {
+                // Reprise: the first few only, until asked for the rest (a long list pushed everything else down the page).
+                int shown = tagsExpanded ? tags.Length : Math.Min(tags.Length, max_tags_shown);
+
                 rows.Add(detail(@"Tag", f =>
                 {
-                    foreach (string tag in tags)
+                    foreach (string tag in tags.Take(shown))
                     {
                         f.AddLink(tag, LinkAction.SearchBeatmapSet, tag);
                         f.AddText(@" ");
+                    }
+
+                    if (shown < tags.Length)
+                    {
+                        f.AddLink($@"+{tags.Length - shown} more", () =>
+                        {
+                            tagsExpanded = true;
+                            updateDetails(set, beatmap);
+                        }, creationParameters: t => t.Colour = colours.Content2);
                     }
                 }));
             }
 
             details.Child = rows;
         }
+
+        private const int max_tags_shown = 12;
+
+        private bool tagsExpanded;
 
         private Drawable detail(LocalisableString label, Action<LinkFlowContainer> fill)
         {
@@ -1181,8 +1197,7 @@ namespace osu.Game.Overlays.BeatmapSet
 
         #region Buttons
 
-        // Favourite (pink, with the count), Download (with or without the video), osu!direct (downloads it into the game, or plays it once
-        // there) and "…" (the discussion).
+        // Favourite (pink, with the count), Download (with or without the video) or Go to beatmap once it's here, and "…" (the discussion).
         private void updateButtons()
         {
             var set = BeatmapSet.Value;
@@ -1194,12 +1209,14 @@ namespace osu.Game.Overlays.BeatmapSet
 
             bool available = downloadTracker.State.Value == DownloadState.LocallyAvailable;
 
+            // Reprise: one button for where it's at: Download (it's not here), Downloading..., or Go to beatmap (it's here). In the game,
+            // the website's second "osu!direct" button only downloaded it again.
             if (!set.Availability.DownloadDisabled || available)
             {
-                if (!available)
+                if (downloadTracker.State.Value == DownloadState.NotDownloaded)
                     downloadButtonsContainer.Add(new DownloadButton(this, set));
-
-                downloadButtonsContainer.Add(new DirectButton(this, set, downloadTracker.State.Value));
+                else
+                    downloadButtonsContainer.Add(new DirectButton(this, set, downloadTracker.State.Value));
             }
 
             // The download buttons' container stays (it's only moved).
@@ -1325,7 +1342,7 @@ namespace osu.Game.Overlays.BeatmapSet
                 switch (state)
                 {
                     case DownloadState.LocallyAvailable:
-                        AddText(@"osu!direct");
+                        AddText(@"Go to beatmap");
                         AddIcon(FontAwesome.Solid.AngleDoubleRight);
                         Action = () => header.game?.PresentBeatmap(set, b => b.OnlineID == header.Picker.Beatmap.Value?.OnlineID);
                         break;
@@ -1334,11 +1351,6 @@ namespace osu.Game.Overlays.BeatmapSet
                     case DownloadState.Importing:
                         AddText(@"Downloading...");
                         Enabled.Value = false;
-                        break;
-
-                    default:
-                        AddText(@"osu!direct");
-                        Action = () => header.download(set, header.preferNoVideo.Value);
                         break;
                 }
             }
