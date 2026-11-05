@@ -87,6 +87,9 @@ namespace osu.Game.Overlays.BeatmapSet
 
         private readonly BindableBool coverExpanded = new BindableBool();
 
+        // Held here: the config hands out a weakly bound copy, which would be collected (and the cover's state no longer saved) otherwise.
+        private Bindable<bool> coverExpandedSetting = null!;
+
         private BeatmapDownloadTracker? downloadTracker;
         private readonly Bindable<BeatmapSetFavouriteState> favouriteState = new Bindable<BeatmapSetFavouriteState>();
 
@@ -403,7 +406,8 @@ namespace osu.Game.Overlays.BeatmapSet
         private void load(OsuConfigManager config)
         {
             // Reprise: the cover stays as it was last left (expanded or not), from one beatmap set to the next.
-            coverExpanded.BindTo(config.GetBindable<bool>(OsuSetting.BeatmapSetCoverExpanded));
+            coverExpandedSetting = config.GetBindable<bool>(OsuSetting.BeatmapSetCoverExpanded);
+            coverExpanded.BindTo(coverExpandedSetting);
 
             titleBackground.Colour = colours.Background4;
             bodyBackground.Colour = colours.Background5;

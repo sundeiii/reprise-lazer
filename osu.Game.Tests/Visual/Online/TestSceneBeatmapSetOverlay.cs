@@ -14,6 +14,10 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using osu.Framework.Testing;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Sprites;
+using osu.Game.Configuration;
+using osuTK.Input;
 using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Localisation;
@@ -40,6 +44,9 @@ namespace osu.Game.Tests.Visual.Online
 
         [Resolved]
         private IRulesetStore rulesets { get; set; } = null!;
+
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
 
         [SetUp]
         public void SetUp() => Schedule(() => SelectedMods.Value = Array.Empty<Mod>());
@@ -169,6 +176,39 @@ namespace osu.Game.Tests.Visual.Online
             });
 
             downloadAssert(false);
+        }
+
+        [Test]
+        public void TestCoverToggleRemembered()
+        {
+            Drawable toggle() => overlay.ChildrenOfType<Drawable>().Single(d => d.GetType().Name == "CollapseToggle");
+
+            AddStep(@"start collapsed", () => config.SetValue(OsuSetting.BeatmapSetCoverExpanded, false));
+            AddStep(@"show set", () => overlay.ShowBeatmapSet(getBeatmapSet()));
+            AddUntilStep(@"toggle shown", () => overlay.ChildrenOfType<Drawable>().Any(d => d.GetType().Name == "CollapseToggle" && d.IsPresent));
+
+            AddStep(@"click toggle", () =>
+            {
+                InputManager.MoveMouseTo(toggle());
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert(@"expanded and remembered", () => config.Get<bool>(OsuSetting.BeatmapSetCoverExpanded));
+
+            AddStep(@"collect garbage", () =>
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            });
+            AddStep(@"click toggle again", () =>
+            {
+                InputManager.MoveMouseTo(toggle());
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert(@"collapsed and remembered", () => !config.Get<bool>(OsuSetting.BeatmapSetCoverExpanded));
+
+            AddStep(@"show another set", () => overlay.ShowBeatmapSet(getBeatmapSet()));
+            AddStep(@"expand from the setting", () => config.SetValue(OsuSetting.BeatmapSetCoverExpanded, true));
+            AddUntilStep(@"toggle shows expanded", () => toggle().ChildrenOfType<SpriteIcon>().Single().Icon.Equals(FontAwesome.Solid.ChevronUp));
         }
 
         [Test]
