@@ -62,7 +62,7 @@ namespace osu.Game.Screens.Menu
         protected Sample SampleDownbeat;
 
         private readonly Container colourAndTriangles;
-        private readonly LogoCircles triangles;
+        private readonly TrianglesV2 triangles;
 
         /// <summary>
         /// Return value decides whether the logo should play its own sample for the click action.
@@ -190,11 +190,13 @@ namespace osu.Game.Screens.Menu
                                                                             RelativeSizeAxes = Axes.Both,
                                                                             Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex(@"ff66ab"), Color4Extensions.FromHex(@"cc5289")),
                                                                         },
-                                                                        // Reprise: circles, not osu!'s triangles.
-                                                                        triangles = new LogoCircles
+                                                                        triangles = new TrianglesV2
                                                                         {
                                                                             Anchor = Anchor.Centre,
                                                                             Origin = Anchor.Centre,
+                                                                            Thickness = 0.009f,
+                                                                            ScaleAdjust = 3,
+                                                                            SpawnRatio = 1.4f,
                                                                             Colour = ColourInfo.GradientVertical(Color4Extensions.FromHex(@"ff66ab"), Color4Extensions.FromHex(@"b6346f")),
                                                                             RelativeSizeAxes = Axes.Both,
                                                                         },

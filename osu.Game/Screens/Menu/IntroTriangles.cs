@@ -31,9 +31,9 @@ namespace osu.Game.Screens.Menu
         protected override string BeatmapFile => "triangles.osz";
 
         /// <summary>
-        /// Reprise: when the theme's mixed-in "welcome to osu!" voice is over (the song comes back as the rulesets come in).
+        /// Reprise: when the theme's mixed-in "welcome to osu!" voice is over (measured in the song: the music comes in at 1.5s).
         /// </summary>
-        private const double voice_end = 1400;
+        private const double voice_end = 1500;
 
         private readonly BindableDouble voiceMute = new BindableDouble(1);
 
