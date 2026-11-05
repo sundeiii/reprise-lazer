@@ -41,6 +41,7 @@ namespace osu.Game.Configuration
             : base(storage)
         {
             migrateCustomApiUrl();
+            migrateIntroToCircles();
         }
 
         /// <summary>
@@ -55,6 +56,20 @@ namespace osu.Game.Configuration
                 return;
 
             customApiUrl.Value = Regex.Replace(customApiUrl.Value, @"(?<![\w.-])(?:lazer-api\.)?rinarii\.(?:de|xyz)\b(?![.-])", REPRISE_HOST, RegexOptions.IgnoreCase);
+        }
+
+        /// <summary>
+        /// Reprise: players on an earlier build are moved to the Circles intro once (the default now); picking another one after that sticks.
+        /// </summary>
+        private void migrateIntroToCircles()
+        {
+            var migrated = GetBindable<bool>(OsuSetting.IntroCirclesDefaultApplied);
+
+            if (migrated.Value)
+                return;
+
+            SetValue(OsuSetting.IntroSequence, IntroSequence.Circles);
+            migrated.Value = true;
         }
 
         protected override void InitialiseDefaults()
@@ -251,7 +266,8 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.UIHoldActivationDelay, 200.0, 0.0, 500.0, 50.0);
 
-            SetDefault(OsuSetting.IntroSequence, IntroSequence.Triangles);
+            SetDefault(OsuSetting.IntroSequence, IntroSequence.Circles);
+            SetDefault(OsuSetting.IntroCirclesDefaultApplied, false);
 
             SetDefault(OsuSetting.MenuBackgroundSource, BackgroundSource.Skin);
             SetDefault(OsuSetting.SeasonalBackgroundMode, SeasonalBackgroundMode.Sometimes);
@@ -625,6 +641,11 @@ namespace osu.Game.Configuration
         /// </summary>
         PMFriendsOnly,
         HitsoundVolume,
+
+        /// <summary>
+        /// Reprise: whether this config has been moved to the Circles intro (once, on updating).
+        /// </summary>
+        IntroCirclesDefaultApplied,
     }
 
     public enum ResultScreenStyle
