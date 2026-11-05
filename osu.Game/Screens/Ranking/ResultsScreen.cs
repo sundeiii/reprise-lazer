@@ -510,10 +510,10 @@ namespace osu.Game.Screens.Ranking
             stablePerformance.Value = null;
 
             if (hasSecondPage)
-            {
                 fetchPreviousBest();
-                calculatePerformance(score!);
-            }
+
+            // Reprise: for every score, not only one just played: a replay (or a local score) has no pp of its own, so it showed 0.
+            calculatePerformance(score!);
 
             var details = new LegacyRankingDetails
             {
@@ -587,7 +587,8 @@ namespace osu.Game.Screens.Ranking
         {
             stablePerformanceCancellation?.Cancel();
 
-            if (score.PP is double pp)
+            // Reprise: a saved 0 is no pp worked out either (as on a replay imported or saved before it was): worked out here then.
+            if (score.PP is double pp && pp > 0)
             {
                 stablePerformance.Value = pp;
                 return;

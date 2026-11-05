@@ -741,12 +741,13 @@ namespace osu.Game.Screens.Ranking.Modern
                     X = 47,
                     AutoSizeAxes = Axes.Both,
                     Direction = FillDirection.Horizontal,
-                    Spacing = new Vector2(-8, 0),
+                    // An even 4px between the tabs' slanted edges (each tab's shape stays within its width).
+                    Spacing = new Vector2(-6, 0),
                     Children = new Drawable[]
                     {
                         new BigButton("Back", FontAwesome.Solid.ArrowCircleLeft, Color4Extensions.FromHex("de31ae"), Color4Extensions.FromHex("ff86dd"), details.Back, iconFirst: true)
                         {
-                            Margin = new MarginPadding { Top = 0, Right = 38 },
+                            Margin = new MarginPadding { Top = 0, Right = 26 },
                         },
                         new TabButton("Save Replay", FontAwesome.Solid.Download, Color4Extensions.FromHex("66ccff"), details.ExportReplay),
                         new TabButton("Screenshot", FontAwesome.Solid.Camera, Color4Extensions.FromHex("ff66ab"), () => screenshots?.TakeScreenshotAsync()),
@@ -1075,17 +1076,28 @@ namespace osu.Game.Screens.Ranking.Modern
         {
             private readonly Box glow;
 
+            private const float width = 150;
+            private const float height = 80;
+
+            // Sheared about its top, as SlantedBox is: the top starts this far in, the bottom at the left edge, so it stays within its
+            // own width (it reached under the tab to its left).
+            private const float slant = SHEAR * height;
+
+            /// <summary>How far right of the button's middle the slanted shape's middle is, at <paramref name="y"/> from its top.</summary>
+            private static float across(float y) => slant * (0.5f - y / height);
+
             public TabButton(string text, IconUsage icon, Color4 colour, Action? action)
             {
                 Action = action;
-                Size = new Vector2(150, 80);
+                Size = new Vector2(width, height);
                 Alpha = action != null ? 1 : 0.4f;
 
                 Children = new Drawable[]
                 {
                     new Container
                     {
-                        RelativeSizeAxes = Axes.Both,
+                        X = slant,
+                        Size = new Vector2(width - slant, height),
                         Shear = new Vector2(SHEAR, 0),
                         Masking = true,
                         CornerRadius = 10,
@@ -1099,6 +1111,8 @@ namespace osu.Game.Screens.Ranking.Modern
                     {
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
+                        // Each piece centred on the slant at its own height.
+                        X = across(11 + 22 / 2f),
                         Y = 11,
                         Size = new Vector2(22),
                         Icon = icon,
@@ -1107,6 +1121,7 @@ namespace osu.Game.Screens.Ranking.Modern
                     {
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
+                        X = across(44 + 8),
                         Y = 44,
                         Text = text,
                         Font = OsuFont.TorusAlternate.With(size: 16, weight: FontWeight.SemiBold),
@@ -1115,6 +1130,7 @@ namespace osu.Game.Screens.Ranking.Modern
                     {
                         Anchor = Anchor.BottomCentre,
                         Origin = Anchor.BottomCentre,
+                        X = across(height - 1.5f),
                         Size = new Vector2(121, 3),
                         Masking = true,
                         CornerRadius = 1.5f,
