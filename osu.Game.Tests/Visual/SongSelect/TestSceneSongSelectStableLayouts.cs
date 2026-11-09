@@ -53,7 +53,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableFooter()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -62,12 +62,12 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddAssert("screen footer off", () => SongSelect.FooterContent.Value.Mode != ScreenFooterContent.FooterMode.Argon);
             AddUntilStep("screen footer hidden", () => ScreenFooter.State.Value == Visibility.Hidden);
 
-            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, false));
             AddUntilStep("stable footer gone", () => !SongSelect.ChildrenOfType<LegacyFooter>().Any());
             AddAssert("screen footer on", () => SongSelect.FooterContent.Value.Mode == ScreenFooterContent.FooterMode.Argon);
             AddUntilStep("screen footer shown", () => ScreenFooter.State.Value == Visibility.Visible);
 
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddUntilStep("stable footer shown", () => SongSelect.ChildrenOfType<LegacyFooter>().Any(f => f.IsLoaded));
 
             AddStep("set lazer skin", () => skins.CurrentSkinInfo.Value = skins.CurrentSkinInfo.Default);
@@ -75,7 +75,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -84,7 +84,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStatisticsWithoutUser()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -113,7 +113,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -122,7 +122,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableTop()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("no grouping", () => Config.SetValue(OsuSetting.SongSelectGroupMode, GroupMode.None));
 
             LoadSongSelect();
@@ -163,7 +163,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddUntilStep("search shown", () => SongSelect.ChildrenOfType<LegacySongSelectTop>().Single().Dropdowns
                                                          .ChildrenOfType<Graphics.Sprites.OsuSpriteText>().Any(t => t.Text == "side by side" && t.Alpha == 1));
 
-            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, false));
             AddUntilStep("stable top gone", () => !SongSelect.ChildrenOfType<LegacySongSelectTop>().Any());
             AddAssert("title wedge shown", () => SongSelect.ChildrenOfType<BeatmapTitleWedge>().Single().Parent!.IsPresent);
 
@@ -178,7 +178,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableLeaderboard()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("local ranking", () => Config.SetValue(OsuSetting.BeatmapDetailTab, BeatmapDetailTab.Local));
 
             LoadSongSelect();
@@ -235,7 +235,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             AddStep("choose selected mods ranking", () => SongSelect.ChildrenOfType<LegacySongSelectLeaderboard>().Single().RankingType.Value = LegacyRankingType.SelectedMods);
             AddAssert("song select filters by mods", () => Config.Get<bool>(OsuSetting.BeatmapDetailModsFilter));
 
-            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, false));
             AddUntilStep("stable leaderboard gone", () => !SongSelect.ChildrenOfType<LegacySongSelectLeaderboard>().Any());
             AddAssert("song select's leaderboard back", () => SongSelect.ChildrenOfType<BeatmapDetailsArea>().Single().Parent!.IsPresent);
 
@@ -255,7 +255,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestLayoutVersions()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("2015", () => Config.SetValue(OsuSetting.StableLayoutVersion, StableLayoutVersion.Stable2015));
 
             LoadSongSelect();
@@ -279,7 +279,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 Config.SetValue(OsuSetting.StableLayoutVersion, StableLayoutVersion.Automatic);
                 skins.CurrentSkinInfo.SetDefault();
             });
@@ -296,7 +296,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             LegacySongSelectTop? top = null;
 
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -329,7 +329,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -340,7 +340,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             string? withoutMods = null;
 
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -378,7 +378,7 @@ namespace osu.Game.Tests.Visual.SongSelect
             string? withoutMods = null;
 
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
 
@@ -418,7 +418,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableBeatmapList()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("no grouping", () => Config.SetValue(OsuSetting.SongSelectGroupMode, GroupMode.None));
 
             LoadSongSelect();
@@ -446,7 +446,7 @@ namespace osu.Game.Tests.Visual.SongSelect
                                                                                    .All(p => p.DifficultyText.Length == 0));
             AddAssert("difficulties named", () => visibleStablePanels().Where(p => p.Item?.Model is GroupedBeatmap).All(p => p.DifficultyText.Length > 0));
 
-            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, false));
             AddUntilStep("lazer panels back", () => SongSelect.ChildrenOfType<Panel>().Any(p => p.IsPresent));
             AddUntilStep("stable panels gone", () => !visibleStablePanels().Any());
 
@@ -460,7 +460,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableGroupHeaders()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("group by artist", () => Config.SetValue(OsuSetting.SongSelectGroupMode, GroupMode.Artist));
 
             LoadSongSelect();
@@ -483,7 +483,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableRandomKey()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             for (int i = 0; i < 5; i++)
@@ -512,7 +512,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableBeatmapOptions()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -573,7 +573,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -582,7 +582,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestStableModSelect()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
             AddStep("no mods", () => SelectedMods.Value = System.Array.Empty<osu.Game.Rulesets.Mods.Mod>());
 
             LoadSongSelect();
@@ -629,7 +629,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -646,7 +646,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestModeIconDrawnAdditively()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
 
@@ -666,7 +666,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }
@@ -675,7 +675,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         public void TestModeButtonChangesRuleset()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
 
             LoadSongSelect();
             ImportBeatmapForRuleset(0);
@@ -698,7 +698,7 @@ namespace osu.Game.Tests.Visual.SongSelect
 
             AddStep("reset", () =>
             {
-                Config.SetValue(OsuSetting.StableLayouts, false);
+                Config.SetValue(OsuSetting.StableSongSelect, false);
                 skins.CurrentSkinInfo.SetDefault();
             });
         }

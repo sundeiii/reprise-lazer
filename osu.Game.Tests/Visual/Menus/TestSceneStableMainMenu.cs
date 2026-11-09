@@ -29,7 +29,7 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("don't fetch online content", () => Game.ChildrenOfType<OnlineMenuBanner>().Single().FetchOnlineContent = false);
             AddStep("disable return to top on idle", () => buttons.ReturnToTopOnIdle = false);
             AddStep("set legacy skin", () => Game.Dependencies.Get<SkinManager>().CurrentSkinInfo.Value = Game.Dependencies.Get<SkinManager>().DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => Game.LocalConfig.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => Game.LocalConfig.SetValue(OsuSetting.StableMainMenu, true));
         }
 
         [Test]
@@ -85,7 +85,7 @@ namespace osu.Game.Tests.Visual.Menus
             AddStep("open the menu again", () => buttons.State = ButtonSystemState.TopLevel);
             AddUntilStep("corners back", () => corners().Alpha == 1);
 
-            AddStep("stop using stable layouts", () => Game.LocalConfig.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => Game.LocalConfig.SetValue(OsuSetting.StableMainMenu, false));
             AddUntilStep("game's menu", () => !Game.ChildrenOfType<LegacyMainMenu>().Any() && !buttons.StableLayout);
             AddUntilStep("game's logo seen again", () => Game.ChildrenOfType<OsuLogo>().Single().Colour == Color4.White);
         }

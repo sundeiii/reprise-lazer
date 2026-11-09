@@ -187,7 +187,7 @@ namespace osu.Game.Screens.Play
         private void load(OsuConfigManager config, RealmKeyBindingStore keyBindingStore, INotificationOverlay notificationOverlay)
         {
             uiScale = config.GetBindable<float>(OsuSetting.UIScale);
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableGameplayMods);
 
             if (drawableRuleset != null)
             {

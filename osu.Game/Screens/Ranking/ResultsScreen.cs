@@ -108,7 +108,7 @@ namespace osu.Game.Screens.Ranking
 
         private Sample? popInSample;
 
-        // osu!stable's layout instead of this screen's, with a legacy skin (OsuSetting.StableLayouts).
+        // osu!stable's layout instead of this screen's, with a legacy skin (OsuSetting.StableResults).
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
 
@@ -383,7 +383,7 @@ namespace osu.Game.Screens.Ranking
 
             StatisticsPanel.State.BindValueChanged(onStatisticsStateChanged, true);
 
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableResults);
             stableLayouts.BindValueChanged(_ => updateLayout());
             newResultsScreen = config.GetBindable<bool>(OsuSetting.NewResultsScreen);
             newResultsScreen.BindValueChanged(_ => updateLayout());

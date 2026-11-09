@@ -63,6 +63,9 @@ namespace osu.Game.Screens.Play.HUD
             Width = 260 + xOffset;
             Height = 300;
 
+            // Reprise: updated while hidden, as it decides in Update whether stable's leaderboard is shown instead (it never came back otherwise).
+            AlwaysPresent = true;
+
             InternalChildren = new Drawable[]
             {
                 scroll = new InputDisabledScrollContainer

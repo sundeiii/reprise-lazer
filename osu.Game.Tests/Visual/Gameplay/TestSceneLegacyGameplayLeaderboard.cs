@@ -37,7 +37,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("classic skin, stable layouts", () =>
             {
                 skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo;
-                config.SetValue(OsuSetting.StableLayouts, true);
+                config.SetValue(OsuSetting.StableGameplayLeaderboard, true);
             });
             AddStep("create", () =>
             {
@@ -67,7 +67,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         [TearDownSteps]
         public void TearDownSteps() => AddStep("reset", () =>
         {
-            config.SetValue(OsuSetting.StableLayouts, false);
+            config.SetValue(OsuSetting.StableGameplayLeaderboard, false);
             skins.CurrentSkinInfo.SetDefault();
         });
 
@@ -92,8 +92,10 @@ namespace osu.Game.Tests.Visual.Gameplay
         [Test]
         public void TestOnlyWithStableLayouts()
         {
-            AddStep("stable layouts off", () => config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stable layouts off", () => config.SetValue(OsuSetting.StableGameplayLeaderboard, false));
             AddUntilStep("hidden", () => this.ChildrenOfType<LegacyGameplayLeaderboard>().Single().Alpha == 0);
+            AddStep("stable layouts back on", () => config.SetValue(OsuSetting.StableGameplayLeaderboard, true));
+            AddUntilStep("shown again", () => this.ChildrenOfType<LegacyGameplayLeaderboard>().Single().Alpha == 1);
         }
 
         private float entryAlpha(string name) => this.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == name).Parent!.Alpha;

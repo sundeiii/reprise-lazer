@@ -42,6 +42,7 @@ namespace osu.Game.Configuration
         {
             migrateCustomApiUrl();
             migrateIntroToCircles();
+            migrateStableSettingsSplit();
         }
 
         /// <summary>
@@ -69,6 +70,30 @@ namespace osu.Game.Configuration
                 return;
 
             SetValue(OsuSetting.IntroSequence, IntroSequence.Circles);
+            migrated.Value = true;
+        }
+
+        /// <summary>
+        /// Reprise: the one osu!stable layouts setting became one per part, and the stable sounds one a few groups (once, on updating):
+        /// each starts as the old one was.
+        /// </summary>
+        private void migrateStableSettingsSplit()
+        {
+            var migrated = GetBindable<bool>(OsuSetting.StableSettingsSplit);
+
+            if (migrated.Value)
+                return;
+
+            bool layouts = Get<bool>(OsuSetting.StableLayouts);
+
+            foreach (var part in new[]
+                     {
+                         OsuSetting.StableMainMenu, OsuSetting.StableSongSelect, OsuSetting.StableResults, OsuSetting.StablePauseMenu,
+                         OsuSetting.StableGameplayLeaderboard, OsuSetting.StableGameplayMods,
+                     })
+                SetValue(part, layouts);
+
+            SetValue(OsuSetting.StableChatSounds, Get<bool>(OsuSetting.StableSounds));
             migrated.Value = true;
         }
 
@@ -194,6 +219,15 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.SongSelectV1, false);
             SetDefault(OsuSetting.Sounds2023, false);
             SetDefault(OsuSetting.StableSounds, true);
+            SetDefault(OsuSetting.StableChatSounds, true);
+            SetDefault(OsuSetting.StableSongSelectSounds, true);
+            SetDefault(OsuSetting.StableMainMenu, false);
+            SetDefault(OsuSetting.StableSongSelect, false);
+            SetDefault(OsuSetting.StableResults, false);
+            SetDefault(OsuSetting.StablePauseMenu, false);
+            SetDefault(OsuSetting.StableGameplayLeaderboard, false);
+            SetDefault(OsuSetting.StableGameplayMods, false);
+            SetDefault(OsuSetting.StableSettingsSplit, false);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
             SetDefault(OsuSetting.ModeVariant, string.Empty);
@@ -652,6 +686,33 @@ namespace osu.Game.Configuration
         /// Reprise: whether a beatmap set's page opens with its cover expanded (as it was last left).
         /// </summary>
         BeatmapSetCoverExpanded,
+
+        /// <summary>Reprise: osu!stable's chat highlight, private message and multiplayer room sounds (<see cref="StableSounds"/> is typing).</summary>
+        StableChatSounds,
+
+        /// <summary>Reprise: osu!stable's song select sounds (a set opening, a difficulty picked, a map started) and retry.</summary>
+        StableSongSelectSounds,
+
+        /// <summary>Reprise: osu!stable's main menu, with a legacy skin.</summary>
+        StableMainMenu,
+
+        /// <summary>Reprise: osu!stable's song select, with a legacy skin.</summary>
+        StableSongSelect,
+
+        /// <summary>Reprise: osu!stable's results screen, with a legacy skin.</summary>
+        StableResults,
+
+        /// <summary>Reprise: osu!stable's pause and fail menus, with a legacy skin.</summary>
+        StablePauseMenu,
+
+        /// <summary>Reprise: osu!stable's in-game leaderboard, with a legacy skin.</summary>
+        StableGameplayLeaderboard,
+
+        /// <summary>Reprise: osu!stable's in-game mod icons, with a legacy skin.</summary>
+        StableGameplayMods,
+
+        /// <summary>Reprise: whether <see cref="StableLayouts"/> and <see cref="StableSounds"/> have been split into the settings above (once, on updating).</summary>
+        StableSettingsSplit,
     }
 
     public enum ResultScreenStyle

@@ -401,7 +401,7 @@ namespace osu.Game.Tests.Visual.Ranking
             TestResultsScreen screen = null;
 
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => config.SetValue(OsuSetting.StableResults, true));
 
             loadResultsScreen(() => screen = createResultsScreen(TestResources.CreateTestScoreInfo()));
             AddUntilStep("wait for loaded", () => screen.IsLoaded);
@@ -410,16 +410,16 @@ namespace osu.Game.Tests.Visual.Ranking
             AddAssert("toolbar hidden on entering", () => screen.HideOverlaysOnEnter);
             AddAssert("game's back button hidden", () => !screen.FooterContent.Value.BackButton);
 
-            AddStep("stop using stable layouts", () => config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => config.SetValue(OsuSetting.StableResults, false));
             AddAssert("stable layout hidden", () => this.ChildrenOfType<LegacyRankingScreen>().All(s => s.Parent?.Alpha == 0));
             AddAssert("toolbar back", () => !screen.HideOverlaysOnEnter);
             AddAssert("game's back button back", () => screen.FooterContent.Value.BackButton);
 
-            AddStep("use stable layouts", () => config.SetValue(OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => config.SetValue(OsuSetting.StableResults, true));
             AddStep("set lazer skin", () => skins.CurrentSkinInfo.Value = skins.CurrentSkinInfo.Default);
             AddAssert("stable layout hidden with a lazer skin", () => this.ChildrenOfType<LegacyRankingScreen>().All(s => s.Parent?.Alpha == 0));
 
-            AddStep("reset setting", () => config.SetValue(OsuSetting.StableLayouts, false));
+            AddStep("reset setting", () => config.SetValue(OsuSetting.StableResults, false));
         }
 
         [Test]

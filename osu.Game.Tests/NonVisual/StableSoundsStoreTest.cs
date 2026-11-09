@@ -6,17 +6,17 @@ using osu.Game.Audio;
 
 namespace osu.Game.Tests.NonVisual
 {
-    /// <summary>osu!stable's typing, chat and multiplayer sounds (<see cref="StableSoundsStore"/>): the game's names answered with stable's files, only when picked.</summary>
+    /// <summary>osu!stable's typing, chat, multiplayer and song select sounds (<see cref="StableSoundsStore"/>): the game's names answered with stable's files, only when picked.</summary>
     [TestFixture]
     public class StableSoundsStoreTest
     {
         [TearDown]
-        public void TearDown() => new StableSoundsStore(false).Dispose();
+        public void TearDown() => new StableSoundsStore(StableSoundGroups.None).Dispose();
 
         [Test]
         public void TestStableSounds()
         {
-            using var store = new StableSoundsStore(true);
+            using var store = new StableSoundsStore(StableSoundGroups.Typing | StableSoundGroups.Chat | StableSoundGroups.SongSelect);
 
             for (int i = 1; i <= 4; i++)
                 Assert.That(store.Get($@"Samples/Keyboard/key-press-{i}.wav"), Is.Not.Null);
@@ -29,13 +29,17 @@ namespace osu.Game.Tests.NonVisual
             Assert.That(store.Get(@"Samples/UI/notification-mention.wav"), Is.Not.Null);
             Assert.That(store.Get(@"Samples/Multiplayer/player-joined.wav"), Is.Not.Null);
             Assert.That(store.Get(@"Samples/Multiplayer/player-left.wav"), Is.Not.Null);
-            Assert.That(StableSoundsStore.Enabled, Is.True);
+            Assert.That(store.Get(@"Samples/SongSelect/select-expand.wav"), Is.Not.Null);
+            Assert.That(store.Get(@"Samples/SongSelect/select-difficulty.wav"), Is.Not.Null);
+            Assert.That(store.Get(@"Samples/SongSelect/confirm-selection.wav"), Is.Not.Null);
+            Assert.That(store.Get(@"Samples/Gameplay/restart.wav"), Is.Not.Null);
+            Assert.That(StableSoundsStore.ChatEnabled, Is.True);
         }
 
         [Test]
         public void TestLeavesTheRestToTheGame()
         {
-            using var store = new StableSoundsStore(true);
+            using var store = new StableSoundsStore(StableSoundGroups.Typing | StableSoundGroups.Chat | StableSoundGroups.SongSelect);
 
             // Stable has no sound for these.
             Assert.That(store.Get(@"Samples/Keyboard/key-invalid.wav"), Is.Null);
@@ -48,7 +52,7 @@ namespace osu.Game.Tests.NonVisual
         [Test]
         public void TestStableNamesForSkins()
         {
-            using var store = new StableSoundsStore(true);
+            using var store = new StableSoundsStore(StableSoundGroups.Typing | StableSoundGroups.Chat | StableSoundGroups.SongSelect);
 
             // The names a stable skin has its own of.
             Assert.That(StableSoundsStore.StableName(@"Keyboard/key-press-3"), Is.EqualTo(@"key-press-3"));
@@ -58,13 +62,27 @@ namespace osu.Game.Tests.NonVisual
         }
 
         [Test]
+        public void TestOnlyTheChosenGroups()
+        {
+            using var store = new StableSoundsStore(StableSoundGroups.SongSelect);
+
+            Assert.That(store.Get(@"Samples/SongSelect/select-expand.wav"), Is.Not.Null);
+            Assert.That(store.Get(@"Samples/Gameplay/restart.wav"), Is.Not.Null);
+            Assert.That(store.Get(@"Samples/Keyboard/key-press-1.wav"), Is.Null);
+            Assert.That(store.Get(@"Samples/Multiplayer/player-joined.wav"), Is.Null);
+            Assert.That(StableSoundsStore.StableName(@"Keyboard/key-press-1"), Is.Null);
+            Assert.That(StableSoundsStore.StableName(@"SongSelect/select-difficulty"), Is.EqualTo(@"select-difficulty"));
+            Assert.That(StableSoundsStore.ChatEnabled, Is.False);
+        }
+
+        [Test]
         public void TestOffAnswersNothing()
         {
-            using var store = new StableSoundsStore(false);
+            using var store = new StableSoundsStore(StableSoundGroups.None);
 
             Assert.That(store.Get(@"Samples/Keyboard/key-press-1.wav"), Is.Null);
             Assert.That(store.Get(@"Samples/Multiplayer/player-joined.wav"), Is.Null);
-            Assert.That(StableSoundsStore.Enabled, Is.False);
+            Assert.That(StableSoundsStore.ChatEnabled, Is.False);
         }
     }
 }

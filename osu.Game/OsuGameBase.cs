@@ -310,8 +310,11 @@ namespace osu.Game
                 VersionHash = $"{Version}-{RuntimeInfo.OS}".ComputeMD5Hash();
             }
 
-            // Reprise: osu!stable's typing, chat highlight and multiplayer room sounds, in front of all the others, when they're picked.
-            Resources.AddStore(new StableSoundsStore(LocalConfig.Get<bool>(OsuSetting.StableSounds)));
+            // Reprise: osu!stable's sounds (typing; chat and multiplayer; song select and retry), in front of all the others, each group when it's picked.
+            Resources.AddStore(new StableSoundsStore(
+                (LocalConfig.Get<bool>(OsuSetting.StableSounds) ? StableSoundGroups.Typing : StableSoundGroups.None)
+                | (LocalConfig.Get<bool>(OsuSetting.StableChatSounds) ? StableSoundGroups.Chat : StableSoundGroups.None)
+                | (LocalConfig.Get<bool>(OsuSetting.StableSongSelectSounds) ? StableSoundGroups.SongSelect : StableSoundGroups.None)));
             // Reprise: lazer's 2023 menu and interface sounds, in front of osu!'s current ones, when they're picked.
             Resources.AddStore(new Sounds2023Store(LocalConfig.Get<bool>(OsuSetting.Sounds2023)));
             // Reprise: the 2023 interface (its icons are added as a font below).

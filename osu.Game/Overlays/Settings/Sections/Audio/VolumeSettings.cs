@@ -30,15 +30,33 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 {
                     Keywords = new[] { "old", "classic", "2023", "sfx", "samples" }
                 },
-                // Reprise: osu!stable's typing, chat highlight and multiplayer room sounds.
+                // Reprise: osu!stable's sounds, a group at a time.
                 new SettingsItemV2(new FormCheckBox
                 {
-                    Caption = "osu!stable typing and chat sounds",
-                    HintText = "Typing, private messages and mentions, and players joining or leaving a multiplayer room sound as in osu!stable, from your skin when it's a stable skin that has them. Applies after restarting the game.",
+                    Caption = "osu!stable typing sounds",
+                    HintText = "Typing in text boxes sounds as in osu!stable, from your skin when it's a stable skin that has them. Applies after restarting the game.",
                     Current = config.GetBindable<bool>(OsuSetting.StableSounds),
                 })
                 {
-                    Keywords = new[] { "stable", "classic", "keyboard", "typing", "chat", "pm", "multiplayer", "sfx", "samples" }
+                    Keywords = new[] { "stable", "classic", "keyboard", "typing", "sfx", "samples" }
+                },
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "osu!stable chat sounds",
+                    HintText = "Private messages and mentions, and players joining or leaving a multiplayer room sound as in osu!stable. Applies after restarting the game.",
+                    Current = config.GetBindable<bool>(OsuSetting.StableChatSounds),
+                })
+                {
+                    Keywords = new[] { "stable", "classic", "chat", "pm", "multiplayer", "sfx", "samples" }
+                },
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "osu!stable song select sounds",
+                    HintText = "Opening a beatmap set, picking a difficulty, starting a map and retrying sound as in osu!stable, from your skin when it has them. Applies after restarting the game.",
+                    Current = config.GetBindable<bool>(OsuSetting.StableSongSelectSounds),
+                })
+                {
+                    Keywords = new[] { "stable", "classic", "song select", "retry", "menuhit", "sfx", "samples" }
                 },
                 new SettingsItemV2(new FormSliderBar<double>
                 {

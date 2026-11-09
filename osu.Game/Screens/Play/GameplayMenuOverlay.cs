@@ -81,7 +81,7 @@ namespace osu.Game.Screens.Play
             RelativeSizeAxes = Axes.Both;
         }
 
-        // osu!stable's pause and fail screens instead of these, with a legacy skin (OsuSetting.StableLayouts).
+        // osu!stable's pause and fail screens instead of these, with a legacy skin (OsuSetting.StablePauseMenu).
         private Container lazerLayer = null!;
         private Container stableLayer = null!;
         private Bindable<bool> stableLayouts = null!;
@@ -92,7 +92,7 @@ namespace osu.Game.Screens.Play
         [BackgroundDependencyLoader]
         private void load(OsuColour colours, GameHost? host, OsuConfigManager config)
         {
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StablePauseMenu);
 
             Children = new Drawable[]
             {

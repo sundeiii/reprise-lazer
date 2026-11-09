@@ -380,7 +380,7 @@ namespace osu.Game.Screens.Select
                 },
             });
 
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableSongSelect);
             stableLayoutVersion = config.GetBindable<StableLayoutVersion>(OsuSetting.StableLayoutVersion);
             stableFooterShown = wantsStableFooter;
             if (stableFooterShown)
@@ -1373,7 +1373,7 @@ namespace osu.Game.Screens.Select
             carousel.StableLayout = stable;
             FilterControl.Colour = stable ? Colour4.Transparent : Colour4.White;
 
-            // osu!stable's footer replaces the game's (OsuSetting.StableLayouts), with the skin's back button: not the game's as well.
+            // osu!stable's footer replaces the game's (OsuSetting.StableSongSelect), with the skin's back button: not the game's as well.
             FooterContent.Value = stable ? ScreenFooterContent.Legacy(showBackButton: false) : ScreenFooterContent.Argon(leftButtons: CreateFooterButtons);
 
             if (stable)

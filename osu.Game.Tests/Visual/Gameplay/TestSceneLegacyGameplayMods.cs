@@ -31,7 +31,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("classic skin, stable layouts", () =>
             {
                 skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo;
-                config.SetValue(OsuSetting.StableLayouts, true);
+                config.SetValue(OsuSetting.StableGameplayMods, true);
             });
             AddStep("create", () => Child = new LegacyGameplayMods(new OsuRuleset().RulesetInfo, new Mod[] { new OsuModHidden(), new OsuModHardRock() }, () => replay)
             {
@@ -42,7 +42,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         [TearDownSteps]
         public void TearDownSteps() => AddStep("reset", () =>
         {
-            config.SetValue(OsuSetting.StableLayouts, false);
+            config.SetValue(OsuSetting.StableGameplayMods, false);
             skins.CurrentSkinInfo.SetDefault();
         });
 

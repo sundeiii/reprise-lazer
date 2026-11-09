@@ -171,7 +171,7 @@ namespace osu.Game.Online.Chat
             private readonly Channel channel;
 
             // Reprise: stable's chat highlight sound, which a private message is too.
-            public override string PopInSampleName => StableSoundsStore.Enabled ? "UI/notification-mention" : base.PopInSampleName;
+            public override string PopInSampleName => StableSoundsStore.ChatEnabled ? "UI/notification-mention" : base.PopInSampleName;
 
             public PrivateMessageNotification(Message message, Channel channel)
                 : base(message.Sender)

@@ -57,7 +57,7 @@ namespace osu.Game.Screens.Menu
         // osu!stable's menu has no toolbar.
         public override bool HideOverlaysOnEnter => Buttons == null || Buttons.State == ButtonSystemState.Initial || stableShown;
 
-        // osu!stable's menu instead of this one's, with a legacy skin (OsuSetting.StableLayouts).
+        // osu!stable's menu instead of this one's, with a legacy skin (OsuSetting.StableMainMenu).
         private Bindable<bool> stableLayouts;
         private IBindable<Skin> currentSkin;
         private Container stableMenuContainer;
@@ -261,7 +261,7 @@ namespace osu.Game.Screens.Menu
             Buttons.OnSettings = () => settings?.ToggleVisibility();
             Buttons.OnBeatmapListing = () => beatmapListing?.ToggleVisibility();
 
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableMainMenu);
             currentSkin = skinManager.CurrentSkin.GetBoundCopy();
 
             reappearSampleSwoosh = audio.Samples.Get(@"Menu/reappear-swoosh");

@@ -24,7 +24,7 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Play.HUD
 {
     /// <summary>
-    /// osu!stable's in-game leaderboard (with a legacy skin and <see cref="OsuSetting.StableLayouts"/>, instead of the game's): at
+    /// osu!stable's in-game leaderboard (with a legacy skin and <see cref="OsuSetting.StableGameplayLeaderboard"/>, instead of the game's): at
     /// the left from 202 down in its 640x480, 36 apart, at most 6 around the player's own score; each a dark box with the name, the
     /// score and combo ("-" before any score, as stable's), and the position large and faint; the player's own blue, flashing with the
     /// skin's explosions when passing someone. From the 2015 client.
@@ -59,18 +59,21 @@ namespace osu.Game.Screens.Play.HUD
         public LegacyGameplayLeaderboard()
         {
             RelativeSizeAxes = Axes.Both;
+
+            // Updated while hidden: it decides in Update whether it shows (it never came back once hidden otherwise).
+            AlwaysPresent = true;
         }
 
         /// <summary>
         /// Whether stable's leaderboard replaces the game's: stable layouts on, with a legacy skin.
         /// </summary>
         public static bool IsActive(OsuConfigManager config, SkinManager skinManager) =>
-            config.Get<bool>(OsuSetting.StableLayouts) && skinManager.CurrentSkin.Value is LegacySkin;
+            config.Get<bool>(OsuSetting.StableGameplayLeaderboard) && skinManager.CurrentSkin.Value is LegacySkin;
 
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableGameplayLeaderboard);
             leaderboardVisible = config.GetBindable<bool>(OsuSetting.GameplayLeaderboard);
             scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
             uiScale = config.GetBindable<float>(OsuSetting.UIScale);

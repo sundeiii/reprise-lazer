@@ -86,12 +86,13 @@ namespace osu.Game.Overlays.Settings.Sections
                     Text = SkinSettingsStrings.SkinLayoutEditor,
                     Action = () => skinEditor?.ToggleVisibility(),
                 },
-                new SettingsItemV2(new FormCheckBox
-                {
-                    Caption = "Use osu!stable layouts",
-                    HintText = "With a legacy skin, the results screen and song select look like osu!stable's.",
-                    Current = config.GetBindable<bool>(OsuSetting.StableLayouts),
-                }),
+                // Reprise: osu!stable's layouts a part at a time (with a legacy skin).
+                stablePart(config, OsuSetting.StableMainMenu, "osu!stable main menu", "With a legacy skin, the main menu looks like osu!stable's."),
+                stablePart(config, OsuSetting.StableSongSelect, "osu!stable song select", "With a legacy skin, song select looks like osu!stable's."),
+                stablePart(config, OsuSetting.StableResults, "osu!stable results screen", "With a legacy skin, the results screen looks like osu!stable's."),
+                stablePart(config, OsuSetting.StablePauseMenu, "osu!stable pause and fail menus", "With a legacy skin, the pause and fail menus look like osu!stable's."),
+                stablePart(config, OsuSetting.StableGameplayLeaderboard, "osu!stable in-game leaderboard", "With a legacy skin, the leaderboard during gameplay looks like osu!stable's."),
+                stablePart(config, OsuSetting.StableGameplayMods, "osu!stable in-game mod icons", "With a legacy skin, the mods during gameplay show as osu!stable's icons."),
                 new SettingsItemV2(new FormCheckBox
                 {
                     Caption = "Use the new results screen",
@@ -139,6 +140,17 @@ namespace osu.Game.Overlays.Settings.Sections
                 }
             });
         }
+
+        private static SettingsItemV2 stablePart(OsuConfigManager config, OsuSetting setting, string caption, string hint) =>
+            new SettingsItemV2(new FormCheckBox
+            {
+                Caption = caption,
+                HintText = hint,
+                Current = config.GetBindable<bool>(setting),
+            })
+            {
+                Keywords = new[] { "stable", "classic", "layout", "legacy" }
+            };
 
         private void skinsChanged(IRealmCollection<SkinInfo> sender, ChangeSet changes)
         {

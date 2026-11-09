@@ -87,7 +87,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         public void TestStableLayout()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
-            AddStep("use stable layouts", () => config.SetValue(Configuration.OsuSetting.StableLayouts, true));
+            AddStep("use stable layouts", () => config.SetValue(Configuration.OsuSetting.StablePauseMenu, true));
 
             showOverlay();
 
@@ -101,7 +101,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddUntilStep("stable fail screen without continue", () => failOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().SingleOrDefault()?.IsLoaded == true
                                                                        && stableButtons(failOverlay).Count() == 2);
 
-            AddStep("stop using stable layouts", () => config.SetValue(Configuration.OsuSetting.StableLayouts, false));
+            AddStep("stop using stable layouts", () => config.SetValue(Configuration.OsuSetting.StablePauseMenu, false));
             AddStep("show again", () =>
             {
                 pauseOverlay.Hide();

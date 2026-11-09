@@ -18,7 +18,7 @@ using osuTK;
 namespace osu.Game.Screens.Play.HUD
 {
     /// <summary>
-    /// osu!stable's mod icons in gameplay (with a legacy skin and <see cref="OsuSetting.StableLayouts"/>, instead of the game's): the
+    /// osu!stable's mod icons in gameplay (with a legacy skin and <see cref="OsuSetting.StableGameplayMods"/>, instead of the game's): the
     /// skin's "selection-mod-*", the first centred on (610, 94) of stable's 640x480 field: 30 in from the right edge, under the score,
     /// as the client keeps it on wide screens (its coordinates there are scaled by height/480, not centred). Each next one 10 to the
     /// left (1.6 times all in the 1024x768 layout), each popping in half a second after the one before; fading out over 5 seconds,
@@ -58,18 +58,21 @@ namespace osu.Game.Screens.Play.HUD
             this.ruleset = ruleset;
             this.mods = mods;
             this.isReplay = isReplay;
+
+            // Updated while hidden: it decides in Update whether it shows (it never came back once hidden otherwise).
+            AlwaysPresent = true;
         }
 
         /// <summary>
         /// Whether these replace the game's mod display.
         /// </summary>
         public static bool IsActive(OsuConfigManager config, SkinManager skinManager) =>
-            config.Get<bool>(OsuSetting.StableLayouts) && skinManager.CurrentSkin.Value is LegacySkin;
+            config.Get<bool>(OsuSetting.StableGameplayMods) && skinManager.CurrentSkin.Value is LegacySkin;
 
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            stableLayouts = config.GetBindable<bool>(OsuSetting.StableLayouts);
+            stableLayouts = config.GetBindable<bool>(OsuSetting.StableGameplayMods);
             uiScale = config.GetBindable<float>(OsuSetting.UIScale);
 
             InternalChild = new DrawSizePreservingFillContainer
