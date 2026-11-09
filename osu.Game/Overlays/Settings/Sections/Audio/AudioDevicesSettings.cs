@@ -142,10 +142,10 @@ namespace osu.Game.Overlays.Settings.Sections.Audio
                 configExperimentalAudio.Value = !legacy.NewValue;
             };
 
-            configExperimentalAudio.BindValueChanged(experimental =>
-            {
-                Current.Value = !experimental.NewValue;
-            }, true);
+            // Reprise: scheduled, as the framework turns experimental WASAPI off from the audio thread when the device won't open with it
+            // (busy): changing the checkbox there crashed the game.
+            configExperimentalAudio.BindValueChanged(experimental => Schedule(() => Current.Value = !experimental.NewValue));
+            Current.Value = !configExperimentalAudio.Value;
         }
     }
 }
