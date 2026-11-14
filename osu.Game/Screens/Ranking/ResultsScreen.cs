@@ -541,10 +541,10 @@ namespace osu.Game.Screens.Ranking
             // panel underneath doesn't (after watching a replay of the play): for the play just finished, not ones looked at after.
             bool modernSounds = modern && player != null && score == Score && !gameFlair;
 
-            // Health over the play isn't recorded with a score yet: the graph shows without its line.
+            // The health over the play: recorded while playing and kept in the replay (none for an online score whose replay isn't here).
             stableContent.Child = modern
                 ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details, modernSounds)
-                : new LegacyRankingScreen(score!, Array.Empty<Vector2>(), retry, watchReplay, details);
+                : new LegacyRankingScreen(score!, LegacyRankingGraph.FromHealthGraph(score!.HealthGraph), retry, watchReplay, details);
         }
 
         // The player's best on the beatmap other than this play (by score), for the "Beatmap Ranking" row.

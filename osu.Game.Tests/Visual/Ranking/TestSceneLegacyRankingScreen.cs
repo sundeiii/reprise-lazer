@@ -94,6 +94,24 @@ namespace osu.Game.Tests.Visual.Ranking
         }
 
         [Test]
+        public void TestHealthGraphPoints()
+        {
+            AddAssert("none from one value", () => LegacyRankingGraph.FromHealthGraph([new HealthValue(0, 1)]).Count == 0);
+
+            AddAssert("all of a short play", () =>
+            {
+                var points = LegacyRankingGraph.FromHealthGraph([new HealthValue(1000, 1), new HealthValue(2000, 0.4), new HealthValue(3000, 0.8)]);
+                return points.SequenceEqual([new osuTK.Vector2(0, 1), new osuTK.Vector2(0.5f, 0.4f), new osuTK.Vector2(1, 0.8f)]);
+            });
+
+            AddAssert("about 100 of a long play, ending at its end", () =>
+            {
+                var points = LegacyRankingGraph.FromHealthGraph(Enumerable.Range(0, 1001).Select(i => new HealthValue(i * 10, i % 2)).ToList());
+                return points.Count <= 101 && points[0].X == 0 && points[^1] == new osuTK.Vector2(1, 0);
+            });
+        }
+
+        [Test]
         public void TestFirstPage()
         {
             AddAssert("first page", () => !screen.ShowingSecondPage);

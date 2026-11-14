@@ -8,6 +8,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Lines;
 using osu.Framework.Graphics.Sprites;
+using osu.Game.Rulesets.Scoring;
 using osuTK;
 using osuTK.Graphics;
 
@@ -42,6 +43,38 @@ namespace osu.Game.Skinning.Ranking
 
             Position = POSITION;
             AutoSizeAxes = Axes.Both;
+        }
+
+        /// <summary>
+        /// The points for the graph from a score's recorded health (<see cref="Scoring.ScoreInfo.HealthGraph"/>, kept in its replay):
+        /// at most about 100, every 2nd, 4th, ... one as stable's results screen takes them, with the last always in.
+        /// </summary>
+        public static IReadOnlyList<Vector2> FromHealthGraph(IReadOnlyList<HealthValue> graph)
+        {
+            if (graph.Count < 2)
+                return [];
+
+            double startTime = graph[0].Time;
+            double timeRange = graph[^1].Time - startTime;
+
+            if (timeRange <= 0)
+                return [];
+
+            int stride = 1;
+            while (graph.Count / stride > 100)
+                stride *= 2;
+
+            var points = new List<Vector2>(graph.Count / stride + 2);
+
+            for (int i = 0; i < graph.Count; i += stride)
+                points.Add(point(graph[i]));
+
+            if ((graph.Count - 1) % stride != 0)
+                points.Add(point(graph[^1]));
+
+            return points;
+
+            Vector2 point(HealthValue v) => new Vector2((float)((v.Time - startTime) / timeRange), (float)System.Math.Clamp(v.Health, 0, 1));
         }
 
         [BackgroundDependencyLoader]
