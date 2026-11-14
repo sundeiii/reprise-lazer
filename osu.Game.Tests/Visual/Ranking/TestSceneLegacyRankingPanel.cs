@@ -2,11 +2,14 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Game.Configuration;
 using osu.Game.Rulesets;
@@ -15,6 +18,7 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Skinning;
+using osu.Game.Screens.RankingV2.Legacy;
 using osu.Game.Skinning.Ranking;
 using osu.Game.Tests.Resources;
 using osuTK;
@@ -35,7 +39,8 @@ namespace osu.Game.Tests.Visual.Ranking
         public void TestNoPerfectWithoutFullCombo()
         {
             TestTypicalScore();
-            AddAssert("no perfect", () => this.ChildrenOfType<LegacyRankingPerfect>().Any() && this.ChildrenOfType<LegacyRankingPerfect>().All(p => p.DrawWidth == 0));
+            AddAssert("no perfect", () => this.ChildrenOfType<LegacyRankingPerfectIndicator>().Any()
+                                          && this.ChildrenOfType<LegacyRankingPerfectIndicator>().All(p => p.ChildrenOfType<Sprite>().All(s => s.Alpha == 0)));
         }
 
         [Test]
@@ -65,10 +70,11 @@ namespace osu.Game.Tests.Visual.Ranking
                 score.Statistics[HitResult.Great] = 702;
                 shown = score;
             });
-            AddAssert("standardised score", () => scoreTexts().All(t => t == "00489347"));
+            // osu!'s: seven digits for standardised scores (up to a million), stable's eight for classic ones.
+            AddAssert("standardised score", () => scoreTexts().All(t => t == "0489347"));
 
             AddStep("classic", () => config.SetValue(OsuSetting.ScoreDisplayMode, ScoringMode.Classic));
-            AddAssert("classic score", () => scoreTexts().All(t => t == shown.GetDisplayScore(ScoringMode.Classic).ToString("00000000", System.Globalization.CultureInfo.InvariantCulture)) && !scoreTexts().Contains("00489347"));
+            AddAssert("classic score", () => scoreTexts().All(t => t == shown.GetDisplayScore(ScoringMode.Classic).ToString("00000000", System.Globalization.CultureInfo.InvariantCulture)) && !scoreTexts().Contains("0489347"));
 
             AddStep("back to standardised", () => config.SetValue(OsuSetting.ScoreDisplayMode, ScoringMode.Standardised));
 
@@ -94,8 +100,8 @@ namespace osu.Game.Tests.Visual.Ranking
             });
 
             // Older game resources (as this client's) have no ranking-perfect in the default legacy skin.
-            AddAssert("perfect shown", () => this.ChildrenOfType<LegacyRankingPerfect>().Any()
-                                             && (skins.DefaultClassicSkin.GetTexture(@"ranking-perfect") == null || this.ChildrenOfType<LegacyRankingPerfect>().All(p => p.DrawWidth > 0)));
+            AddAssert("perfect shown", () => this.ChildrenOfType<LegacyRankingPerfectIndicator>().Any()
+                                             && this.ChildrenOfType<LegacyRankingPerfectIndicator>().All(p => p.ChildrenOfType<Sprite>().All(s => s.Alpha == 1)));
         }
 
         [Test]
@@ -112,11 +118,11 @@ namespace osu.Game.Tests.Visual.Ranking
             score.Statistics[HitResult.Miss] = 999;
         });
 
-        // Full at first, a long dip below half in the middle, then recovering.
-        private static readonly Vector2[] health = Enumerable.Range(0, 101)
-                                                             .Select(i => i / 100f)
-                                                             .Select(x => new Vector2(x, Math.Clamp(1 - 0.7f * MathF.Sin(MathF.PI * x) * (0.75f + 0.25f * MathF.Sin(x * 40)), 0, 1)))
-                                                             .ToArray();
+        // Full at first, a long dip below half in the middle, then recovering: 201 values over two minutes.
+        private static List<HealthValue> createHealth() => Enumerable.Range(0, 201)
+                                                                    .Select(i => i / 200f)
+                                                                    .Select(x => new HealthValue(x * 120_000, Math.Clamp(1 - 0.7f * MathF.Sin(MathF.PI * x) * (0.75f + 0.25f * MathF.Sin(x * 40)), 0, 1)))
+                                                                    .ToList();
 
         private void showScore(Action<ScoreInfo> setUp)
         {
@@ -129,6 +135,9 @@ namespace osu.Game.Tests.Visual.Ranking
             });
 
             AddUntilStep("panels loaded", () => this.ChildrenOfType<LegacyRankingPanel>().Any() && this.ChildrenOfType<LegacyRankingPanel>().All(p => p.IsLoaded));
+            // Everything as it ends up after stable's reveal.
+            AddUntilStep("revealed", () => this.ChildrenOfType<LegacyRankingPanel>().All(p => p.Parent!.Alpha == 1));
+            AddStep("finish animation", () => this.ChildrenOfType<LegacyRankingScreen>().ForEach(s => s.FinishAnimation()));
         }
 
         /// <summary>
@@ -144,6 +153,7 @@ namespace osu.Game.Tests.Visual.Ranking
             score.BeatmapInfo.Metadata.Author.Username = "bsm";
             score.BeatmapInfo.DifficultyName = "OSUDriver's Normal";
             score.User.Username = "Lilian";
+            score.HealthGraph = createHealth();
             return score;
         }
 
@@ -155,7 +165,7 @@ namespace osu.Game.Tests.Visual.Ranking
             {
                 Child = new SkinProvidingContainer(skin)
                 {
-                    Child = new LegacyRankingScreen(score, health, canRetry ? () => { } : null, () => { }, details),
+                    Child = new LegacyRankingScreen(score, canRetry ? () => { } : null, () => { }, details),
                 }
             };
     }

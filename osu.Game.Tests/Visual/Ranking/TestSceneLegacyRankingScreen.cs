@@ -16,6 +16,7 @@ using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
+using osu.Game.Screens.RankingV2.Legacy;
 using osu.Game.Skinning.Ranking;
 using osu.Game.Users;
 
@@ -94,21 +95,19 @@ namespace osu.Game.Tests.Visual.Ranking
         }
 
         [Test]
-        public void TestHealthGraphPoints()
+        public void TestHealthGraphDrawn()
         {
-            AddAssert("none from one value", () => LegacyRankingGraph.FromHealthGraph([new HealthValue(0, 1)]).Count == 0);
+            // The score's recorded health (TestSceneLegacyRankingPanel.CreateScore's), every 2nd point of its 201 as stable takes them.
+            AddUntilStep("line drawn", () => this.ChildrenOfType<LegacyRankingHealthGraph>().Single()
+                                                 .ChildrenOfType<osu.Framework.Graphics.Lines.SmoothPath>().All(p => p.Vertices.Count > 50));
+        }
 
-            AddAssert("all of a short play", () =>
-            {
-                var points = LegacyRankingGraph.FromHealthGraph([new HealthValue(1000, 1), new HealthValue(2000, 0.4), new HealthValue(3000, 0.8)]);
-                return points.SequenceEqual([new osuTK.Vector2(0, 1), new osuTK.Vector2(0.5f, 0.4f), new osuTK.Vector2(1, 0.8f)]);
-            });
-
-            AddAssert("about 100 of a long play, ending at its end", () =>
-            {
-                var points = LegacyRankingGraph.FromHealthGraph(Enumerable.Range(0, 1001).Select(i => new HealthValue(i * 10, i % 2)).ToList());
-                return points.Count <= 101 && points[0].X == 0 && points[^1] == new osuTK.Vector2(1, 0);
-            });
+        [Test]
+        public void TestRevealsThenShowsEverything()
+        {
+            AddUntilStep("first page shown", () => screen.ChildrenOfType<LegacyRankingPanel>().Single().Parent!.Alpha == 1);
+            AddStep("finish animation", () => screen.FinishAnimation());
+            AddAssert("score in full", () => screen.ChildrenOfType<LegacyRankingPanel>().Single().ChildrenOfType<LegacySpriteText>().First().Text.ToString() == "0094082");
         }
 
         [Test]
@@ -298,8 +297,8 @@ namespace osu.Game.Tests.Visual.Ranking
 
             // Stable's for skins of Version 1.0 (its 640x480): the grade at 170, the graph at 360, the perfect stamp at 200 across.
             AddAssert("grade higher", () => this.ChildrenOfType<LegacyRankingGrade>().Single().Y == 170 * 1.6f);
-            AddAssert("graph higher", () => this.ChildrenOfType<LegacyRankingGraph>().Single().Y == 360 * 1.6f);
-            AddAssert("perfect further left", () => this.ChildrenOfType<LegacyRankingPerfect>().Single().X == 200 * 1.6f);
+            AddAssert("graph higher", () => this.ChildrenOfType<LegacyRankingHealthGraph>().Single().Y == 360 * 1.6f);
+            AddAssert("perfect further left", () => this.ChildrenOfType<LegacyRankingPerfectIndicator>().Single().X == 200 * 1.6f);
         }
 
         /// <summary>

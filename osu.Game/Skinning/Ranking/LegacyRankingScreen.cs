@@ -2,7 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -10,6 +12,7 @@ using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Scoring;
+using osu.Game.Screens.RankingV2.Legacy;
 using osuTK;
 using osuTK.Graphics;
 
@@ -38,15 +41,30 @@ namespace osu.Game.Skinning.Ranking
         private readonly bool hasSecondPage;
         private readonly Drawable onlineRankingButton;
 
-        /// <param name="score">The score to show.</param>
-        /// <param name="health">The health over the play for the graph (see <see cref="LegacyRankingGraph"/>); empty for none.</param>
+        // The first page's pieces are osu!'s own (osu.Game.Screens.RankingV2.Legacy, made for its skinnable results screen): they read the score from here.
+        [Cached(typeof(IBindable<IScoreInfo>))]
+        private readonly Bindable<IScoreInfo> scoreBindable;
+
+        private readonly LegacyRankingBackgroundOverlay backgroundOverlay;
+        private readonly LegacyRankingPanel panel;
+        private readonly LegacyRankingGrade grade;
+        private readonly LegacyRankingHealthGraph graph;
+        private readonly LegacyRankingPerfectIndicator perfect;
+        private readonly LegacyRankingRetryButton? retryButton;
+        private readonly LegacyRankingWatchReplayButton? watchReplayButton;
+        private readonly Container firstPage;
+
+        private bool animationStarted;
+
+        /// <param name="score">The score to show (its health over the play, for the graph, is the score's <see cref="ScoreInfo.HealthGraph"/>).</param>
         /// <param name="retry">The retry button's action, or null for no retry button.</param>
         /// <param name="watchReplay">The watch replay button's action, or null for no watch replay button.</param>
         /// <param name="details">What the second page shows and what its options do.</param>
-        public LegacyRankingScreen(ScoreInfo score, IReadOnlyList<Vector2> health, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
+        public LegacyRankingScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null)
         {
             details ??= new LegacyRankingDetails();
             hasSecondPage = details.HasSecondPage;
+            scoreBindable = new Bindable<IScoreInfo>(score);
 
             RelativeSizeAxes = Axes.Both;
 
@@ -61,12 +79,50 @@ namespace osu.Game.Skinning.Ranking
                         RelativeSizeAxes = Axes.Both,
                         Children = new Drawable[]
                         {
-                            new LegacyRankingPanel(score),
-                            new LegacyRankingGrade(score.Rank),
-                            new LegacyRankingGraph(health),
-                            new LegacyRankingPerfect(score),
+                            // Hidden until its animation starts (the pieces would show finished for a frame before), but
+                            // updated meanwhile: the pieces only set themselves up (LoadComplete) when it is.
+                            firstPage = new Container
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                Alpha = 0,
+                                AlwaysPresent = true,
+                                Children = new Drawable[]
+                                {
+                                    backgroundOverlay = new LegacyRankingBackgroundOverlay
+                                    {
+                                        Anchor = Anchor.TopRight,
+                                        Origin = Anchor.Centre,
+                                    },
+                                    panel = new LegacyRankingPanel(),
+                                    graph = new LegacyRankingHealthGraph(),
+                                    perfect = new LegacyRankingPerfectIndicator { Origin = Anchor.Centre },
+                                    grade = new LegacyRankingGrade
+                                    {
+                                        Anchor = Anchor.TopRight,
+                                        Origin = Anchor.Centre,
+                                    },
+                                    retryButton = retry == null
+                                        ? null
+                                        : new LegacyRankingRetryButton
+                                        {
+                                            Anchor = Anchor.TopRight,
+                                            Origin = Anchor.CentreRight,
+                                            Y = button_upper_y,
+                                            Action = retry,
+                                        },
+                                    // Up in retry's place when there's no retry.
+                                    watchReplayButton = watchReplay == null
+                                        ? null
+                                        : new LegacyRankingWatchReplayButton
+                                        {
+                                            Anchor = Anchor.TopRight,
+                                            Origin = Anchor.CentreRight,
+                                            Y = retry != null ? button_lower_y : button_upper_y,
+                                            Action = watchReplay,
+                                        },
+                                }.Where(d => d != null).ToArray()!,
+                            },
                             new LegacyRankingMods(score),
-                            new LegacyRankingButtons(retry, watchReplay),
                             onlineRankingButton = details.HasSecondPage ? new OnlineRankingButton(ShowSecondPage) : Empty(),
                             new FillFlowContainer
                             {
@@ -101,6 +157,69 @@ namespace osu.Game.Skinning.Ranking
                         },
                 }
             };
+        }
+
+        // The retry and watch replay buttons' heights (stable's 360 and 420 in its 640x480).
+        private const float button_upper_y = 360 * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+        private const float button_lower_y = 420 * LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+
+        [BackgroundDependencyLoader]
+        private void load(ISkinSource skin)
+        {
+            // Where osu!'s legacy skin places these on its results screen (LegacySkin, GlobalSkinnableContainers.Results): stable's
+            // 640x480 positions, old skins' a little higher.
+            bool old = UsesOldLayout(skin);
+            const float scale = LegacySkin.STABLE_MAGIC_SCALE_FACTOR;
+
+            backgroundOverlay.Position = new Vector2(-180, old ? 170 : 200) * scale;
+            panel.Position = new Vector2(0, old ? 46 : 64) * scale;
+            graph.Position = new Vector2(160, old ? 360 : 380) * scale;
+            perfect.Position = new Vector2(old ? 200 : 260, 430) * scale;
+            grade.Position = new Vector2(-120, old ? 170 : 200) * scale;
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            // Once the pieces have set themselves up (their LoadComplete runs after this screen's).
+            if (!animationStarted && firstPage.Children.All(c => c.IsLoaded))
+            {
+                animationStarted = true;
+                startAnimation();
+                firstPage.Show();
+            }
+        }
+
+        /// <summary>
+        /// Stable's reveal: the panel's counts one after another (and the graph drawing itself), then the grade and the perfect stamp,
+        /// in the order of the pieces' groups, as osu!'s skinnable results screen sequences them.
+        /// </summary>
+        private void startAnimation()
+        {
+            var animatables = firstPage.Children.OfType<IAnimatableSkinnable>().ToArray();
+
+            foreach (var a in animatables)
+                a.FinishAnimating();
+
+            double endTime = Time.Current;
+
+            foreach (var group in animatables.GroupBy(a => a.GroupNumber).OrderBy(g => g.Key))
+            {
+                double groupStart = endTime;
+
+                foreach (var a in group)
+                    endTime = Math.Max(endTime, a.StartAnimating(groupStart));
+            }
+        }
+
+        /// <summary>
+        /// Ends the reveal animation at once (everything as it ends up).
+        /// </summary>
+        public void FinishAnimation()
+        {
+            foreach (var a in firstPage.Children.OfType<IAnimatableSkinnable>())
+                a.FinishAnimating();
         }
 
         public bool ShowingSecondPage { get; private set; }
