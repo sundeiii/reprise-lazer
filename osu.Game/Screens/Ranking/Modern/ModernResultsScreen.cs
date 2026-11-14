@@ -7,47 +7,37 @@ using System.Globalization;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Extensions;
-using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Extensions.Color4Extensions;
-using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
-using osu.Framework.Localisation;
-using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.Drawables;
-using osu.Game.Configuration;
-using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
-using osu.Game.Rulesets.Mods;
-using osu.Game.Rulesets.Scoring;
-using osu.Game.Rulesets.UI;
+using osu.Game.Overlays;
 using osu.Game.Scoring;
-using osu.Game.Scoring.Legacy;
 using osu.Game.Screens.Play.Leaderboards;
-using osu.Game.Screens.Ranking.Expanded;
-using osu.Game.Screens.Ranking.Expanded.Accuracy;
+using osu.Game.Screens.RankingV2.Argon;
+using osu.Game.Skinning;
 using osu.Game.Skinning.Ranking;
 using osu.Game.Users.Drawables;
-using osu.Game.Utils;
 using osuTK;
 using osuTK.Graphics;
 
 namespace osu.Game.Screens.Ranking.Modern
 {
     /// <summary>
-    /// The redesigned results screen's main score screen (osu!'s design team's "Client / Result Screen", revision 11): the player
-    /// and their place up top, the beatmap, the score with its accuracy, combo, pp and judgements, the mods, the grade in its ring,
-    /// and the actions along the bottom. Laid out in the design's 1920x1080, scaled to fit; things on the right stay on the right
-    /// on wider screens. Shown over <see cref="ResultsScreen"/> with <see cref="OsuSetting.NewResultsScreen"/>.
+    /// The redesigned results screen (osu!'s design team's "Client / Result Screen"). The main page is osu!'s own pieces of it (its new
+    /// results screen in the making, osu.Game.Screens.RankingV2.Argon): the beatmap, the player, the total score and the statistics
+    /// down the left and the grade ring on the right. Ours, in the design's 1920x1080 (revision 11): the actions along the bottom, and
+    /// the advanced info and ranking pages. Shown over <see cref="ResultsScreen"/> with
+    /// <see cref="Configuration.OsuSetting.NewResultsScreen"/>.
     /// </summary>
     public partial class ModernResultsScreen : CompositeDrawable
     {
@@ -79,9 +69,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private readonly Bindable<int?> countryRank = new Bindable<int?>();
         private readonly Bindable<int?> teamRank = new Bindable<int?>();
-        private readonly Bindable<double?> performance = new Bindable<double?>();
+        private IBindable<double?> performance = null!;
 
-        private Container personalBest = null!;
         private Container mainPage = null!;
         private Container pages = null!;
         private AdvancedInfoPage? advancedPage;
@@ -94,16 +83,24 @@ namespace osu.Game.Screens.Ranking.Modern
             AdvancedInfo,
             Ranking,
         }
-        private CountingText ppText = null!;
-        private ScoreCounter scoreCounter = null!;
-        private IBindable<ScoringMode> scoringMode = null!;
 
-        // The numbers that count up (as lazer's results do), with where they end.
-        private readonly List<(CountingText Text, double Target)> countUps = new List<(CountingText, double)>();
-        private bool countedUp;
+        // The main page is osu!'s own new results screen's pieces (osu.Game.Screens.RankingV2.Argon, the same design), placed as
+        // osu!'s Argon skin places them; they read the score from this. The statistics have their own, with the pp, which can come
+        // in late (the server's).
+        private readonly Bindable<IScoreInfo> shownScore = new Bindable<IScoreInfo>();
 
-        // Whether this screen's grade ring plays the results' sounds (score ticks, the rank, applause): only when the game's own
-        // panel underneath doesn't, as two playing them at once doubled them up (and crashed).
+        private Container statisticsHolder = null!;
+        private ArgonScoreStatisticsGrid statisticsGrid = null!;
+        private double? statisticsPP;
+
+        private readonly List<IAnimatableSkinnable> animatables = new List<IAnimatableSkinnable>();
+        private bool animationStarted;
+
+        [Cached]
+        private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Blue);
+
+        // Whether the grade ring plays the results' sounds (score ticks, the rank): only when the game's own results underneath
+        // don't, as two playing them at once doubled them up (and crashed).
         private readonly bool sounds;
 
         public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null, bool sounds = false)
@@ -118,52 +115,93 @@ namespace osu.Game.Screens.Ranking.Modern
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, RealmAccess realm, BeatmapDifficultyCache difficultyCache)
+        private void load()
         {
-            var beatmap = score.BeatmapInfo!;
-            var metadata = beatmap.BeatmapSet?.Metadata ?? beatmap.Metadata;
+            shownScore.Value = withDetails(details.Performance.Value ?? score.PP);
 
-            StarDifficulty stars = new StarDifficulty(beatmap.StarRating, 0);
-            if (realm.Run(r => r.Find<BeatmapInfo>(beatmap.ID)) != null)
-                stars = difficultyCache.GetDifficultyAsync(beatmap, score.Ruleset, score.Mods).GetResultSafely() ?? stars;
+            ArgonScoreRankDisplay rankDisplay;
+            ArgonBeatmapInfoPanel beatmapPanel;
+            ArgonPlayerInfoPanel playerPanel;
+            ArgonTotalScorePanel totalScorePanel;
 
-            scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
+            // As osu!'s Argon skin places them (ArgonSkin, GlobalSkinnableContainers.Results): the wedges down the left, each further
+            // left by the slant the lower it is.
+            var leftWedgeBase = new Vector2(-ShearedButton.CORNER_RADIUS);
+            static Vector2 leftWedgeOffset(float y) => new Vector2(-y * OsuGame.SHEAR.X, y);
 
-            InternalChild = new DrawSizePreservingFillContainer
+            InternalChildren = new Drawable[]
             {
-                TargetDrawSize = new Vector2(1920, 1080),
-                Strategy = DrawSizePreservationStrategy.Minimum,
-                Children = new Drawable[]
+                // The beatmap's background shows through, darkened a little (the design's 25% black).
+                new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.25f },
+                pages = new Container
                 {
-                    // The beatmap's background shows through, darkened a little (the design's 25% black).
-                    new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.25f },
-                    pages = new Container
+                    RelativeSizeAxes = Axes.Both,
+                    // At the game's own scale, as osu!'s screen has them.
+                    Child = mainPage = new ScoreProvider(shownScore)
                     {
                         RelativeSizeAxes = Axes.Both,
-                        Child = mainPage = new Container
+                        // Hidden until the animation starts (the pieces would show finished for a frame before), but updated meanwhile:
+                        // the pieces only set themselves up (LoadComplete) when it is.
+                        Alpha = 0,
+                        AlwaysPresent = true,
+                        Children = new Drawable[]
                         {
-                            RelativeSizeAxes = Axes.Both,
-                            Children = new[]
+                            // Silent unless this screen plays the results' sounds (see sounds).
+                            new AudioContainer
                             {
-                                createBeatmapInfo(metadata, beatmap, stars),
-                                createScoreArea(),
-                                createGrade(),
-                                createHeader(false),
-                            }
-                        },
+                                RelativeSizeAxes = Axes.Both,
+                                Volume = { Value = sounds ? 1 : 0 },
+                                Child = rankDisplay = new ArgonScoreRankDisplay(),
+                            },
+                            beatmapPanel = new ArgonBeatmapInfoPanel { Position = leftWedgeBase },
+                            playerPanel = new ArgonPlayerInfoPanel { Position = leftWedgeBase + leftWedgeOffset(161) },
+                            totalScorePanel = new ArgonTotalScorePanel { Position = leftWedgeBase + leftWedgeOffset(233) },
+                            statisticsHolder = new Container
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                Child = createStatistics(details.Performance.Value ?? score.PP),
+                            },
+                        }
                     },
-                    createBottomBar(),
-                }
+                },
+                designScale(createBottomBar()),
             };
 
-            // The pp counts up too, from wherever it is once it's known (the server's can come in late).
-            performance.BindValueChanged(pp =>
+            animatables.AddRange(new IAnimatableSkinnable[] { rankDisplay, beatmapPanel, playerPanel, totalScorePanel, statisticsGrid });
+        }
+
+        /// <summary>The statistics (accuracy, combo, pp, the judgements and mods), with the given pp, reading a score of their own.</summary>
+        private Drawable createStatistics(double? pp)
+        {
+            statisticsPP = pp;
+
+            return new ScoreProvider(new Bindable<IScoreInfo>(withDetails(pp)))
             {
-                if (pp.NewValue is not double value)
-                    ppText.Text = "-";
-                else if (countedUp)
-                    ppText.RollTo(value, 1000);
-            }, true);
+                RelativeSizeAxes = Axes.Both,
+                Child = statisticsGrid = new ArgonScoreStatisticsGrid { Position = new Vector2(20, 354) },
+            };
+        }
+
+        /// <summary>
+        /// Laid out in the design's 1920x1080, scaled to fit; things on the right stay on the right on wider screens.
+        /// </summary>
+        private static Drawable designScale(Drawable content) => new DrawSizePreservingFillContainer
+        {
+            TargetDrawSize = new Vector2(1920, 1080),
+            Strategy = DrawSizePreservationStrategy.Minimum,
+            Child = content,
+        };
+
+        /// <summary>
+        /// The score with what the results screen knows of it beyond the score itself: its pp (the server's, by Reprise's rules, else
+        /// what the results screen worked out) and the player's place on the beatmap.
+        /// </summary>
+        private ScoreInfo withDetails(double? pp)
+        {
+            var shown = score.DeepClone();
+            shown.PP = pp;
+            shown.Position = details.UserBestPosition.Value ?? score.Position;
+            return shown;
         }
 
         protected override void LoadComplete()
@@ -171,56 +209,74 @@ namespace osu.Game.Screens.Ranking.Modern
             base.LoadComplete();
 
             // The play's pp: the server's (Reprise's rules), else what the results screen worked out, else the score's own.
-            performance.Value = details.Performance.Value ?? score.PP;
-            details.Performance.BindValueChanged(pp =>
+            performance = details.Performance.GetBoundCopy();
+            performance.BindValueChanged(pp =>
             {
-                if (pp.NewValue != null)
-                    performance.Value = pp.NewValue;
-            });
+                if (pp.NewValue == null || pp.NewValue == statisticsPP)
+                    return;
 
-            // "Personal best" once it's known this play beat the last one (a play just set).
-            if (details.HasSecondPage)
-            {
-                details.PreviousBest.BindValueChanged(_ => updatePersonalBest());
-                details.StatisticsUpdate.BindValueChanged(_ => updatePersonalBest(), true);
-            }
+                // The statistics made again with it (as they end up, if they've already animated): a score bindable won't take a copy of
+                // the same score with another pp (realm objects' equality), and changing the others' would start their animations over.
+                animatables.Remove(statisticsGrid);
+                statisticsHolder.Child = createStatistics(pp.NewValue);
+                animatables.Add(statisticsGrid);
+            }, true);
 
             fetchRanks();
+        }
 
-            // As lazer's results: once the ring has started filling, the score rolls up (ticking), and the other numbers with it (each time
-            // the screen's shown). Scheduled so the counters don't jump to where they end straight away.
-            ScheduleAfterChildren(() =>
+        protected override void Update()
+        {
+            base.Update();
+
+            // Once the pieces have set themselves up (their LoadComplete runs after this screen's).
+            if (!animationStarted && animatables.All(a => ((Drawable)a).IsLoaded))
             {
-                using (BeginDelayedSequence(AccuracyCircle.ACCURACY_TRANSFORM_DELAY))
-                {
-                    scoreCounter.FadeIn();
-                    scoreCounter.Current.Value = score.GetDisplayScore(scoringMode.Value);
-
-                    foreach (var (text, target) in countUps)
-                        text.RollTo(target, AccuracyCircle.ACCURACY_TRANSFORM_DURATION);
-                    if (performance.Value is double pp)
-                        ppText.RollTo(pp, AccuracyCircle.ACCURACY_TRANSFORM_DURATION);
-                }
-
-                countedUp = true;
-                scoringMode.BindValueChanged(mode => scoreCounter.Current.Value = score.GetDisplayScore(mode.NewValue));
-            });
+                animationStarted = true;
+                startAnimation();
+                mainPage.Show();
+            }
         }
 
-        /// <summary>A number that counts up to where it ends.</summary>
-        private CountingText countUp(double target, Func<double, string> format)
+        /// <summary>
+        /// The pieces' reveal, in the order of their groups as osu!'s skinnable results screen sequences them (the wedges, then the
+        /// statistics, then the grade ring filling up).
+        /// </summary>
+        private void startAnimation()
         {
-            var text = new CountingText(format);
-            countUps.Add((text, target));
-            return text;
+            foreach (var a in animatables)
+                a.FinishAnimating();
+
+            double endTime = Time.Current;
+
+            foreach (var group in animatables.GroupBy(a => a.GroupNumber).OrderBy(g => g.Key))
+            {
+                double groupStart = endTime;
+
+                foreach (var a in group)
+                    endTime = Math.Max(endTime, a.StartAnimating(groupStart));
+            }
         }
 
-        private void updatePersonalBest()
+        /// <summary>
+        /// Ends the reveal at once (everything as it ends up).
+        /// </summary>
+        public void FinishAnimation()
         {
-            var previous = details.PreviousBest.Value;
-            // No previous best: known once the server's update for this play arrived.
-            bool beaten = previous != null ? score.TotalScore > previous.TotalScore : details.StatisticsUpdate.Value != null;
-            personalBest.FadeTo(beaten ? 1 : 0, 300, Easing.OutQuint);
+            foreach (var a in animatables)
+                a.FinishAnimating();
+        }
+
+        /// <summary>The score the pieces inside read (osu!'s results pieces resolve it).</summary>
+        private partial class ScoreProvider : Container
+        {
+            [Cached(typeof(IBindable<IScoreInfo>))]
+            private readonly Bindable<IScoreInfo> score;
+
+            public ScoreProvider(Bindable<IScoreInfo> score)
+            {
+                this.score = score;
+            }
         }
 
         /// <summary>Over to a page (the bottom bar's tabs), or back to the main one from it.</summary>
@@ -231,10 +287,11 @@ namespace osu.Game.Screens.Ranking.Modern
         {
             currentPage = page;
 
+            // These two are in the design's 1920x1080, as the bottom bar.
             if (page == Page.AdvancedInfo && advancedPage == null)
-                pages.Add(advancedPage = new AdvancedInfoPage(score, details, () => createHeader(true)) { Alpha = 0 });
+                pages.Add(designScale(advancedPage = new AdvancedInfoPage(score, details, createHeader) { Alpha = 0 }));
             if (page == Page.Ranking && rankingPage == null)
-                pages.Add(rankingPage = new RankingPage(score) { Alpha = 0 });
+                pages.Add(designScale(rankingPage = new RankingPage(score) { Alpha = 0 }));
 
             mainPage.FadeTo(page == Page.Main ? 1 : 0, 200, Easing.OutQuint);
             advancedPage?.FadeTo(page == Page.AdvancedInfo ? 1 : 0, 200, Easing.OutQuint);
@@ -258,8 +315,8 @@ namespace osu.Game.Screens.Ranking.Modern
 
         // ── the header: the player and their place ───────────────────────────────────────────
 
-        /// <param name="advanced">The advanced info's: "← Basic Info" before it, nothing after.</param>
-        private Drawable createHeader(bool advanced)
+        /// <summary>The advanced info's header: "← Basic Info" before it.</summary>
+        private Drawable createHeader()
         {
             var user = score.User;
             int? position = details.UserBestPosition.Value ?? score.Position;
@@ -269,7 +326,7 @@ namespace osu.Game.Screens.Ranking.Modern
                 RelativeSizeAxes = Axes.X,
                 Height = 60,
                 Y = 73,
-                Padding = advanced ? new MarginPadding { Left = 176, Right = 24 } : new MarginPadding { Left = 72, Right = 236 },
+                Padding = new MarginPadding { Left = 176, Right = 24 },
                 Child = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
@@ -351,372 +408,14 @@ namespace osu.Game.Screens.Ranking.Modern
                 Children = new Drawable[]
                 {
                     header,
-                    // "Advanced Info", at the right of the header; on the advanced info, "Basic Info" at its left.
-                    advanced
-                        ? new PageButton("Basic Info", true, () => showPage(Page.Main))
-                        {
-                            Position = new Vector2(-100, 73),
-                        }
-                        : new PageButton("Advanced Info", false, () => showPage(Page.AdvancedInfo))
-                        {
-                            Anchor = Anchor.TopRight,
-                            Origin = Anchor.TopRight,
-                            Position = new Vector2(41, 73),
-                        },
-                }
-            };
-        }
-
-        // ── the beatmap ──────────────────────────────────────────────────────────────────────
-
-        private Drawable createBeatmapInfo(IBeatmapMetadataInfo metadata, BeatmapInfo beatmap, StarDifficulty stars)
-        {
-            var favourites = new OsuSpriteText
-            {
-                Anchor = Anchor.CentreLeft,
-                Origin = Anchor.CentreLeft,
-                Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold),
-                Colour = SUB_CONTENT,
-            };
-            var heart = new SpriteIcon
-            {
-                Anchor = Anchor.CentreLeft,
-                Origin = Anchor.CentreLeft,
-                Size = new Vector2(18),
-                Icon = FontAwesome.Regular.Heart,
-            };
-
-            // The count as fetched, then one up or down as the heart's clicked here (the fetched count doesn't follow it).
-            int favouriteChange = 0;
-
-            void updateFavourites() => favourites.Text = details.OnlineBeatmap.Value?.BeatmapSet is { } set
-                ? Math.Max(0, set.FavouriteCount + favouriteChange).ToString("N0", CultureInfo.CurrentCulture)
-                : "-";
-
-            details.OnlineBeatmap.BindValueChanged(_ =>
-            {
-                favouriteChange = 0;
-                updateFavourites();
-            }, true);
-            details.Favourited.BindValueChanged(f =>
-            {
-                heart.Icon = f.NewValue ? FontAwesome.Solid.Heart : FontAwesome.Regular.Heart;
-
-                if (f.OldValue != f.NewValue && details.OnlineBeatmap.Value != null)
-                {
-                    favouriteChange += f.NewValue ? 1 : -1;
-                    updateFavourites();
-                }
-            }, true);
-
-            Color4 difficultyColour = DifficultyNameColour(colours, stars.Stars);
-
-            return new Container
-            {
-                RelativeSizeAxes = Axes.Both,
-                Children = new Drawable[]
-                {
-                    // The dark band behind the title, slanting off to the left edge.
-                    new SlantedBox(BACKGROUND_3, 0.9f)
+                    // "Basic Info", at the header's left: back to the main page.
+                    new PageButton("Basic Info", () => showPage(Page.Main))
                     {
-                        Position = new Vector2(-563, -41),
-                        Size = new Vector2(1279, 347),
-                    },
-                    new FillFlowContainer
-                    {
-                        Position = new Vector2(74, 157),
-                        AutoSizeAxes = Axes.Both,
-                        Direction = FillDirection.Vertical,
-                        Spacing = new Vector2(0, 6),
-                        Children = new Drawable[]
-                        {
-                            new BeatmapSetOnlineStatusPill
-                            {
-                                Status = beatmap.Status,
-                                TextSize = 12,
-                            },
-                            new OsuSpriteText
-                            {
-                                Text = new RomanisableString(metadata.TitleUnicode, metadata.Title),
-                                Font = OsuFont.TorusAlternate.With(size: 36, weight: FontWeight.SemiBold),
-                                Shadow = true,
-                            },
-                            new OsuSpriteText
-                            {
-                                Text = new RomanisableString(metadata.ArtistUnicode, metadata.Artist),
-                                Font = OsuFont.Torus.With(size: 24, weight: FontWeight.SemiBold),
-                                Shadow = true,
-                            },
-                            new ClickableContainer
-                            {
-                                AutoSizeAxes = Axes.Both,
-                                Action = details.ToggleFavourite,
-                                Masking = true,
-                                CornerRadius = 6,
-                                Children = new Drawable[]
-                                {
-                                    new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.2f },
-                                    new FillFlowContainer
-                                    {
-                                        AutoSizeAxes = Axes.Both,
-                                        Direction = FillDirection.Horizontal,
-                                        Spacing = new Vector2(6, 0),
-                                        Padding = new MarginPadding { Horizontal = 12, Vertical = 7 },
-                                        Children = new Drawable[] { heart, favourites },
-                                    },
-                                }
-                            },
-                        }
-                    },
-                    // The difficulty: ruleset, stars, name and mapper, on a dark band from the left edge.
-                    new Container
-                    {
-                        Position = new Vector2(-530, 286),
-                        Size = new Vector2(1145, 40),
-                        Children = new Drawable[]
-                        {
-                            new SlantedBox(BACKGROUND_5) { RelativeSizeAxes = Axes.Both },
-                            new FillFlowContainer
-                            {
-                                Anchor = Anchor.CentreLeft,
-                                Origin = Anchor.CentreLeft,
-                                X = 603,
-                                AutoSizeAxes = Axes.Both,
-                                Direction = FillDirection.Horizontal,
-                                Spacing = new Vector2(8, 0),
-                                Children = new Drawable[]
-                                {
-                                    new ConstrainedIconContainer
-                                    {
-                                        Anchor = Anchor.CentreLeft,
-                                        Origin = Anchor.CentreLeft,
-                                        Size = new Vector2(24),
-                                        Icon = score.Ruleset.CreateInstance().CreateIcon(),
-                                    },
-                                    new StarRatingDisplay(stars)
-                                    {
-                                        Anchor = Anchor.CentreLeft,
-                                        Origin = Anchor.CentreLeft,
-                                    },
-                                    // (Within the band: a long difficulty name is cut short.)
-                                    new DifficultyLine(beatmap.DifficultyName, metadata.Author.Username, difficultyColour, 390)
-                                    {
-                                        Anchor = Anchor.CentreLeft,
-                                        Origin = Anchor.CentreLeft,
-                                    },
-                                }
-                            },
-                        }
+                        Position = new Vector2(-100, 73),
                     },
                 }
             };
         }
-
-        // ── the score ────────────────────────────────────────────────────────────────────────
-
-        private Drawable createScoreArea()
-        {
-            // Silent, as the ring is: the game's own results underneath (hidden) play their sounds (ticks, dinks, applause) as they animate.
-            scoreCounter = new ScoreCounter(false)
-            {
-                Anchor = Anchor.CentreLeft,
-                Origin = Anchor.CentreLeft,
-                // Up a little, to sit in the band's middle: the font has room under its digits (they'd sit 12 low).
-                Position = new Vector2(60, -12),
-                Current = { Value = 0 },
-                Alpha = 0,
-                AlwaysPresent = true,
-            };
-
-            var statistics = score.GetStatisticsForDisplay().ToList();
-            var basic = statistics.Where(s => s.MaxCount == null && s.Result.IsBasic()).ToList();
-            var extra = statistics.Where(s => s.MaxCount is > 0).ToList();
-
-            ppText = new CountingText(v => Math.Round(v).ToString("N0", CultureInfo.CurrentCulture));
-
-            return new Container
-            {
-                RelativeSizeAxes = Axes.Both,
-                Children = new Drawable[]
-                {
-                    // The score, on its band.
-                    new Container
-                    {
-                        Position = new Vector2(-45, 333),
-                        Size = new Vector2(890, 180),
-                        Children = new Drawable[]
-                        {
-                            new SlantedBox(Color4Extensions.FromHex("171c1a"), 0.75f) { RelativeSizeAxes = Axes.Both },
-                            scoreCounter,
-                        }
-                    },
-                    personalBest = new Container
-                    {
-                        Position = new Vector2(707, 313),
-                        Size = new Vector2(265, 40),
-                        Alpha = 0,
-                        Children = new Drawable[]
-                        {
-                            new SlantedBox(ColourInfo.GradientVertical(Color4Extensions.FromHex("ffe7a8"), Color4Extensions.FromHex("ffb800"))) { RelativeSizeAxes = Axes.Both },
-                            new OsuSpriteText
-                            {
-                                Anchor = Anchor.Centre,
-                                Origin = Anchor.Centre,
-                                Text = "PERSONAL BEST",
-                                Font = OsuFont.Torus.With(size: 24, weight: FontWeight.Bold),
-                                Spacing = new Vector2(2.4f, 0),
-                                Colour = BACKGROUND_5,
-                            },
-                        }
-                    },
-                    // Accuracy, combo and pp.
-                    new StatisticBox("ACCURACY", NUMBER_GRADIENT, BACKGROUND_5, countUp(score.Accuracy, v => v.FormatAccuracy().ToString()))
-                    {
-                        Position = new Vector2(125, 520),
-                    },
-                    new StatisticBox("COMBO", NUMBER_GRADIENT, BACKGROUND_5, countUp(score.MaxCombo, v => $"{Math.Round(v):N0}x"))
-                    {
-                        Position = new Vector2(366, 520),
-                        Maximum = $"/{score.GetMaximumAchievableCombo():N0}",
-                    },
-                    new StatisticBox("PP", NUMBER_GRADIENT, BACKGROUND_5, ppText) { Position = new Vector2(607, 520) },
-                    // The judgements, each in its colour.
-                    new FillFlowContainer
-                    {
-                        Position = new Vector2(110, 605),
-                        AutoSizeAxes = Axes.Both,
-                        Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(-9, 0),
-                        ChildrenEnumerable = basic.Select((s, i) => createJudgement(s, i == 0 ? 250 : 180)),
-                    },
-                    // Slider ends, spinner bonus and the like: out of how many there were.
-                    new FillFlowContainer
-                    {
-                        Position = new Vector2(96, 710),
-                        AutoSizeAxes = Axes.Both,
-                        Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(-6, 0),
-                        ChildrenEnumerable = extra.Select(s => new StatisticBox(s.DisplayName.ToUpper(), NUMBER_GRADIENT, BACKGROUND_4, countUp(s.Count, count), width: 165, height: 70,
-                            valueSize: 28)
-                        {
-                            Maximum = $"/{s.MaxCount:N0}",
-                        }),
-                    },
-                    createMods(),
-                }
-            };
-        }
-
-        /// <summary>A judgement's box: its count in its colour, on its colour (the first, the best one, wider).</summary>
-        private Drawable createJudgement(HitResultDisplayStatistic statistic, float width)
-        {
-            ColourInfo colour = statistic.Result switch
-            {
-                HitResult.Perfect or HitResult.Great => ColourInfo.GradientHorizontal(Color4Extensions.FromHex("00ffaa"), Color4Extensions.FromHex("ff9ad7")),
-                HitResult.Good or HitResult.Ok => Color4Extensions.FromHex("69ee00"),
-                HitResult.Meh => Color4Extensions.FromHex("ffb800"),
-                HitResult.Miss => Color4Extensions.FromHex("ff0000"),
-                _ => colours.ForHitResult(statistic.Result),
-            };
-            Color4 edge = statistic.Result switch
-            {
-                HitResult.Perfect or HitResult.Great => Color4Extensions.FromHex("7cf6ff"),
-                HitResult.Good or HitResult.Ok => Color4Extensions.FromHex("69ee00"),
-                HitResult.Meh => Color4Extensions.FromHex("ffb800"),
-                HitResult.Miss => Color4Extensions.FromHex("ff0000"),
-                _ => colours.ForHitResult(statistic.Result),
-            };
-
-            return new StatisticBox(judgementName(statistic), colour, Color4.Black, countUp(statistic.Count, count), width: width, fillAlpha: 0.75f, edge: edge);
-        }
-
-        private static string count(double value) => Math.Round(value).ToString("N0", CultureInfo.CurrentCulture);
-
-        /// <summary>osu!'s judgements by their old names (300, 100, 50), as the design has them; other rulesets' as they're called.</summary>
-        private LocalisableString judgementName(HitResultDisplayStatistic statistic)
-        {
-            if (score.Ruleset.OnlineID == 0)
-            {
-                switch (statistic.Result)
-                {
-                    case HitResult.Great: return "300";
-                    case HitResult.Ok: return "100";
-                    case HitResult.Meh: return "50";
-                    case HitResult.Miss: return "MISS";
-                }
-            }
-
-            return statistic.DisplayName.ToUpper();
-        }
-
-        private Drawable createMods() => new Container
-        {
-            Position = new Vector2(82, 785),
-            // As wide as the mods need (at least the design's 315), with room on the right for the slant.
-            AutoSizeAxes = Axes.X,
-            Height = 88,
-            Alpha = score.Mods.Length > 0 ? 1 : 0,
-            Children = new Drawable[]
-            {
-                new SlantedBox(BACKGROUND_4) { RelativeSizeAxes = Axes.Both },
-                new Container { Width = 315 },
-                new OsuSpriteText
-                {
-                    Position = new Vector2(27, 8),
-                    Text = "MODS",
-                    Font = OsuFont.Torus.With(size: 16, weight: FontWeight.Bold),
-                },
-                // Side by side, apart (a rate mod's plate clear of the next one).
-                new FillFlowContainer<ModIcon>
-                {
-                    Position = new Vector2(21, 24),
-                    Margin = new MarginPadding { Right = 30 },
-                    AutoSizeAxes = Axes.Both,
-                    Direction = FillDirection.Horizontal,
-                    Spacing = new Vector2(4, 0),
-                    ChildrenEnumerable = score.Mods.AsOrdered().Select(m => new ModIcon(m) { Scale = new Vector2(0.75f) }),
-                },
-            }
-        };
-
-        // ── the grade ────────────────────────────────────────────────────────────────────────
-
-        private Drawable createGrade() => new Container
-        {
-            Anchor = Anchor.TopRight,
-            Origin = Anchor.TopLeft,
-            // From the design's right edge, so it stays to the right on wider screens.
-            Position = new Vector2(1162 - 1920, 183),
-            Size = new Vector2(1140, 714),
-            Children = new Drawable[]
-            {
-                // The dark backing: a half circle around the ring, to the right edge.
-                new Circle { Size = new Vector2(714), Colour = Color4.Black, Alpha = 0.4f },
-                new Box { X = 357, Size = new Vector2(1140 - 357, 714), Colour = Color4.Black, Alpha = 0.4f },
-                new Circle
-                {
-                    Position = new Vector2(48, 46),
-                    Size = new Vector2(623),
-                    Colour = Color4Extensions.FromHex("333333"),
-                },
-                // Lazer's ring, scaled up whole (its grade drawn at its own size inside it, so it grows with it). Its flair (sounds) only when
-                // the game's own results underneath don't play them: after a replay (two rings asking for applause crashed the game).
-                new Container
-                {
-                    Position = new Vector2(37, 35),
-                    Size = new Vector2(230),
-                    Scale = new Vector2(645 / 230f),
-                    Child = new AccuracyCircle(score, withFlair: sounds)
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                    },
-                },
-                new ArrowButton(() => showPage(Page.AdvancedInfo))
-                {
-                    Position = new Vector2(692, 335),
-                },
-            }
-        };
 
         // ── the bottom bar ───────────────────────────────────────────────────────────────────
 
@@ -816,96 +515,6 @@ namespace osu.Game.Screens.Ranking.Modern
         /// </summary>
         public static Color4 DifficultyNameColour(OsuColour colours, double stars) => stars >= 6.5 ? colours.Orange1 : colours.ForStarDifficulty(stars);
 
-        /// <summary>A number that rolls (eased as lazer's results' counters) to where it ends.</summary>
-        public partial class CountingText : OsuSpriteText
-        {
-            private readonly Func<double, string> format;
-            private double count;
-
-            public double Count
-            {
-                get => count;
-                set
-                {
-                    count = value;
-                    Text = format(value);
-                }
-            }
-
-            public CountingText(Func<double, string> format)
-            {
-                this.format = format;
-                Count = 0;
-            }
-
-            public void RollTo(double target, double duration) => this.TransformTo(nameof(Count), target, duration, AccuracyCircle.ACCURACY_TRANSFORM_EASING);
-        }
-
-        /// <summary>Lazer's score counter (its roll and ticks) in the design's big light numbers.</summary>
-        private partial class ScoreCounter : TotalScoreCounter
-        {
-            public ScoreCounter(bool playSamples)
-                : base(playSamples)
-            {
-                RelativeSizeAxes = Axes.None;
-                AutoSizeAxes = Axes.Both;
-            }
-
-            protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
-            {
-                s.Anchor = Anchor.CentreLeft;
-                s.Origin = Anchor.CentreLeft;
-                // Fixed width, so the digits don't jostle as they roll.
-                s.Font = OsuFont.Torus.With(size: 160, weight: FontWeight.Light, fixedWidth: true);
-                s.Spacing = new Vector2(-14, 0);
-                s.Colour = NUMBER_GRADIENT;
-            });
-        }
-
-        /// <summary>A labelled number on a slanted box: a label, the value, and what it's out of (on the right).</summary>
-        private partial class StatisticBox : Container
-        {
-            public readonly OsuSpriteText Value;
-            private readonly OsuSpriteText maximum;
-
-            public string Maximum
-            {
-                set => maximum.Text = value;
-            }
-
-            public StatisticBox(LocalisableString label, ColourInfo valueColour, Color4 fill, OsuSpriteText? value = null, float width = 250, float height = 80, float valueSize = 40,
-                                float fillAlpha = 1, Color4? edge = null)
-            {
-                Size = new Vector2(width, height);
-                Value = value ?? new OsuSpriteText();
-                Value.Font = OsuFont.Torus.With(size: valueSize);
-                Value.Colour = valueColour;
-                Value.Anchor = Anchor.BottomLeft;
-                Value.Origin = Anchor.BottomLeft;
-                Value.Position = new Vector2(22, -6);
-
-                Children = new Drawable[]
-                {
-                    new SlantedBox(fill, fillAlpha, edge) { RelativeSizeAxes = Axes.Both },
-                    new OsuSpriteText
-                    {
-                        Position = new Vector2(24, 12),
-                        Text = label,
-                        Font = OsuFont.Torus.With(size: 16, weight: FontWeight.Bold),
-                    },
-                    Value,
-                    maximum = new OsuSpriteText
-                    {
-                        Anchor = Anchor.BottomRight,
-                        Origin = Anchor.BottomRight,
-                        Position = new Vector2(-24, -10),
-                        Font = OsuFont.Torus.With(size: valueSize / 2),
-                        Colour = SUB_CONTENT,
-                    },
-                };
-            }
-        }
-
         /// <summary>A value in the header: its label over it (blank until known).</summary>
         private partial class HeaderValue : FillFlowContainer
         {
@@ -963,10 +572,10 @@ namespace osu.Game.Screens.Ranking.Modern
             }
         }
 
-        /// <summary>"Advanced Info →" at the header's right, or "← Basic Info" at its left: a dark box off the screen's edge.</summary>
+        /// <summary>"← Basic Info" at the header's left: a dark box off the screen's edge.</summary>
         private partial class PageButton : OsuClickableContainer
         {
-            public PageButton(string text, bool back, Action action)
+            public PageButton(string text, Action action)
             {
                 Action = action;
                 Size = new Vector2(268, 60);
@@ -977,27 +586,14 @@ namespace osu.Game.Screens.Ranking.Modern
                     new Box { RelativeSizeAxes = Axes.Both, Colour = Color4.Black, Alpha = 0.8f },
                     new OsuSpriteText
                     {
-                        Anchor = back ? Anchor.CentreRight : Anchor.CentreLeft,
-                        Origin = back ? Anchor.CentreRight : Anchor.CentreLeft,
-                        X = back ? -24 : 42,
+                        Anchor = Anchor.CentreRight,
+                        Origin = Anchor.CentreRight,
+                        X = -24,
                         Text = text,
                         Font = OsuFont.Torus.With(size: 16, weight: FontWeight.SemiBold),
                     },
-                    back
-                        ? new CircledArrow(FontAwesome.Solid.ArrowLeft) { Anchor = Anchor.CentreRight, Origin = Anchor.CentreRight, X = -118 }
-                        : new CircledArrow { Anchor = Anchor.CentreLeft, Origin = Anchor.CentreLeft, X = 161 },
+                    new CircledArrow(FontAwesome.Solid.ArrowLeft) { Anchor = Anchor.CentreRight, Origin = Anchor.CentreRight, X = -118 },
                 };
-            }
-        }
-
-        /// <summary>The arrow at the grade's right: on to the advanced info.</summary>
-        private partial class ArrowButton : OsuClickableContainer
-        {
-            public ArrowButton(Action action)
-            {
-                Action = action;
-                Size = new Vector2(42);
-                Child = new CircledArrow();
             }
         }
 

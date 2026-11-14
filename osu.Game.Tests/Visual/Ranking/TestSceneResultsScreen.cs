@@ -387,8 +387,8 @@ namespace osu.Game.Tests.Visual.Ranking
             });
             AddUntilStep("wait for loaded", () => screen.IsLoaded);
             AddUntilStep("new screen shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
-            AddAssert("its ring plays the sounds", () => this.ChildrenOfType<ModernResultsScreen>().Single().ChildrenOfType<AccuracyCircle>().Single()
-                                                              .ChildrenOfType<PoolableSkinnableSample>().Any());
+            AddAssert("its ring plays the sounds", () => this.ChildrenOfType<ModernResultsScreen>().Single().ChildrenOfType<osu.Game.Screens.RankingV2.Argon.ArgonScoreRankDisplay>().Single()
+                                                              .FindClosestParent<osu.Framework.Graphics.Containers.AudioContainer>()?.Volume.Value == 1);
             AddWaitStep("let the animations play out", 50);
             AddAssert("still shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsAlive == true);
 

@@ -24,6 +24,7 @@ using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Modern;
+using osu.Game.Screens.RankingV2.Argon;
 using osu.Game.Skinning.Ranking;
 
 namespace osu.Game.Tests.Visual.Ranking
@@ -35,6 +36,7 @@ namespace osu.Game.Tests.Visual.Ranking
         public static Action<string>? Screenshot;
 
         private bool exported;
+        private readonly Bindable<double?> performance = new Bindable<double?>();
         private readonly Bindable<bool> favourited = new Bindable<bool>();
 
         [SetUpSteps]
@@ -92,11 +94,13 @@ namespace osu.Game.Tests.Visual.Ranking
                 };
 
                 exported = false;
+                performance.Value = null;
                 favourited.Value = false;
 
                 var details = new LegacyRankingDetails
                 {
                     HasSecondPage = justSet,
+                    Performance = performance,
                     PreviousBest = new Bindable<SoloScoreInfo?>(new SoloScoreInfo { TotalScore = 912_345, Accuracy = 0.9681, MaxCombo = 1_120, PP = 261 }),
                     OnlineBeatmap = new Bindable<APIBeatmap?>(new APIBeatmap { BeatmapSet = new APIBeatmapSet { FavouriteCount = 4_231 } }),
                     ExportReplay = () => exported = true,
@@ -187,7 +191,28 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("screen loaded", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.IsLoaded == true);
             AddWaitStep("partway", 6);
             AddStep("screenshot", () => Screenshot?.Invoke("modern-counting"));
-            AddUntilStep("score counted up", () => this.ChildrenOfType<ModernResultsScreen.CountingText>().All(t => t.Transforms.Count() == 0));
+            AddUntilStep("revealing", () => this.ChildrenOfType<ArgonTotalScorePanel>().Single().Parent!.Alpha == 1);
+            AddStep("finish", () => this.ChildrenOfType<ModernResultsScreen>().Single().FinishAnimation());
+            AddAssert("score in full", () => this.ChildrenOfType<ArgonTotalScorePanel>().Single().ChildrenOfType<OsuSpriteText>()
+                                                 .Any(t => new string(t.Text.ToString().Where(char.IsDigit).ToArray()) == "956789"));
+        }
+
+        [Test]
+        public void TestServerPerformanceShown()
+        {
+            AddStep("load as just set", () => loadScreen(true));
+            AddUntilStep("revealed", () => this.ChildrenOfType<ArgonTotalScorePanel>().SingleOrDefault()?.Parent!.Alpha == 1);
+            AddAssert("score's pp", () => ppTexts().Any(t => t == "284pp"));
+            AddStep("server's pp comes in", () => performance.Value = 301.4);
+            AddUntilStep("server's pp", () => ppTexts().Any(t => t == "301pp"));
+
+            string[] ppTexts() => this.ChildrenOfType<ArgonScoreStatisticsGrid>().Single().ChildrenOfType<OsuSpriteText>().Select(t => t.Text.ToString()).ToArray();
+        }
+
+        [Test]
+        public void TestRingSilentUnderTheGamesResults()
+        {
+            AddAssert("muted", () => this.ChildrenOfType<ArgonScoreRankDisplay>().Single().FindClosestParent<osu.Framework.Graphics.Containers.AudioContainer>()?.Volume.Value == 0);
         }
 
         [Test]
