@@ -61,12 +61,12 @@ namespace osu.Game.Tests.Visual.Gameplay
         {
             create(true);
             AddUntilStep("two icons", () => icons().Length == 2);
-            // As the game's mod display: in the top right corner, the first (Hidden) rightmost.
-            AddAssert("in the top right corner", () =>
+            // As stable keeps them: at the right edge (30 in), under the score in the top right, the first (Hidden) rightmost.
+            AddAssert("at the right edge under the score", () =>
             {
                 var area = ScreenSpaceDrawQuad.AABBFloat;
                 var first = icons()[0].ScreenSpaceDrawQuad.AABBFloat;
-                return area.Right - first.Right < area.Width * 0.05f && first.Top - area.Top < area.Height * 0.1f;
+                return area.Right - first.Right < area.Width * 0.05f && first.Top - area.Top < area.Height * 0.25f;
             });
             AddAssert("the next one to its left", () => icons()[1].ScreenSpaceDrawQuad.Centre.X < icons()[0].ScreenSpaceDrawQuad.Centre.X);
         }

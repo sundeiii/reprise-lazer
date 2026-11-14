@@ -226,6 +226,8 @@ namespace osu.Game.Screens.Play
             ScoreProcessor.NewJudgement += _ => ScoreProcessor.PopulateScore(Score.ScoreInfo);
             ScoreProcessor.OnResetFromReplayFrame += () => ScoreProcessor.PopulateScore(Score.ScoreInfo);
 
+            HealthProcessor.NewJudgement += _ => HealthProcessor.PopulateScore(Score.ScoreInfo);
+
             gameActive.BindValueChanged(_ => updatePauseOnFocusLostState(), true);
         }
 

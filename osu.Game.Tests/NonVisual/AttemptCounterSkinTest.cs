@@ -28,7 +28,8 @@ namespace osu.Game.Tests.NonVisual
             // the skin editor and saved skins create components with nothing but their type.
             var instance = (ISerialisableDrawable)Activator.CreateInstance(typeof(AttemptCounter))!;
 
-            Assert.That(instance.IsEditable, Is.True);
+            Assert.That(instance.CanBeSelected, Is.True);
+            Assert.That(instance.CanBeMoved, Is.True);
         }
 
         [Test]

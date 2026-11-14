@@ -14,12 +14,12 @@
     <Version>0.0.0</Version>
     <FileVersion>0.0.0</FileVersion>
     <SentryDsn Condition="'$(SentryDsn)' == ''"></SentryDsn>
+    <CETCompat>false</CETCompat>
   </PropertyGroup>
 
   <!-- Required for deployment. -->
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <StartupHookSupport>false</StartupHookSupport>
-    <CETCompat>false</CETCompat>
   </PropertyGroup>
 
   <PropertyGroup>

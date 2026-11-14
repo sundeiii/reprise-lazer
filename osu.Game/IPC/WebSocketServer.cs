@@ -137,6 +137,11 @@ namespace osu.Game.IPC
                     {
                         // occurs on Windows when the listener is stopped.
                     }
+                    catch (ObjectDisposedException)
+                    {
+                        // Reprise: occurs when the listener has been closed by the time the pending request completes (shutting down).
+                        // Uncaught on this thread pool callback, it took the whole process down.
+                    }
                 }, listener);
                 WaitHandle.WaitAny([contextResetEvent.WaitHandle, runningTokenSource.Token.WaitHandle]);
 

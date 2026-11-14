@@ -83,7 +83,7 @@ namespace osu.Game.Overlays.Settings.Sections
                 },
                 new SettingsButtonV2
                 {
-                    Text = SkinSettingsStrings.SkinLayoutEditor,
+                    Text = LocalisableString.Interpolate($@"{SkinSettingsStrings.SkinLayoutEditor}..."),
                     Action = () => skinEditor?.ToggleVisibility(),
                 },
                 // Reprise: osu!stable's layouts a part at a time (with a legacy skin).
@@ -187,7 +187,7 @@ namespace osu.Game.Overlays.Settings.Sections
             [BackgroundDependencyLoader]
             private void load()
             {
-                Text = CommonStrings.Rename;
+                Text = LocalisableString.Interpolate($@"{CommonStrings.Rename}...");
                 Action = this.ShowPopover;
             }
 
