@@ -117,6 +117,7 @@ namespace osu.Game.Screens.Ranking
         // The redesigned results screen instead of this one (OsuSetting.NewResultsScreen), when osu!stable's layout isn't shown.
         private Bindable<bool> newResultsScreen = null!;
         private Drawable lazerContent = null!;
+        private AudioContainer lazerAudio = null!;
         private StableLayoutContainer stableContent = null!;
         private ReplayDownloadButton? replayButton;
         private FavouriteButton? favouriteButton;
@@ -209,7 +210,7 @@ namespace osu.Game.Screens.Ranking
 
             bool useCleanResultsScreen = config.Get<ResultScreenStyle>(OsuSetting.ResultScreenStyle) == ResultScreenStyle.Clean;
 
-            InternalChild = lazerContent = new PopoverContainer
+            lazerContent = new PopoverContainer
             {
                 RelativeSizeAxes = Axes.Both,
                 Child = new GridContainer
@@ -308,11 +309,18 @@ namespace osu.Game.Screens.Ranking
                 }
             };
 
+            // Reprise: the game's own results, under ours too; silent under the redesigned screen, whose grade ring plays the results'
+            // sounds (score ticks, the rank, applause) itself, in time with its own reveal.
+            InternalChild = lazerAudio = new AudioContainer
+            {
+                RelativeSizeAxes = Axes.Both,
+                Child = lazerContent,
+            };
+
             if (Score != null)
             {
                 // only show flair / animation when arriving after watching a play that isn't autoplay.
                 bool shouldFlair = !useCleanResultsScreen && showProfileUpdate;
-                gameFlair = shouldFlair;
 
                 ScorePanelList.AddScore(Score, shouldFlair);
                 // this is mostly for medal display.
@@ -433,6 +441,7 @@ namespace osu.Game.Screens.Ranking
 
             lazerContent.Alpha = replaced ? 0 : 1;
             stableContent.Alpha = replaced ? 1 : 0;
+            lazerAudio.Volume.Value = modern ? 0 : 1;
 
             // osu!stable's layout (and the redesigned screen) have their own back button instead of the game's.
             FooterContent.Value = ScreenFooterContent.Legacy(showBackButton: !replaced);
@@ -537,12 +546,12 @@ namespace osu.Game.Screens.Ranking
                 },
             };
 
-            // Reprise: the redesigned screen plays the results' sounds (score ticks, the rank, applause) itself when the game's own
-            // panel underneath doesn't (after watching a replay of the play): for the play just finished, not ones looked at after.
-            bool modernSounds = modern && player != null && score == Score && !gameFlair;
+            // Reprise: the redesigned screen plays the results' sounds (score ticks, the rank, applause) itself, in time with its own
+            // reveal (the game's own panel underneath is silent under it): for the play just finished, not ones looked at after.
+            bool modernSounds = modern && player != null && score == Score;
 
             stableContent.Child = modern
-                ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details, modernSounds)
+                ? new Modern.ModernResultsScreen(score!, retry, watchReplay, details, modernSounds, rank => PlayApplause(rank, fromRedesign: true))
                 : new LegacyRankingScreen(score!, retry, watchReplay, details);
         }
 
@@ -721,15 +730,18 @@ namespace osu.Game.Screens.Ranking
 
         private PoolableSkinnableSample? rankApplauseSound;
 
-        // Whether the game's own panel plays the results' sounds (its flair): a play just set, not a replay of one.
-        private bool gameFlair;
-
-        public void PlayApplause(ScoreRank rank)
+        /// <param name="rank">The play's grade.</param>
+        /// <param name="fromRedesign">Asked for by the redesigned screen's grade ring (Reprise), the only one heard while it's shown.</param>
+        public void PlayApplause(ScoreRank rank, bool fromRedesign = false)
         {
             const double applause_volume = 0.8f;
 
             // None after watching a replay (Reprise: but with the redesigned screen, which plays them for the replay too).
             if (!this.IsCurrentScreen() || (player is ReplayPlayer && !modernShown))
+                return;
+
+            // Reprise: the game's own grade ring keeps running unseen under the redesigned screen; its applause would come before ours.
+            if (modernShown != fromRedesign)
                 return;
 
             // Reprise: one already playing is taken out first (disposing it while it's still here crashes the next update; two grade

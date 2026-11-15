@@ -396,6 +396,26 @@ namespace osu.Game.Tests.Visual.Ranking
         }
 
         [Test]
+        public void TestNewResultsScreenSoundsAfterPlay()
+        {
+            TestResultsScreen screen = null;
+
+            AddStep("use the new results screen", () => config.SetValue(OsuSetting.NewResultsScreen, true));
+            loadResultsScreen(() => screen = createResultsScreen(TestResources.CreateTestScoreInfo()));
+            AddUntilStep("wait for loaded", () => screen.IsLoaded);
+            AddUntilStep("new screen shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
+
+            // The game's own grade ring keeps running unseen underneath, ahead of the new screen's reveal: only the new one is heard.
+            AddAssert("its ring plays the sounds", () => this.ChildrenOfType<ModernResultsScreen>().Single().ChildrenOfType<osu.Game.Screens.RankingV2.Argon.ArgonScoreRankDisplay>().Single()
+                                                              .FindClosestParent<osu.Framework.Graphics.Containers.AudioContainer>()?.Volume.Value == 1);
+            AddUntilStep("the game's own ring is silent", () => this.ChildrenOfType<AccuracyCircle>().Any()
+                                                               && this.ChildrenOfType<AccuracyCircle>().All(c => c.FindClosestParent<osu.Framework.Graphics.Containers.AudioContainer>()?.AggregateVolume.Value == 0));
+
+            AddStep("back to the game's own screen", () => config.SetValue(OsuSetting.NewResultsScreen, false));
+            AddAssert("the game's own ring heard again", () => this.ChildrenOfType<AccuracyCircle>().All(c => c.FindClosestParent<osu.Framework.Graphics.Containers.AudioContainer>()?.AggregateVolume.Value == 1));
+        }
+
+        [Test]
         public void TestStableLayoutOnLegacySkin()
         {
             TestResultsScreen screen = null;

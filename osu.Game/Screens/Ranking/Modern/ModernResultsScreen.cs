@@ -21,6 +21,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Overlays;
+using osu.Framework.Threading;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play.Leaderboards;
 using osu.Game.Screens.RankingV2.Argon;
@@ -99,13 +100,24 @@ namespace osu.Game.Screens.Ranking.Modern
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Blue);
 
-        // Whether the grade ring plays the results' sounds (score ticks, the rank): only when the game's own results underneath
-        // don't, as two playing them at once doubled them up (and crashed).
+        // Whether the grade ring plays the results' sounds (score ticks, the rank, applause): for the play just finished (the game's
+        // own results underneath are silent under this screen, so they come in time with this reveal, not the unseen one's).
         private readonly bool sounds;
 
-        public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null, bool sounds = false)
+        // The results screen's applause, for the play's grade.
+        private readonly Action<ScoreRank>? applause;
+        private ScheduledDelegate? pendingApplause;
+
+        // As long after the grade lands as the game's own grade ring has it (AccuracyCircle).
+        private const double applause_delay = 545;
+
+        private ArgonScoreRankDisplay rankDisplay = null!;
+
+        public ModernResultsScreen(ScoreInfo score, Action? retry, Action? watchReplay, LegacyRankingDetails? details = null, bool sounds = false,
+                                   Action<ScoreRank>? applause = null)
         {
             this.sounds = sounds;
+            this.applause = applause;
             this.score = score;
             this.retry = retry;
             this.watchReplay = watchReplay;
@@ -119,7 +131,6 @@ namespace osu.Game.Screens.Ranking.Modern
         {
             shownScore.Value = withDetails(details.Performance.Value ?? score.PP);
 
-            ArgonScoreRankDisplay rankDisplay;
             ArgonBeatmapInfoPanel beatmapPanel;
             ArgonPlayerInfoPanel playerPanel;
             ArgonTotalScorePanel totalScorePanel;
@@ -254,8 +265,24 @@ namespace osu.Game.Screens.Ranking.Modern
                 double groupStart = endTime;
 
                 foreach (var a in group)
+                {
                     endTime = Math.Max(endTime, a.StartAnimating(groupStart));
+
+                    // The applause once the grade has landed (osu!'s ring lands it when the total score has finished rolling).
+                    if (a == rankDisplay && sounds && applause != null)
+                    {
+                        pendingApplause?.Cancel();
+                        pendingApplause = Scheduler.AddDelayed(playApplause,
+                            groupStart + ArgonTotalScorePanel.TotalScoreCounter.ROLLING_DURATION + applause_delay - Time.Current);
+                    }
+                }
             }
+        }
+
+        private void playApplause()
+        {
+            pendingApplause = null;
+            applause?.Invoke(score.Rank);
         }
 
         /// <summary>
@@ -265,6 +292,13 @@ namespace osu.Game.Screens.Ranking.Modern
         {
             foreach (var a in animatables)
                 a.FinishAnimating();
+
+            // Skipped to the end: the applause now rather than after the reveal that's no longer running.
+            if (pendingApplause != null)
+            {
+                pendingApplause.Cancel();
+                playApplause();
+            }
         }
 
         /// <summary>The score the pieces inside read (osu!'s results pieces resolve it).</summary>
