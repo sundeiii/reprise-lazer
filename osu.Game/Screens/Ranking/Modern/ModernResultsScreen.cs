@@ -97,6 +97,9 @@ namespace osu.Game.Screens.Ranking.Modern
         private readonly List<IAnimatableSkinnable> animatables = new List<IAnimatableSkinnable>();
         private bool animationStarted;
 
+        // Whether the play just set is the player's new best on the beatmap, by the server's scores (null until it's known).
+        private readonly Bindable<bool?> personalBest = new Bindable<bool?>();
+
         [Cached]
         private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Blue);
 
@@ -166,7 +169,13 @@ namespace osu.Game.Screens.Ranking.Modern
                             },
                             beatmapPanel = new ArgonBeatmapInfoPanel { Position = leftWedgeBase },
                             playerPanel = new ArgonPlayerInfoPanel { Position = leftWedgeBase + leftWedgeOffset(161) },
-                            totalScorePanel = new ArgonTotalScorePanel { Position = leftWedgeBase + leftWedgeOffset(233) },
+                            totalScorePanel = new ArgonTotalScorePanel
+                            {
+                                Position = leftWedgeBase + leftWedgeOffset(233),
+                                // "Personal best" for a play just set by the server's scores (osu!'s goes by the scores stored here,
+                                // which missed it); a score looked at later keeps osu!'s.
+                                PersonalBest = this.details.HasSecondPage ? personalBest : null,
+                            },
                             statisticsHolder = new Container
                             {
                                 RelativeSizeAxes = Axes.Both,
@@ -233,7 +242,24 @@ namespace osu.Game.Screens.Ranking.Modern
                 animatables.Add(statisticsGrid);
             }, true);
 
+            if (details.HasSecondPage)
+            {
+                details.PreviousBest.BindValueChanged(_ => updatePersonalBest());
+                details.StatisticsUpdate.BindValueChanged(_ => updatePersonalBest(), true);
+            }
+
             fetchRanks();
+        }
+
+        private void updatePersonalBest()
+        {
+            var previous = details.PreviousBest.Value;
+
+            // Beat the last best; with none, the first play there (known once the server's update for this play arrived).
+            if (previous != null)
+                personalBest.Value = score.TotalScore > previous.TotalScore;
+            else if (details.StatisticsUpdate.Value != null)
+                personalBest.Value = true;
         }
 
         protected override void Update()

@@ -63,6 +63,15 @@ namespace osu.Game.Screens.RankingV2.Argon
 
         private Bindable<ScoringMode> scoringMode { get; } = new Bindable<ScoringMode>();
 
+        /// <summary>
+        /// Reprise: whether the score is the player's best on the beatmap, when the screen showing it knows (the server's, which can come
+        /// in after the reveal has started; null while it doesn't know yet). Without it, the best of the scores stored locally.
+        /// </summary>
+        public IBindable<bool?>? PersonalBest { get; init; }
+
+        // When the reveal brings in the personal best indicator (Reprise: it's shown then, or once it's known if that's later).
+        private double? personalBestRevealTime;
+
         [BackgroundDependencyLoader]
         private void load(OverlayColourProvider colourProvider, TextureStore textures, OsuConfigManager configManager)
         {
@@ -169,6 +178,45 @@ namespace osu.Game.Screens.RankingV2.Argon
 
             score.BindValueChanged(_ => updateState());
             scoringMode.BindValueChanged(_ => updateState(), true);
+
+            PersonalBest?.BindValueChanged(_ => updatePersonalBest());
+        }
+
+        // Reprise: the server's answer came in. Before the reveal gets to the indicator, it brings it in as usual; after, it comes in now.
+        private void updatePersonalBest()
+        {
+            if (personalBestRevealTime == null)
+            {
+                personalBestIndicator.Alpha = isScorePersonalBest(score.Value) ? 1 : 0;
+                return;
+            }
+
+            personalBestIndicator.ClearTransforms();
+            personalBestFlash.ClearTransforms();
+            animatePersonalBest(Math.Max(personalBestRevealTime.Value, Time.Current));
+        }
+
+        private void animatePersonalBest(double revealTime)
+        {
+            if (isScorePersonalBest(score.Value))
+            {
+                personalBestIndicator.FadeOut()
+                                     .ScaleTo(new Vector2(1.6f));
+
+                using (BeginAbsoluteSequence(revealTime))
+                {
+                    personalBestIndicator.FadeIn(400, Easing.OutQuint)
+                                         .ScaleTo(Vector2.One, 400, Easing.In);
+                    personalBestFlash
+                        .Delay(400)
+                        .FadeOutFromOne(2600, Easing.OutQuint);
+                }
+            }
+            else
+            {
+                personalBestIndicator.FadeOut()
+                                     .ScaleTo(Vector2.One);
+            }
         }
 
         private void updateState()
@@ -186,6 +234,9 @@ namespace osu.Game.Screens.RankingV2.Argon
 
         private bool isScorePersonalBest(IScoreInfo newScore)
         {
+            if (PersonalBest != null)
+                return PersonalBest.Value == true;
+
             if (newScore.Beatmap == null)
                 return false;
 
@@ -266,27 +317,11 @@ namespace osu.Game.Screens.RankingV2.Argon
                                 .ScaleTo(Vector2.One);
             }
 
+            personalBestRevealTime = latestTransformEndTime - 250;
+            animatePersonalBest(personalBestRevealTime.Value);
+
             if (isScorePersonalBest(score.Value))
-            {
-                personalBestIndicator.FadeOut()
-                                     .ScaleTo(new Vector2(1.6f));
-
-                using (BeginAbsoluteSequence(latestTransformEndTime - 250))
-                {
-                    personalBestIndicator.FadeIn(400, Easing.OutQuint)
-                                         .ScaleTo(Vector2.One, 400, Easing.In);
-                    personalBestFlash
-                        .Delay(400)
-                        .FadeOutFromOne(2600, Easing.OutQuint);
-
-                    latestTransformEndTime = personalBestIndicator.LatestTransformEndTime;
-                }
-            }
-            else
-            {
-                personalBestIndicator.FadeOut()
-                                     .ScaleTo(Vector2.One);
-            }
+                latestTransformEndTime = personalBestIndicator.LatestTransformEndTime;
 
             return latestTransformEndTime;
         }

@@ -373,6 +373,45 @@ namespace osu.Game.Tests.Visual.Ranking
             AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
         }
 
+        [TestCase(100_000, true)]
+        [TestCase(900_000, false)]
+        public void TestNewResultsScreenPersonalBest(long previousBest, bool shown)
+        {
+            TestResultsScreen screen = null;
+
+            // By the server's scores (the play beat the last best there), not the ones stored locally.
+            AddStep("set up network requests", () => dummyAPI.HandleRequest = request =>
+            {
+                if (request is not GetUserBeatmapScoresRequest userScores)
+                    return false;
+
+                userScores.TriggerSuccess(new GetUserBeatmapScoresRequest.Response
+                {
+                    Scores = { new SoloScoreInfo { ID = 11, TotalScore = previousBest, EndedAt = DateTimeOffset.Now.AddDays(-1) } }
+                });
+                return true;
+            });
+            AddStep("use the new results screen", () => config.SetValue(OsuSetting.NewResultsScreen, true));
+
+            loadResultsScreen(() =>
+            {
+                var score = TestResources.CreateTestScoreInfo();
+                score.BeatmapInfo!.OnlineID = 1_234;
+                return screen = createResultsScreen(score);
+            });
+            AddUntilStep("new screen shown", () => this.ChildrenOfType<ModernResultsScreen>().SingleOrDefault()?.Parent?.Alpha == 1);
+            AddStep("finish the reveal", () => this.ChildrenOfType<ModernResultsScreen>().Single().FinishAnimation());
+            AddUntilStep($"personal best {(shown ? "shown" : "not shown")}", () =>
+            {
+                var panel = this.ChildrenOfType<ModernResultsScreen>().Single().ChildrenOfType<osu.Game.Screens.RankingV2.Argon.ArgonTotalScorePanel>().Single();
+                var indicator = (Drawable)typeof(osu.Game.Screens.RankingV2.Argon.ArgonTotalScorePanel)
+                                          .GetField("personalBestIndicator", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(panel)!;
+                return indicator.Alpha == (shown ? 1 : 0);
+            });
+
+            AddStep("reset setting", () => config.SetValue(OsuSetting.NewResultsScreen, false));
+        }
+
         [Test]
         public void TestNewResultsScreenAfterReplay()
         {
