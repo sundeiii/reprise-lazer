@@ -23,6 +23,24 @@ namespace osu.Game.Tests.Visual.UserInterface
         public void SetUp() => Schedule(() => Child = overlay = new WhatsNewOverlay());
 
         [Test]
+        public void TestRunsScheduledWorkWhileHidden()
+        {
+            TestWhatsNewOverlay hidden = null!;
+            bool ran = false;
+
+            // What ShowFor does once the notes come in (show them, or restart without them) is scheduled while the overlay is hidden.
+            AddStep("hidden overlay", () => Child = hidden = new TestWhatsNewOverlay());
+            AddAssert("hidden", () => hidden.State.Value == Visibility.Hidden);
+            AddStep("schedule work", () => hidden.Later(() => ran = true));
+            AddUntilStep("it runs", () => ran);
+        }
+
+        private partial class TestWhatsNewOverlay : WhatsNewOverlay
+        {
+            public void Later(Action action) => Schedule(action);
+        }
+
+        [Test]
         public void TestShown()
         {
             AddStep("show notes", () => overlay.ShowNotes("v2026.1021.2-lazer", "## What's new\n\n"

@@ -44,6 +44,10 @@ namespace osu.Game.Updater
             Anchor = Anchor.Centre;
             Origin = Anchor.Centre;
 
+            // Updated while hidden: the notes come in (ShowFor) while it is, and what it schedules then (showing them, or restarting
+            // without them) never ran on a hidden overlay, so clicking "update ready" or "see what's new" did nothing.
+            AlwaysPresent = true;
+
             RelativeSizeAxes = Axes.Both;
             Size = new Vector2(0.5f, 0.7f);
 
