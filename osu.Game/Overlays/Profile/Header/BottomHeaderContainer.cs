@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Threading;
 using Humanizer;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -13,6 +14,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
+using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Resources.Localisation.Web;
@@ -33,8 +35,13 @@ namespace osu.Game.Overlays.Profile.Header
 
         private Color4 iconColour;
 
+        private CancellationTokenSource? messengerCancellation;
+
         [Resolved]
         private IAPIProvider api { get; set; } = null!;
+
+        [Resolved]
+        private OsuColour colours { get; set; } = null!;
 
         public BottomHeaderContainer()
         {
@@ -92,6 +99,7 @@ namespace osu.Game.Overlays.Profile.Header
 
         private void updateDisplay(APIUser? user)
         {
+            messengerCancellation?.Cancel();
             topLinkContainer.Clear();
             bottomLinkContainer.Clear();
 
@@ -172,6 +180,45 @@ namespace osu.Game.Overlays.Profile.Header
             anyInfoAdded |= tryAddInfo(FontAwesome.Solid.Link, websiteWithoutProtocol, user.Website);
 
             bottomLinkContainer.Alpha = anyInfoAdded ? 1 : 0;
+
+            lookUpMessenger(user);
+        }
+
+        // Reprise: their MSN Messenger address (msn.reprise.pw) when they show it there, and whether they're on Messenger.
+        private void lookUpMessenger(APIUser user)
+        {
+            if (!MessengerLookup.AppliesTo(api.Endpoints.WebsiteUrl))
+                return;
+
+            var cancellation = messengerCancellation = new CancellationTokenSource();
+
+            MessengerLookup.GetAsync(user.Id, cancellation.Token).ContinueWith(t => Schedule(() =>
+            {
+                if (cancellation.IsCancellationRequested || !t.IsCompletedSuccessfully || t.GetResultSafely() is not MessengerAccount account)
+                    return;
+
+                bottomLinkContainer.AddIcon(FontAwesome.Solid.CommentDots, text =>
+                {
+                    text.Font = text.Font.With(FontAwesome.Solid.CommentDots.Family, 10, FontAwesome.Solid.CommentDots.Weight);
+                    text.Colour = iconColour;
+                });
+                bottomLinkContainer.AddLink(" " + account.Address, MessengerLookup.MSN_URL, creationParameters: embolden);
+
+                // On Messenger: a green dot, as Messenger shows a contact who's on.
+                if (account.Online)
+                {
+                    bottomLinkContainer.AddArbitraryDrawable(new Container { Width = 6 });
+                    bottomLinkContainer.AddArbitraryDrawable(new Circle
+                    {
+                        Size = new Vector2(8),
+                        Colour = colours.Lime1,
+                    });
+                    bottomLinkContainer.AddText(" on Messenger", t => t.Colour = colours.Lime1);
+                }
+
+                addSpacer(bottomLinkContainer);
+                bottomLinkContainer.Alpha = 1;
+            }));
         }
 
         private void addSpacer(OsuTextFlowContainer textFlow) => textFlow.AddArbitraryDrawable(new Container { Width = 15 });
