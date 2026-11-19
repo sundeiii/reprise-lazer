@@ -3,42 +3,45 @@
 
 using System.Linq;
 using NUnit.Framework;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Screens;
 using osu.Framework.Testing;
 using osu.Game.Graphics.Containers;
-using osu.Game.Overlays.Settings.Sections;
+using osu.Game.Overlays;
+using osu.Game.Overlays.LazerSkinImport;
 
 namespace osu.Game.Tests.Visual.Settings
 {
     /// <summary>
-    /// Reprise: the skin settings' "Import skins from osu!lazer" list.
+    /// Reprise: the "Import skins from osu!lazer" wizard's screen.
     /// </summary>
     public partial class TestSceneImportLazerSkins : OsuManualInputManagerTestScene
     {
-        [Test]
-        public void TestOpen()
-        {
-            ImportLazerSkinsButton button = null!;
+        [Cached]
+        private readonly OverlayColourProvider colourProvider = new OverlayColourProvider(OverlayColourScheme.Purple);
 
-            AddStep("create button", () => Child = new PopoverContainer
+        [Test]
+        public void TestShow()
+        {
+            ScreenImportLazerSkins screen = null!;
+
+            AddStep("show screen", () =>
             {
-                RelativeSizeAxes = Axes.Both,
-                Child = button = new ImportLazerSkinsButton
-                {
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
-                    Width = 400,
-                },
+                var stack = new ScreenStack { RelativeSizeAxes = Axes.Both };
+                Child = stack;
+                stack.Push(screen = new ScreenImportLazerSkins());
             });
 
-            AddStep("open", () => button.TriggerClick());
-            AddUntilStep("list says what it found", () =>
+            AddAssert("titled", () => screen.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString() == ScreenImportLazerSkins.Title.ToString()));
+            AddAssert("button closes with none ticked", () => screen.NextStepText?.ToString() == "Close");
+
+            // (No osu!lazer for the tests: it says so.)
+            AddUntilStep("says what it found", () =>
             {
-                var popover = this.ChildrenOfType<ImportLazerSkinsPopover>().SingleOrDefault();
-                var status = popover?.ChildrenOfType<OsuTextFlowContainer>().FirstOrDefault();
-                string text = string.Concat(status?.ChildrenOfType<SpriteText>().Select(s => s.Text.ToString()) ?? []);
+                var description = screen.ChildrenOfType<OsuTextFlowContainer>().FirstOrDefault();
+                string text = string.Concat(description?.ChildrenOfType<SpriteText>().Select(s => s.Text.ToString()) ?? []);
                 return text.Length > 0 && !text.StartsWith("Reading", System.StringComparison.Ordinal);
             });
         }
