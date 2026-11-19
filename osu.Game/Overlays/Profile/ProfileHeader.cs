@@ -99,9 +99,27 @@ namespace osu.Game.Overlays.Profile
 
         protected override OverlayTitle CreateTitle() => new ProfileHeaderTitle();
 
-        protected override Drawable CreateTabControlContent() => new ProfileRulesetSelector
+        // Reprise: Vanilla, Relax and Autopilot pills before the ruleset icons, as the website has them.
+        protected override Drawable CreateTabControlContent() => new FillFlowContainer
         {
-            User = { BindTarget = User }
+            AutoSizeAxes = Axes.Both,
+            Direction = FillDirection.Horizontal,
+            Spacing = new osuTK.Vector2(16, 0),
+            Children = new Drawable[]
+            {
+                new ProfileVariantSelector
+                {
+                    Anchor = Anchor.CentreLeft,
+                    Origin = Anchor.CentreLeft,
+                    User = { BindTarget = User }
+                },
+                new ProfileRulesetSelector
+                {
+                    Anchor = Anchor.CentreLeft,
+                    Origin = Anchor.CentreLeft,
+                    User = { BindTarget = User }
+                },
+            }
         };
 
         private partial class RestrictedHeaderContainer : CompositeDrawable

@@ -232,6 +232,10 @@ namespace osu.Game.Online.API.Requests.Responses
         [JsonProperty(@"tomyum_default_variant")]
         public string TomYumDefaultVariant;
 
+        /// <summary>The badge the player pinned to their profile (its image url), or null.</summary>
+        [JsonProperty(@"profile_pinned_badge")]
+        public string ProfilePinnedBadge;
+
         [JsonProperty(@"profile_hue")]
         public int? ProfileHue;
 

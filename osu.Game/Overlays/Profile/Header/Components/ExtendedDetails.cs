@@ -28,6 +28,10 @@ namespace osu.Game.Overlays.Profile.Header.Components
         private SpriteText hitsPerPlay = null!;
         private SpriteText maximumCombo = null!;
         private SpriteText replaysWatched = null!;
+        private SpriteText playTime = null!;
+
+        /// <summary>Reprise: its own rounded background (off in a profile card, which has one).</summary>
+        public bool ShowBackground { get; init; } = true;
 
         [BackgroundDependencyLoader]
         private void load(OverlayColourProvider colourProvider)
@@ -45,6 +49,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
                 {
                     RelativeSizeAxes = Axes.Both,
                     Colour = colourProvider.Background4,
+                    Alpha = ShowBackground ? 1 : 0,
                 },
                 // this should really be a grid, but trying to avoid one to avoid the performance hit.
                 new FillFlowContainer
@@ -66,6 +71,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsRankedScore },
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsHitAccuracy },
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsPlayCount },
+                                new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsPlayTime },
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsTotalScore },
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsTotalHits },
                                 new ExtendedDetailsEntryLabel(colourProvider) { Text = UsersStrings.ShowStatsHitsPerPlay },
@@ -84,6 +90,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
                                 rankedScore = new ExtendedDetailsEntryValue(colourProvider),
                                 hitAccuracy = new ExtendedDetailsEntryValue(colourProvider),
                                 playCount = new ExtendedDetailsEntryValue(colourProvider),
+                                playTime = new ExtendedDetailsEntryValue(colourProvider),
                                 totalScore = new ExtendedDetailsEntryValue(colourProvider),
                                 totalHits = new ExtendedDetailsEntryValue(colourProvider),
                                 hitsPerPlay = new ExtendedDetailsEntryValue(colourProvider),
@@ -121,6 +128,8 @@ namespace osu.Game.Overlays.Profile.Header.Components
             rankedScore.Text = statistics.RankedScore.ToLocalisableString(@"N0");
             hitAccuracy.Text = statistics.DisplayAccuracy;
             playCount.Text = statistics.PlayCount.ToLocalisableString(@"N0");
+            var time = System.TimeSpan.FromSeconds(statistics.PlayTime ?? 0);
+            playTime.Text = time.ToString(time.Days > 0 ? @"d'd 'h'h 'm'm'" : @"h'h 'm'm'");
             totalScore.Text = statistics.TotalScore.ToLocalisableString(@"N0");
             totalHits.Text = statistics.TotalHits.ToLocalisableString(@"N0");
             hitsPerPlay.Text = getHitsPerPlay(statistics).ToLocalisableString(@"N0");

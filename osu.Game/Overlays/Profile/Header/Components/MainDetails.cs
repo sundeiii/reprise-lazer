@@ -178,7 +178,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
             ppInfo.Content.Text = !restricted && hasStatistics
                 ? user!.Statistics.PP?.ToLocalisableString("#,##0") ?? (LocalisableString)"0"
                 : (LocalisableString)"-";
-            ppInfo.Content.TooltipText = !restricted ? getPPInfoTooltipText(user) : default;
+            ppInfo.Content.TooltipText = !restricted ? GetPPInfoTooltipText(user) : default;
 
             foreach (var scoreRankInfo in scoreRankInfos)
                 scoreRankInfo.Value.RankCount = !restricted && hasStatistics ? user!.Statistics.GradesCount[scoreRankInfo.Key] : 0;
@@ -189,7 +189,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
             detailCountryRank.Content.Text = !restricted && hasStatistics
                 ? user!.Statistics.CountryRank?.ToLocalisableString("\\##,##0") ?? (LocalisableString)"-"
                 : (LocalisableString)"-";
-            detailCountryRank.Content.TooltipText = !restricted ? getCountryRankTooltipText(user) : default;
+            detailCountryRank.Content.TooltipText = !restricted ? GetCountryRankTooltipText(user) : default;
 
             rankGraph.Statistics.Value = !restricted ? user?.Statistics : null;
 
@@ -197,7 +197,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
             rankedStatsContainer.Alpha = restricted ? 0 : 1;
         }
 
-        private static LocalisableString getCountryRankTooltipText(APIUser? user)
+        internal static LocalisableString GetCountryRankTooltipText(APIUser? user)
         {
             var variants = user?.Statistics?.Variants;
 
@@ -222,7 +222,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
             return result ?? default;
         }
 
-        private static LocalisableString getPPInfoTooltipText(APIUser? user)
+        internal static LocalisableString GetPPInfoTooltipText(APIUser? user)
         {
             var variants = user?.Statistics?.Variants;
 
@@ -244,7 +244,7 @@ namespace osu.Game.Overlays.Profile.Header.Components
             return result ?? default;
         }
 
-        private partial class ScoreRankInfo : CompositeDrawable
+        internal partial class ScoreRankInfo : CompositeDrawable
         {
             private readonly OsuSpriteText rankCount;
 

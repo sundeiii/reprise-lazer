@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -11,15 +12,21 @@ using osu.Game.Overlays.Profile.Header.Components;
 
 namespace osu.Game.Overlays.Profile.Header
 {
+    /// <summary>
+    /// Reprise: the profile's statistics as the website has them now: three cards side by side, Solo Play, Ranked Play, and the pinned
+    /// badge with the statistics, each as tall as the tallest.
+    /// </summary>
     public partial class DetailHeaderContainer : CompositeDrawable
     {
+        private const float spacing = 10;
+
         public readonly Bindable<UserProfileData?> User = new Bindable<UserProfileData?>();
 
         private OverlayColourProvider colourProvider = null!;
 
         private Box background = null!;
-        private Box extendedDetailsSeparator = null!;
-        private ExtendedDetails extendedDetails = null!;
+        private ProfileStatsCard[] cards = null!;
+        private GridContainer cardsContainer = null!;
 
         [BackgroundDependencyLoader]
         private void load(OverlayColourProvider colourProvider)
@@ -28,6 +35,14 @@ namespace osu.Game.Overlays.Profile.Header
             colourProvider.ColoursChanged += updateColours;
 
             AutoSizeAxes = Axes.Y;
+            RelativeSizeAxes = Axes.X;
+
+            cards = new ProfileStatsCard[]
+            {
+                new SoloPlayCard { User = { BindTarget = User } },
+                new RankedPlayCard { User = { BindTarget = User } },
+                new BadgeStatsCard { User = { BindTarget = User } },
+            };
 
             InternalChildren = new Drawable[]
             {
@@ -35,45 +50,27 @@ namespace osu.Game.Overlays.Profile.Header
                 {
                     RelativeSizeAxes = Axes.Both,
                 },
-                new GridContainer
+                new Container
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Padding = new MarginPadding { Horizontal = WaveOverlayContainer.HORIZONTAL_PADDING, Vertical = 10 },
-                    RowDimensions = new[]
+                    Child = cardsContainer = new GridContainer
                     {
-                        new Dimension(GridSizeMode.AutoSize),
-                    },
-                    ColumnDimensions = new[]
-                    {
-                        new Dimension(),
-                        new Dimension(GridSizeMode.AutoSize),
-                        new Dimension(GridSizeMode.AutoSize),
-                    },
-                    Content = new[]
-                    {
-                        new Drawable[]
+                        RelativeSizeAxes = Axes.X,
+                        AutoSizeAxes = Axes.Y,
+                        RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                        ColumnDimensions = new[]
                         {
-                            new MainDetails
-                            {
-                                RelativeSizeAxes = Axes.X,
-                                User = { BindTarget = User }
-                            },
-                            extendedDetailsSeparator = new Box
-                            {
-                                RelativeSizeAxes = Axes.Y,
-                                Width = 2,
-                                Margin = new MarginPadding { Horizontal = 15 }
-                            },
-                            extendedDetails = new ExtendedDetails
-                            {
-                                Anchor = Anchor.CentreLeft,
-                                Origin = Anchor.CentreLeft,
-                                User = { BindTarget = User }
-                            }
-                        }
-                    }
-                }
+                            new Dimension(),
+                            new Dimension(GridSizeMode.Absolute, spacing),
+                            new Dimension(),
+                            new Dimension(GridSizeMode.Absolute, spacing),
+                            new Dimension(),
+                        },
+                        Content = new[] { new Drawable[] { cards[0], Empty(), cards[1], Empty(), cards[2] } },
+                    },
+                },
             };
 
             updateColours();
@@ -82,7 +79,6 @@ namespace osu.Game.Overlays.Profile.Header
         private void updateColours()
         {
             background.Colour = colourProvider.Background5;
-            extendedDetailsSeparator.Colour = colourProvider.Background6;
         }
 
         protected override void LoadComplete()
@@ -92,12 +88,24 @@ namespace osu.Game.Overlays.Profile.Header
             User.BindValueChanged(user => updateDisplay(user.NewValue?.User), true);
         }
 
+        protected override void Update()
+        {
+            base.Update();
+
+            // As tall as the tallest card's content.
+            float height = cards.Where(c => c.IsPresent).Select(c => c.ContentHeight).DefaultIfEmpty(0).Max();
+
+            foreach (var card in cards)
+                card.Height = height;
+        }
+
         private void updateDisplay(APIUser? user)
         {
+            // A restricted player's ranked play and statistics aren't shown (as before: only the solo card's ranks).
             bool restricted = user?.IsRestricted == true;
 
-            extendedDetailsSeparator.FadeTo(restricted ? 0 : 1, 180, Easing.OutQuint);
-            extendedDetails.FadeTo(restricted ? 0 : 1, 180, Easing.OutQuint);
+            cards[1].FadeTo(restricted ? 0 : 1, 180, Easing.OutQuint);
+            cards[2].FadeTo(restricted ? 0 : 1, 180, Easing.OutQuint);
         }
 
         protected override void Dispose(bool isDisposing)
