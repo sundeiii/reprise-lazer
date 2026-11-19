@@ -78,7 +78,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             AddStep("show notes", () => overlay.ShowNotes("v2026.1119.0-lazer", "- skins from osu!lazer"));
             AddUntilStep("shown", () => overlay.State.Value == Visibility.Visible);
-            AddAssert("no restart button", () => overlay.ChildrenOfType<RoundedButton>().Single(b => b.Text.ToString() == "Restart to update").Parent!.Alpha == 0);
+            AddAssert("no restart button", () => !overlay.OffersRestart);
         }
 
         [Test]

@@ -53,7 +53,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             // OsuGame does this at the first start of a new version.
             AddStep("game started after an update", () => whatsNew.ShowFor("v2026.1119.3-lazer"));
             AddUntilStep("notes shown", () => whatsNew.State.Value == Visibility.Visible);
-            AddAssert("restart button hidden", () => restartButton.Parent!.Alpha == 0);
+            AddAssert("restart button hidden", () => !whatsNew.OffersRestart);
         }
 
         [Test]

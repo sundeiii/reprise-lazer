@@ -7,13 +7,10 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Graphics.Sprites;
 using osu.Framework.Logging;
 using osu.Game.Graphics;
-using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Containers.Markdown;
 using osu.Game.Graphics.Sprites;
-using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Online.API;
 using osu.Game.Overlays;
@@ -22,137 +19,145 @@ using osuTK;
 namespace osu.Game.Updater
 {
     /// <summary>
-    /// Reprise: what's new in this version, after an update: its release notes from GitHub (reprise.pw has no changelog of lazer builds).
+    /// Reprise: what's new in this version, after an update: its release notes from GitHub (reprise.pw has no changelog of lazer builds),
+    /// shown as the game's own changelog is (a full overlay with the changelog's header, the build at the top, then its notes); for an
+    /// update that's ready, a bar at the bottom restarts to it.
     /// </summary>
-    public partial class WhatsNewOverlay : OsuFocusedOverlayContainer
+    public partial class WhatsNewOverlay : FullscreenOverlay<WhatsNewOverlay.WhatsNewHeader>
     {
         /// <summary>The releases (by tag: the game's version is its tag, "v2026.1021.1-lazer").</summary>
         public const string RELEASES_API = @"https://api.github.com/repos/sundeiii/reprise-lazer/releases/tags/";
 
-        private const double enter_duration = 500;
-        private const double exit_duration = 200;
-
-        protected override string PopInSampleName => @"UI/overlay-big-pop-in";
-        protected override string PopOutSampleName => @"UI/overlay-big-pop-out";
-
         [Resolved]
         private INotificationOverlay? notificationOverlay { get; set; }
 
-        private OsuSpriteText title = null!;
+        private OsuSpriteText buildVersion = null!;
         private OsuMarkdownContainer notes = null!;
         private Container restartFooter = null!;
         private RoundedButton restartButton = null!;
+        private OverlayScrollContainer scroll = null!;
+
+        /// <summary>Whether the bar restarting to a ready update is shown.</summary>
+        public bool OffersRestart => restartFooter.Alpha > 0;
 
         public WhatsNewOverlay()
+            : base(OverlayColourScheme.Purple)
         {
-            Anchor = Anchor.Centre;
-            Origin = Anchor.Centre;
-
             // Updated while hidden: the notes come in (ShowFor) while it is, and what it schedules then (showing them, or restarting
             // without them) never ran on a hidden overlay, so clicking "update ready" or "see what's new" did nothing.
             AlwaysPresent = true;
-
-            RelativeSizeAxes = Axes.Both;
-            Size = new Vector2(0.5f, 0.7f);
-
-            Masking = true;
-            CornerRadius = 10;
         }
 
+        protected override WhatsNewHeader CreateHeader() => new WhatsNewHeader();
+
+        protected override osuTK.Graphics.Color4 BackgroundColour => ColourProvider.Background4;
+
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
+        private void load()
         {
-            Children = new Drawable[]
+            Child = new GridContainer
             {
-                new Box
+                RelativeSizeAxes = Axes.Both,
+                RowDimensions = new[] { new Dimension(), new Dimension(GridSizeMode.AutoSize) },
+                Content = new[]
                 {
-                    Colour = colours.GreySeaFoamDark,
-                    RelativeSizeAxes = Axes.Both,
-                },
-                new GridContainer
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize), new Dimension(), new Dimension(GridSizeMode.AutoSize) },
-                    Content = new[]
+                    new Drawable[]
                     {
-                        new Drawable[]
+                        scroll = new OverlayScrollContainer
                         {
-                            new Container
+                            RelativeSizeAxes = Axes.Both,
+                            ScrollbarVisible = false,
+                            Child = new FillFlowContainer
                             {
                                 RelativeSizeAxes = Axes.X,
                                 AutoSizeAxes = Axes.Y,
+                                Direction = FillDirection.Vertical,
                                 Children = new Drawable[]
                                 {
-                                    title = new OsuSpriteText
+                                    Header,
+                                    // The build, as the changelog heads one: its stream, then its version in the stream's colour.
+                                    new FillFlowContainer
                                     {
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Font = OsuFont.GetFont(size: 26, weight: FontWeight.SemiBold),
-                                        Padding = new MarginPadding { Vertical = 12 },
+                                        Anchor = Anchor.TopCentre,
+                                        Origin = Anchor.TopCentre,
+                                        AutoSizeAxes = Axes.Both,
+                                        Direction = FillDirection.Horizontal,
+                                        Margin = new MarginPadding { Top = 30, Bottom = 10 },
+                                        Children = new Drawable[]
+                                        {
+                                            new OsuSpriteText
+                                            {
+                                                Text = @"lazer ",
+                                                Font = OsuFont.GetFont(weight: FontWeight.Medium, size: 19),
+                                            },
+                                            buildVersion = new OsuSpriteText
+                                            {
+                                                Font = OsuFont.GetFont(weight: FontWeight.Light, size: 19),
+                                                Colour = ColourProvider.Highlight1,
+                                            },
+                                        }
                                     },
-                                    new IconButton
+                                    new Container
                                     {
-                                        Anchor = Anchor.CentreRight,
-                                        Origin = Anchor.CentreRight,
-                                        Icon = FontAwesome.Solid.Times,
-                                        Colour = colours.GreySeaFoamDarker,
-                                        Scale = new Vector2(0.8f),
-                                        X = -10,
-                                        Action = Hide,
-                                    }
-                                }
-                            }
-                        },
-                        new Drawable[]
-                        {
-                            new Container
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Children = new Drawable[]
-                                {
-                                    new Box
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        Colour = colours.GreySeaFoamDarker,
-                                    },
-                                    new OsuScrollContainer
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        Child = new Container
+                                        RelativeSizeAxes = Axes.X,
+                                        AutoSizeAxes = Axes.Y,
+                                        Padding = new MarginPadding { Horizontal = WaveOverlayContainer.HORIZONTAL_PADDING, Bottom = 30 },
+                                        Child = notes = new OsuMarkdownContainer
                                         {
                                             RelativeSizeAxes = Axes.X,
                                             AutoSizeAxes = Axes.Y,
-                                            Padding = new MarginPadding(20),
-                                            Child = notes = new OsuMarkdownContainer
-                                            {
-                                                RelativeSizeAxes = Axes.X,
-                                                AutoSizeAxes = Axes.Y,
-                                            },
                                         },
                                     },
                                 }
                             }
                         },
-                        // An update that's ready (its notes shown before restarting): restarting to it from here.
-                        new Drawable[]
+                    },
+                    // An update that's ready (its notes shown before restarting): restarting to it from here.
+                    new Drawable[]
+                    {
+                        restartFooter = new Container
                         {
-                            restartFooter = new Container
+                            RelativeSizeAxes = Axes.X,
+                            AutoSizeAxes = Axes.Y,
+                            Alpha = 0,
+                            Children = new Drawable[]
                             {
-                                RelativeSizeAxes = Axes.X,
-                                AutoSizeAxes = Axes.Y,
-                                Padding = new MarginPadding(15),
-                                Alpha = 0,
-                                Child = restartButton = new RoundedButton
+                                new Box
+                                {
+                                    RelativeSizeAxes = Axes.Both,
+                                    Colour = ColourProvider.Background5,
+                                },
+                                new FillFlowContainer
                                 {
                                     Anchor = Anchor.Centre,
                                     Origin = Anchor.Centre,
-                                    Width = 260,
-                                    Height = 40,
-                                    Text = "Restart to update",
+                                    AutoSizeAxes = Axes.Both,
+                                    Direction = FillDirection.Horizontal,
+                                    Spacing = new Vector2(15),
+                                    Padding = new MarginPadding { Vertical = 15 },
+                                    Children = new Drawable[]
+                                    {
+                                        new OsuSpriteText
+                                        {
+                                            Anchor = Anchor.CentreLeft,
+                                            Origin = Anchor.CentreLeft,
+                                            Text = @"This update is downloaded and ready.",
+                                            Font = OsuFont.GetFont(size: 14),
+                                            Colour = ColourProvider.Content2,
+                                        },
+                                        restartButton = new RoundedButton
+                                        {
+                                            Anchor = Anchor.CentreLeft,
+                                            Origin = Anchor.CentreLeft,
+                                            Width = 220,
+                                            Height = 40,
+                                            Text = "Restart to update",
+                                        },
+                                    }
                                 },
                             }
-                        },
-                    }
+                        }
+                    },
                 }
             };
         }
@@ -202,8 +207,10 @@ namespace osu.Game.Updater
             if (string.IsNullOrWhiteSpace(body))
                 return false;
 
-            title.Text = $"What's new in {version}";
+            buildVersion.Text = DisplayVersion(version);
+            Header.Version = DisplayVersion(version);
             notes.Text = body;
+            scroll.ScrollToStart(false);
 
             restartFooter.Alpha = restart != null ? 1 : 0;
             restartButton.Action = () =>
@@ -220,24 +227,67 @@ namespace osu.Game.Updater
             return true;
         }
 
+        /// <summary>A release's tag as the changelog shows a build: "v2026.1119.3-lazer" is 2026.1119.3.</summary>
+        public static string DisplayVersion(string version)
+        {
+            string v = version.StartsWith('v') ? version[1..] : version;
+            return v.EndsWith(@"-lazer", StringComparison.Ordinal) ? v[..^@"-lazer".Length] : v;
+        }
+
         /// <summary>The notes without GitHub's "Full Changelog" link (to a compare page, nothing to read in the game).</summary>
         public static string? Clean(string? body) =>
             body == null
                 ? null
-                : string.Join('\n', body.Replace("\r\n", "\n").Split('\n').Where(l => !l.StartsWith(@"**Full Changelog**", System.StringComparison.Ordinal))).Trim();
+                : string.Join('\n', body.Replace("\r\n", "\n").Split('\n').Where(l => !l.StartsWith(@"**Full Changelog**", StringComparison.Ordinal))).Trim();
 
-        protected override void PopIn()
+        /// <summary>The changelog's header (its background and icon), titled "what's new", with the build as its breadcrumb.</summary>
+        public partial class WhatsNewHeader : BreadcrumbControlOverlayHeader
         {
-            this.FadeIn(enter_duration, Easing.OutQuint);
-            this.ScaleTo(0.9f).Then().ScaleTo(1f, enter_duration, Easing.OutQuint);
-        }
+            private const string listing = @"release notes";
 
-        protected override void PopOut()
-        {
-            base.PopOut();
+            private string? version;
 
-            this.FadeOut(exit_duration, Easing.OutQuint);
-            this.ScaleTo(0.9f, exit_duration);
+            public WhatsNewHeader()
+            {
+                TabControl.AddItem(listing);
+                Current.Value = listing;
+            }
+
+            /// <summary>The build shown, as the breadcrumb after "release notes".</summary>
+            public string? Version
+            {
+                get => version;
+                set
+                {
+                    if (version == value)
+                        return;
+
+                    if (version != null)
+                        TabControl.RemoveItem(version);
+
+                    version = value;
+
+                    if (version != null)
+                    {
+                        TabControl.AddItem(version);
+                        Current.Value = version;
+                    }
+                }
+            }
+
+            protected override Drawable CreateBackground() => new OverlayHeaderBackground(@"Headers/changelog");
+
+            protected override OverlayTitle CreateTitle() => new WhatsNewTitle();
+
+            private partial class WhatsNewTitle : OverlayTitle
+            {
+                public WhatsNewTitle()
+                {
+                    Title = @"what's new";
+                    Description = @"what's changed in this version of reprise lazer";
+                    Icon = OsuIcon.ChangelogB;
+                }
+            }
         }
     }
 }
