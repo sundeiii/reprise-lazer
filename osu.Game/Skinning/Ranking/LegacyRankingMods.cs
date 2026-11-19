@@ -20,12 +20,13 @@ namespace osu.Game.Skinning.Ranking
 {
     /// <summary>
     /// The score's mods on a legacy ranking screen's first page, as stable's: the skin's "selection-mod-*" icons, the first centred on
-    /// (600, 260) of stable's 640x480 field, which stays centred on wide screens (280 right of the middle), each next one 20 to the left
-    /// (1.6 times all in the 1024x768 layout), each growing in half a second after the one before. Skins' mods boxes are there.
+    /// (600, 260) of stable's 640x480 field, which keeps to the right edge on wide screens (40 from it, as the grade and buttons do:
+    /// stable on 16:9 has them 240px further right than centring put them), each next one 20 to the left (1.6 times all in the 1024x768
+    /// layout), each growing in half a second after the one before. Skins' mods boxes are there.
     /// </summary>
     public partial class LegacyRankingMods : CompositeDrawable
     {
-        private static readonly Vector2 first_position = new Vector2(600 - 320, 260) * 1.6f;
+        private static readonly Vector2 first_position = new Vector2(600 - 640, 260) * 1.6f;
         private const float spacing = 20 * 1.6f;
 
         private readonly ScoreInfo score;
@@ -43,7 +44,7 @@ namespace osu.Game.Skinning.Ranking
 
             foreach (var icon in CreateIcons(score.Ruleset, score.Mods, skin))
             {
-                icon.Anchor = Anchor.TopCentre;
+                icon.Anchor = Anchor.TopRight;
                 icon.Origin = Anchor.Centre;
                 icon.Position = first_position - new Vector2(spacing * index, 0);
                 icon.Alpha = 0;

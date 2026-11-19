@@ -345,9 +345,17 @@ namespace osu.Game.Tests.Visual.Ranking
             // Like stable: Nightcore without the Double Time it includes.
             // (Lazer's default skin has no "selection-mod-*": lazer's icons.)
             AddUntilStep("two icons", () => this.ChildrenOfType<LegacyRankingMods>().SingleOrDefault()?.ChildrenOfType<ModIcon>().Count() == 2);
-            // Stable's: right of the middle (its 640x480 field stays centred), where skins draw their mods box.
+            // Stable's: right of the middle, where skins draw their mods box.
             AddAssert("at the right", () => this.ChildrenOfType<LegacyRankingMods>().Single().ChildrenOfType<ModIcon>()
                                                 .All(i => i.ScreenSpaceDrawQuad.Centre.X > this.ChildrenOfType<LegacyRankingMods>().Single().ScreenSpaceDrawQuad.Centre.X));
+            // And kept to the right edge on wide screens, as stable does (and the grade and buttons here): the first 40 of stable's
+            // 640x480 field from it (64 in the 1024x768 layout).
+            AddAssert("first 64 from the right edge", () =>
+            {
+                var mods = this.ChildrenOfType<LegacyRankingMods>().Single();
+                float rightmost = mods.ChildrenOfType<ModIcon>().Max(i => mods.ToLocalSpace(i.ScreenSpaceDrawQuad.Centre).X);
+                return Math.Abs(mods.DrawWidth - rightmost - 64) < 1;
+            });
             AddAssert("nightcore, not double time", () => this.ChildrenOfType<ModIcon>().Any(i => i.Mod is osu.Game.Rulesets.Osu.Mods.OsuModNightcore)
                                                           && this.ChildrenOfType<ModIcon>().All(i => i.Mod.Acronym != "DT"));
             AddUntilStep("icons shown", () => this.ChildrenOfType<ModIcon>().All(s => s.Alpha == 1));
