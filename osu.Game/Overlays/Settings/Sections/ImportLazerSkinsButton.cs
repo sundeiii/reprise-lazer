@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Game.Overlays.LazerImport;
 
 namespace osu.Game.Overlays.Settings.Sections
 {

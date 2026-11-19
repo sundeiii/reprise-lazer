@@ -58,6 +58,7 @@ using osu.Game.Online.Rooms;
 using osu.Game.Overlays;
 using osu.Game.Overlays.BeatmapListing;
 using osu.Game.Overlays.Dialog;
+using osu.Game.Overlays.LazerImport;
 using osu.Game.Overlays.Mods;
 using osu.Game.Overlays.Music;
 using osu.Game.Overlays.Notifications;
@@ -1332,8 +1333,10 @@ namespace osu.Game
 
             // overlay elements
             loadComponentSingleFile(FirstRunOverlay = new FirstRunSetupOverlay(), footerBasedOverlayContent.Add, true);
-            // Reprise: skins from osu!'s own lazer (from the skin settings), in the first-run setup's style.
+            // Reprise: skins, beatmaps and collections from osu!'s own lazer (from the settings), each a wizard in the first-run setup's style.
             loadComponentSingleFile(new LazerSkinImportOverlay(), footerBasedOverlayContent.Add, true);
+            loadComponentSingleFile(new LazerBeatmapImportOverlay(), footerBasedOverlayContent.Add, true);
+            loadComponentSingleFile(new LazerCollectionImportOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new ManageCollectionsDialog(), overlayContent.Add, true);
             loadComponentSingleFile(beatmapListing = new BeatmapListingOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(dashboard = new DashboardOverlay(), overlayContent.Add, true);

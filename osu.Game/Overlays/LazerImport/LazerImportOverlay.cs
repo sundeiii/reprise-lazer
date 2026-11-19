@@ -2,33 +2,23 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
-using osu.Game.Overlays.LazerSkinImport;
 using osu.Game.Screens;
 using osu.Game.Screens.Menu;
 
-namespace osu.Game.Overlays
+namespace osu.Game.Overlays.LazerImport
 {
     /// <summary>
-    /// Reprise: skins from osu!'s own lazer on this computer, picked from a list, in the first-run setup's style (one step).
+    /// Reprise: things from osu!'s own lazer on this computer, picked from a list (a <see cref="LazerImportScreen"/>, its one step), in the
+    /// first-run setup's style. Its button imports what's ticked as it closes. Each kind (skins, beatmaps, collections) has its own.
     /// </summary>
-    [Cached]
-    public partial class LazerSkinImportOverlay : WizardOverlay
+    public abstract partial class LazerImportOverlay : WizardOverlay
     {
         [Resolved]
         private IPerformFromScreenRunner performer { get; set; } = null!;
 
-        public LazerSkinImportOverlay()
+        protected LazerImportOverlay()
             : base(OverlayColourScheme.Purple)
         {
-        }
-
-        [BackgroundDependencyLoader]
-        private void load()
-        {
-            AddStep<ScreenImportLazerSkins>();
-
-            Header.Title = "import skins";
-            Header.Description = "bring your skins over from osu!lazer";
         }
 
         public override void Show()
@@ -43,10 +33,10 @@ namespace osu.Game.Overlays
             }, new[] { typeof(MainMenu) });
         }
 
-        // Its button imports the ticked skins (in the background) as it closes.
+        // Its button imports what's ticked (in the background) as it closes.
         protected override void ShowNextStep()
         {
-            (CurrentScreen as ScreenImportLazerSkins)?.ImportSelected();
+            (CurrentScreen as LazerImportScreen)?.ImportSelected();
             base.ShowNextStep();
         }
 
@@ -54,8 +44,8 @@ namespace osu.Game.Overlays
         {
             base.PopIn();
 
-            // Closed without finishing and opened again: osu!lazer's skins (and ours) may have changed meanwhile.
-            (CurrentScreen as ScreenImportLazerSkins)?.Refresh();
+            // Closed without finishing and opened again: osu!lazer's (and ours) may have changed meanwhile.
+            (CurrentScreen as LazerImportScreen)?.Refresh();
         }
     }
 }

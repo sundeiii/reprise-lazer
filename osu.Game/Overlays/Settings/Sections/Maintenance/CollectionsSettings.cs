@@ -7,6 +7,7 @@ using osu.Framework.Localisation;
 using osu.Game.Collections;
 using osu.Game.Database;
 using osu.Game.Localisation;
+using osu.Game.Overlays.LazerImport;
 using osu.Game.Overlays.Notifications;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
@@ -22,8 +23,15 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
         private INotificationOverlay? notificationOverlay { get; set; }
 
         [BackgroundDependencyLoader]
-        private void load(IDialogOverlay? dialogOverlay)
+        private void load(IDialogOverlay? dialogOverlay, LazerCollectionImportOverlay? lazerImport)
         {
+            // Reprise: collections from osu!'s own lazer on this computer, picked in a wizard.
+            Add(new SettingsButtonV2
+            {
+                Text = "Import collections from osu!lazer...",
+                Action = () => lazerImport?.Show(),
+            });
+
             Add(new DangerousSettingsButtonV2
             {
                 Text = MaintenanceSettingsStrings.DeleteAllCollections,

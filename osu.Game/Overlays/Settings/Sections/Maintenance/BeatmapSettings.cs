@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Localisation;
+using osu.Game.Overlays.LazerImport;
 
 namespace osu.Game.Overlays.Settings.Sections.Maintenance
 {
@@ -21,8 +22,15 @@ namespace osu.Game.Overlays.Settings.Sections.Maintenance
         private SettingsButtonV2 undeleteButton = null!;
 
         [BackgroundDependencyLoader]
-        private void load(BeatmapManager beatmaps, IDialogOverlay? dialogOverlay)
+        private void load(BeatmapManager beatmaps, IDialogOverlay? dialogOverlay, LazerBeatmapImportOverlay? lazerImport)
         {
+            // Reprise: beatmaps from osu!'s own lazer on this computer, picked in a wizard.
+            Add(new SettingsButtonV2
+            {
+                Text = "Import beatmaps from osu!lazer...",
+                Action = () => lazerImport?.Show(),
+            });
+
             Add(deleteBeatmapsButton = new DangerousSettingsButtonV2
             {
                 Text = MaintenanceSettingsStrings.DeleteAllBeatmaps,
