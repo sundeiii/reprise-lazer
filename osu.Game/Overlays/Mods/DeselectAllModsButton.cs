@@ -6,6 +6,7 @@ using System.Linq;
 using osu.Framework.Bindables;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Overlays.Mods
@@ -33,7 +34,8 @@ namespace osu.Game.Overlays.Mods
 
         private void updateEnabledState()
         {
-            Enabled.Value = selectedMods.Value.Any(m => m.Type != ModType.System);
+            // Reprise: Relax and Autopilot stay on (ModSelectOverlay.DeselectAll), so with only them there's nothing to deselect.
+            Enabled.Value = selectedMods.Value.Any(m => m.Type != ModType.System && !VanillaDifficulty.IsAssist(m));
         }
     }
 }

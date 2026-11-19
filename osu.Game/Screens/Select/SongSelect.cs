@@ -433,7 +433,7 @@ namespace osu.Game.Screens.Select
                     if (modSelectOverlay.State.Value == Visibility.Visible)
                         modSelectOverlay.DeselectAll();
                     else
-                        Mods.Value = Array.Empty<Mod>();
+                        Mods.Value = ModSelectOverlay.AllDeselected(Mods.Value);
                 }
             },
             new FooterButtonRandom
@@ -1445,7 +1445,7 @@ namespace osu.Game.Screens.Select
             stableModeMenuContainer.Add(stableMods = new LegacyButtonDialog(
                 "Mods provide different ways to enjoy gameplay. Some have an effect on the score you can achieve during ranked play. Others are just for fun.", new[]
             {
-                new LegacyButtonDialog.DialogButton("Reset all mods", new Color4(255, 69, 0, 255), () => Mods.Value = Array.Empty<Mod>(), Closes: false),
+                new LegacyButtonDialog.DialogButton("Reset all mods", new Color4(255, 69, 0, 255), () => Mods.Value = ModSelectOverlay.AllDeselected(Mods.Value), Closes: false),
                 // Stable has no settings for mods (DT's speed and so on): the game's mod selection has them.
                 new LegacyButtonDialog.DialogButton("Mod settings", new Color4(70, 130, 180, 255), () => modSelectOverlay.Show()),
                 new LegacyButtonDialog.DialogButton("Close", new Color4(128, 128, 128, 255), null),

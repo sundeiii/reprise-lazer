@@ -19,6 +19,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Overlays.Mods.Input;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osuTK;
 using osuTK.Graphics;
@@ -233,13 +234,13 @@ namespace osu.Game.Overlays.Mods
         }
 
         /// <summary>
-        /// Deselects all mods.
+        /// Deselects all mods (Reprise: but Relax and Autopilot with <paramref name="keepAssist"/>, as the overlay's "Deselect all" keeps them).
         /// </summary>
-        public void DeselectAll()
+        public void DeselectAll(bool keepAssist = false)
         {
             pendingSelectionOperations.Clear();
 
-            foreach (var button in availableMods.Where(b => b.Active.Value))
+            foreach (var button in availableMods.Where(b => b.Active.Value && !(keepAssist && VanillaDifficulty.IsAssist(b.Mod))))
             {
                 if (!button.Visible)
                     button.Active.Value = false;

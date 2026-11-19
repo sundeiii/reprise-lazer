@@ -681,6 +681,21 @@ namespace osu.Game.Tests.Visual.UserInterface
             AddUntilStep("all mods deselected", () => !SelectedMods.Value.Any());
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TestDeselectAllKeepsRelaxAndAutopilot(bool autopilot)
+        {
+            createScreen();
+            changeRuleset(0);
+
+            AddStep("kill search bar focus", () => modSelectOverlay.SearchTextBox.KillFocus());
+
+            AddStep("select RX/AP + HD", () => SelectedMods.Value = new Mod[] { autopilot ? new OsuModAutopilot() : new OsuModRelax(), new OsuModHidden() });
+            AddStep("press backspace", () => InputManager.Key(Key.BackSpace));
+            AddUntilStep("only RX/AP left", () => SelectedMods.Value.Select(m => m.Acronym), () => Is.EqualTo(new[] { autopilot ? "AP" : "RX" }));
+            AddAssert("deselect all button disabled", () => !this.ChildrenOfType<DeselectAllModsButton>().Single().Enabled.Value);
+        }
+
         [Test]
         public void TestDeselectAllViaKey_WithSearchApplied()
         {

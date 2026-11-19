@@ -27,6 +27,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osu.Game.Localisation;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Screens.Footer;
 using osu.Game.Utils;
@@ -309,13 +310,17 @@ namespace osu.Game.Overlays.Mods
         }
 
         /// <summary>
-        /// Deselect all visible mods in all columns.
+        /// Deselect all visible mods in all columns. Reprise: but Relax and Autopilot (the mode played, as Relax or Autopilot is its own mode
+        /// here): unticked on their own, or with the mod column's own "Deselect all".
         /// </summary>
         public void DeselectAll()
         {
             foreach (var column in columnFlow.Columns.OfType<ModColumn>())
-                column.DeselectAll();
+                column.DeselectAll(keepAssist: true);
         }
+
+        /// <summary>Reprise: <paramref name="mods"/> with all deselected but Relax and Autopilot (as <see cref="DeselectAll"/> leaves them).</summary>
+        public static IReadOnlyList<Mod> AllDeselected(IEnumerable<Mod> mods) => mods.Where(VanillaDifficulty.IsAssist).ToArray();
 
         private IEnumerable<ColumnDimContainer> createColumns()
         {
