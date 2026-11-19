@@ -10,6 +10,8 @@ using osu.Framework.Allocation;
 using osu.Framework.Extensions;
 using osu.Game.Beatmaps;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Testing;
 using osu.Game.Database;
 using osu.Game.Graphics.Sprites;
@@ -46,11 +48,26 @@ namespace osu.Game.Tests.Visual.Navigation
             AddStep("open the mixer", () => mixer.Show());
             AddUntilStep("shown", () => mixer.State.Value == Visibility.Visible && mixer.ChildrenOfType<ScreenSkinMixer>().Any(s => s.IsLoaded));
             AddWaitStep("settle", 5);
+            AddStep("screenshot", () => Screenshot?.Invoke("skin-mixer-before"));
 
-            AddStep("open the gameplay group's dropdown", () =>
+            AddStep("open the cursor group", () =>
             {
-                var dropdown = mixer.ChildrenOfType<OsuDropdown<SkinMixerChoice>>().ElementAt(1);
-                InputManager.MoveMouseTo(dropdown.ChildrenOfType<OsuDropdown<SkinMixerChoice>.OsuDropdownHeader>().Single());
+                InputManager.MoveMouseTo(mixer.ChildrenOfType<SpriteIcon>().Where(i => i.Parent?.Parent?.GetType().Name == "GroupToggle").ElementAt(2));
+                InputManager.Click(MouseButton.Left);
+            });
+            AddWaitStep("settle", 3);
+
+            AddStep("open the last group's list", () =>
+            {
+                // Menu Sounds, at the bottom.
+                var dropdown = mixer.ChildrenOfType<FormDropdown<SkinMixerChoice>>().Single(d => d.Caption.ToString() == "Menu Sounds");
+                mixer.ChildrenOfType<osu.Game.Graphics.Containers.OsuScrollContainer>().First().ScrollIntoView(dropdown, true);
+            });
+            AddWaitStep("scrolled", 5);
+            AddStep("click it", () =>
+            {
+                var dropdown = mixer.ChildrenOfType<FormDropdown<SkinMixerChoice>>().Single(d => d.Caption.ToString() == "Menu Sounds");
+                InputManager.MoveMouseTo(dropdown.ChildrenOfType<DropdownHeader>().Single());
                 InputManager.Click(MouseButton.Left);
             });
             AddWaitStep("let it open", 5);
@@ -85,10 +102,11 @@ namespace osu.Game.Tests.Visual.Navigation
 
             AddStep("open the cursor group", () =>
             {
-                InputManager.MoveMouseTo(mixer.ChildrenOfType<OsuSpriteText>().First(t => t.Text.ToString() == "Cursor"));
+                // Its arrow (the groups, in order: Interface, Gameplay, Cursor, ...).
+                InputManager.MoveMouseTo(mixer.ChildrenOfType<SpriteIcon>().Where(i => i.Parent?.Parent?.GetType().Name == "GroupToggle").ElementAt(2));
                 InputManager.Click(MouseButton.Left);
             });
-            AddUntilStep("its parts shown", () => mixer.ChildrenOfType<OsuSpriteText>().Any(t => t.Text.ToString() == "Head" && t.IsPresent));
+            AddUntilStep("its parts shown", () => mixer.ChildrenOfType<OsuDropdown<SkinMixerChoice>>().Count(d => d.IsPresent && d.Parent!.IsPresent) > 5);
 
             AddWaitStep("let it show", 5);
             AddStep("screenshot", () => Screenshot?.Invoke("skin-mixer"));

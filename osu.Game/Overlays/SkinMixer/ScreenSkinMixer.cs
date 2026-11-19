@@ -18,6 +18,7 @@ using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
+using osu.Framework.Testing;
 using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
@@ -104,8 +105,9 @@ namespace osu.Game.Overlays.SkinMixer
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Direction = FillDirection.Vertical,
-                    Spacing = new Vector2(2),
-                    Margin = new MarginPadding { Bottom = 20 },
+                    Spacing = new Vector2(10),
+                    // Room under the last parts for their lists to open below them.
+                    Margin = new MarginPadding { Bottom = 300 },
                 },
             };
 
@@ -116,7 +118,7 @@ namespace osu.Game.Overlays.SkinMixer
             baseSkin.BindValueChanged(b => name.Value = suggestName(b.NewValue), true);
 
             foreach (var part in parts)
-                partsFlow.Add(new PartRow(this, part, 0));
+                partsFlow.Add(new PartRow(this, part));
         }
 
         private string suggestName(SkinMixerSource from)
@@ -170,6 +172,20 @@ namespace osu.Game.Overlays.SkinMixer
             var choices = part.Leaves.Select(l => l.Choice).Distinct().ToArray();
             return choices.Length == 1 ? choices[0] : SkinMixerChoice.MIXED;
         }
+
+        /// <summary>Scrolls so an opened list (under its field, <see cref="list_height"/> at most) is all in view.</summary>
+        private void reveal(Drawable field)
+        {
+            var scroll = this.ChildrenOfType<OsuScrollContainer>().First();
+
+            double bottom = scroll.GetChildPosInContent(field) + field.DrawHeight + list_height;
+            double needed = bottom - scroll.DisplayableContent;
+
+            if (needed > scroll.Target)
+                scroll.ScrollTo(needed);
+        }
+
+        private const float list_height = 260 + 50;
 
         private void refreshRows()
         {
@@ -227,25 +243,27 @@ namespace osu.Game.Overlays.SkinMixer
             });
         }
 
-        /// <summary>A part (or group) with its choice; a group opens to its parts.</summary>
+        /// <summary>
+        /// A part (or group) with its choice, in the same form field as the base skin's; a group opens (its arrow) to its parts, indented
+        /// under it.
+        /// </summary>
         private partial class PartRow : CompositeDrawable
         {
-            private const float row_height = 40;
+            private const float gutter = 36;
 
             private readonly ScreenSkinMixer screen;
             private readonly SkinMixerOption part;
-            private readonly int depth;
 
             private ChoiceDropdown dropdown = null!;
             private SpriteIcon? chevron;
+            private GroupToggle? groupToggle;
             private FillFlowContainer? children;
             private bool updating;
 
-            public PartRow(ScreenSkinMixer screen, SkinMixerOption part, int depth)
+            public PartRow(ScreenSkinMixer screen, SkinMixerOption part)
             {
                 this.screen = screen;
                 this.part = part;
-                this.depth = depth;
 
                 RelativeSizeAxes = Axes.X;
                 AutoSizeAxes = Axes.Y;
@@ -254,78 +272,61 @@ namespace osu.Game.Overlays.SkinMixer
             [BackgroundDependencyLoader]
             private void load(OverlayColourProvider colourProvider)
             {
-                bool isGroup = part is SkinMixerGroup;
+                var group = part as SkinMixerGroup;
 
-                var header = new Container
+                dropdown = new ChoiceDropdown
                 {
-                    RelativeSizeAxes = Axes.X,
-                    Height = row_height,
-                    Padding = new MarginPadding { Left = depth * 20 },
-                    Children = new Drawable[]
+                    Caption = part.Name,
+                    HintText = group != null ? $"{group.Leaves.Count()} parts: picking here sets them all." : default(LocalisableString),
+                    // A list of every skin: searchable, and no taller than a few of them.
+                    AlwaysShowSearchBar = true,
+                    Items = screen.choicesFor(part).ToArray(),
+                    Opened = () =>
                     {
-                        new Container
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Masking = true,
-                            CornerRadius = 5,
-                            Child = new Box
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Colour = isGroup ? colourProvider.Background3 : colourProvider.Background4,
-                            },
-                        },
-                        new FillFlowContainer
-                        {
-                            Anchor = Anchor.CentreLeft,
-                            Origin = Anchor.CentreLeft,
-                            AutoSizeAxes = Axes.Both,
-                            Direction = FillDirection.Horizontal,
-                            Spacing = new Vector2(8),
-                            Padding = new MarginPadding { Left = 12 },
-                            Children = new Drawable[]
-                            {
-                                chevron = new SpriteIcon
-                                {
-                                    Anchor = Anchor.CentreLeft,
-                                    Origin = Anchor.CentreLeft,
-                                    Size = new Vector2(10),
-                                    Icon = FontAwesome.Solid.ChevronRight,
-                                    Alpha = isGroup ? 1 : 0,
-                                },
-                                new OsuSpriteText
-                                {
-                                    Anchor = Anchor.CentreLeft,
-                                    Origin = Anchor.CentreLeft,
-                                    Text = part.Name,
-                                    Font = OsuFont.Default.With(size: 14, weight: isGroup ? FontWeight.Bold : FontWeight.Regular),
-                                },
-                            }
-                        },
-                        dropdown = new ChoiceDropdown
-                        {
-                            // A list of every skin: searchable, and no taller than a few of them.
-                            AlwaysShowSearchBar = true,
-                            Opened = bringToFront,
-                            Anchor = Anchor.CentreRight,
-                            Origin = Anchor.CentreRight,
-                            Width = 280,
-                            Margin = new MarginPadding { Right = 6 },
-                            Items = (isGroup ? new[] { SkinMixerChoice.MIXED } : Array.Empty<SkinMixerChoice>()).Concat(screen.choicesFor(part)).ToArray(),
-                        },
-                    }
+                        bringToFront();
+                        screen.reveal(dropdown);
+                    },
                 };
 
-                if (isGroup)
-                    header.Add(new GroupToggle(toggle) { RelativeSizeAxes = Axes.Both, Width = 0.5f, Depth = -1 });
+                var header = new GridContainer
+                {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                    ColumnDimensions = new[] { new Dimension(GridSizeMode.Absolute, gutter), new Dimension() },
+                    Content = new[]
+                    {
+                        new Drawable[]
+                        {
+                            group == null
+                                ? Empty()
+                                : groupToggle = new GroupToggle(toggle)
+                                {
+                                    // As tall as the field (not its open list, which the cell grows by).
+                                    RelativeSizeAxes = Axes.X,
+                                    Child = chevron = new SpriteIcon
+                                    {
+                                        Anchor = Anchor.Centre,
+                                        Origin = Anchor.Centre,
+                                        Size = new Vector2(14),
+                                        Icon = FontAwesome.Solid.ChevronRight,
+                                        Colour = colourProvider.Content1,
+                                    },
+                                },
+                            dropdown,
+                        }
+                    }
+                };
 
                 InternalChild = new FillFlowContainer
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Direction = FillDirection.Vertical,
-                    Spacing = new Vector2(2),
-                    Children = isGroup
-                        ? new Drawable[]
+                    Spacing = new Vector2(10),
+                    Children = group == null
+                        ? new Drawable[] { header }
+                        : new Drawable[]
                         {
                             header,
                             children = new FillFlowContainer
@@ -333,11 +334,11 @@ namespace osu.Game.Overlays.SkinMixer
                                 RelativeSizeAxes = Axes.X,
                                 AutoSizeAxes = Axes.Y,
                                 Direction = FillDirection.Vertical,
-                                Spacing = new Vector2(2),
+                                Spacing = new Vector2(10),
+                                Padding = new MarginPadding { Left = gutter },
                                 Alpha = 0,
                             }
-                        }
-                        : new Drawable[] { header },
+                        },
                 };
 
                 screen.rows.Add(this);
@@ -345,7 +346,7 @@ namespace osu.Game.Overlays.SkinMixer
 
                 dropdown.Current.BindValueChanged(c =>
                 {
-                    // "Mixed" is only shown, never picked.
+                    // "Mixed" is only shown (it isn't in the list), never picked.
                     if (updating || c.NewValue.Type == SkinMixerChoice.Kind.Mixed)
                         return;
 
@@ -354,6 +355,14 @@ namespace osu.Game.Overlays.SkinMixer
 
                     screen.refreshRows();
                 });
+            }
+
+            protected override void Update()
+            {
+                base.Update();
+
+                if (groupToggle != null)
+                    groupToggle.Height = dropdown.MainDrawHeight;
             }
 
             /// <summary>Shows the part's choice as it is now (after a group above or below it changed).</summary>
@@ -373,7 +382,7 @@ namespace osu.Game.Overlays.SkinMixer
                 if (children.Count == 0)
                 {
                     foreach (var child in group.Children)
-                        children.Add(new PartRow(screen, child, depth + 1));
+                        children.Add(new PartRow(screen, child));
                 }
 
                 bool open = children.Alpha == 0;
@@ -406,17 +415,19 @@ namespace osu.Game.Overlays.SkinMixer
 
             private static float front_depth;
 
-            /// <summary>The choices' list: at most <see cref="max_menu_height"/> tall, and saying when it opens.</summary>
-            private partial class ChoiceDropdown : OsuDropdown<SkinMixerChoice>
+            /// <summary>The form's dropdown, a few skins tall, saying when its list opens.</summary>
+            private partial class ChoiceDropdown : FormDropdown<SkinMixerChoice>
             {
-                private const float max_menu_height = 260;
-
                 public Action? Opened;
+
+                public ChoiceDropdown()
+                {
+                    MaxHeight = list_height - 50;
+                }
 
                 protected override DropdownMenu CreateMenu()
                 {
                     var menu = base.CreateMenu();
-                    menu.MaxHeight = max_menu_height;
                     menu.StateChanged += state =>
                     {
                         if (state == MenuState.Open)
@@ -432,8 +443,6 @@ namespace osu.Game.Overlays.SkinMixer
                 {
                     Action = action;
                 }
-
-                protected override bool OnHover(HoverEvent e) => true;
             }
         }
     }
