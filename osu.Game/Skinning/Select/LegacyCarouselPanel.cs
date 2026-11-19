@@ -2,7 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
@@ -106,6 +108,17 @@ namespace osu.Game.Skinning.Select
 
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
+
+        [Resolved]
+        private BeatmapDifficultyCache difficultyCache { get; set; } = null!;
+
+        // The difficulty's star rating with the selected mods (as stable's panels show it), the stars following it.
+        private IBindable<StarDifficulty>? starDifficulty;
+        private CancellationTokenSource? starCancellation;
+        private double shownStarRating = -1;
+
+        /// <summary>The star rating the stars show (with the selected mods once worked out); -1 without a difficulty.</summary>
+        public double ShownStarRating => shownStarRating;
 
         private Container content = null!;
         private Container backgroundSlot = null!;
@@ -231,6 +244,7 @@ namespace osu.Game.Skinning.Select
 
             scoreSubscription?.Dispose();
             scoreSubscription = null;
+            unbindStars();
             grade.Texture = null;
             stars.Clear();
             showsDifficulty = false;
@@ -269,7 +283,19 @@ namespace osu.Game.Skinning.Select
 
             scoreSubscription?.Dispose();
             scoreSubscription = null;
+            unbindStars();
             item = null;
+        }
+
+        private void unbindStars()
+        {
+            starCancellation?.Cancel();
+            starCancellation = null;
+            starDifficulty?.UnbindAll();
+            starDifficulty = null;
+            shownStarRating = -1;
+            ClearTransforms(false, nameof(DisplayedStarRating));
+            starFills.Clear();
         }
 
         private void showBeatmap(BeatmapInfo beatmap, BeatmapSetInfo set, bool isDifficulty)
@@ -285,7 +311,10 @@ namespace osu.Game.Skinning.Select
 
             if (isDifficulty)
             {
-                createStars(beatmap.StarRating);
+                // With the selected mods (and ruleset), updated as they change; without them until worked out.
+                starCancellation = new CancellationTokenSource();
+                starDifficulty = difficultyCache.GetBindableDifficulty(beatmap, starCancellation.Token, 100);
+                starDifficulty.BindValueChanged(d => showStars(d.NewValue.Stars), true);
                 subscribeToRank(beatmap);
             }
 
@@ -294,19 +323,58 @@ namespace osu.Game.Skinning.Select
             layoutText();
         }
 
+        private void showStars(double rating)
+        {
+            if (rating == shownStarRating)
+                return;
+
+            bool first = shownStarRating < 0;
+            shownStarRating = rating;
+
+            if (stars.Count == 0)
+                createStars();
+
+            // The first rating straight away; one for other mods glides there.
+            if (first)
+                DisplayedStarRating = rating;
+            else
+                this.TransformTo(nameof(DisplayedStarRating), rating, 500, Easing.OutQuint);
+        }
+
+        private double displayedStarRating;
+
+        /// <summary>The rating the stars are drawn for (on its way to <see cref="ShownStarRating"/> when it changes).</summary>
+        public double DisplayedStarRating
+        {
+            get => displayedStarRating;
+            set
+            {
+                displayedStarRating = value;
+
+                double shown = Math.Min(value, 10);
+
+                for (int i = 0; i < starFills.Count; i++)
+                {
+                    double fill = Math.Clamp(shown - i, 0, 1);
+                    starFills[i].Scale = new Vector2(fill <= 0 ? 0 : 0.6f * (float)Math.Max(0.5, fill + i * 0.04));
+                }
+            }
+        }
+
+        // The rating's stars over the faint ones.
+        private readonly List<Sprite> starFills = new List<Sprite>();
+
         // Stable's: 10 faint stars, the rating's ones over them (the last one partly), at 60%.
-        private void createStars(double rating)
+        private void createStars()
         {
             var texture = skin.GetTexture(@"star");
 
             if (texture == null)
                 return;
 
-            double shown = Math.Min(rating, 10);
-
             for (int i = 0; i < 10; i++)
             {
-                double fill = Math.Clamp(shown - i, 0, 1);
+                Sprite fill;
 
                 stars.Add(new Container
                 {
@@ -321,15 +389,17 @@ namespace osu.Game.Skinning.Select
                             Scale = new Vector2(0.6f),
                             Colour = new Color4(255, 255, 255, 30),
                         },
-                        new Sprite
+                        fill = new Sprite
                         {
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
                             Texture = texture,
-                            Scale = new Vector2(fill <= 0 ? 0 : 0.6f * (float)Math.Max(0.5, fill + i * 0.04)),
+                            Scale = Vector2.Zero,
                         },
                     }
                 });
+
+                starFills.Add(fill);
             }
         }
 

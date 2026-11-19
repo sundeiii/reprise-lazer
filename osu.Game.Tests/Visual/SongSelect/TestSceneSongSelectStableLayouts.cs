@@ -415,6 +415,42 @@ namespace osu.Game.Tests.Visual.SongSelect
         }
 
         [Test]
+        public void TestStablePanelStarsFollowMods()
+        {
+            double withoutMods = 0;
+
+            AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
+
+            LoadSongSelect();
+
+            // A real beatmap: its star rating gets worked out with the mods.
+            AddStep("import real beatmap", () => Beatmaps.Import(new ImportTask(TestResources.GetQuickTestBeatmapForImport())).WaitSafely());
+            AddUntilStep("panel stars shown", () => selectedDifficultyStars() is double stars && stars > 0 && (withoutMods = stars) > 0);
+
+            // As stable's panels: the stars with the mods.
+            AddStep("select DT", () => SelectedMods.Value = new osu.Game.Rulesets.Mods.Mod[] { new osu.Game.Rulesets.Osu.Mods.OsuModDoubleTime() });
+            AddUntilStep("more stars with DT", () => selectedDifficultyStars() > withoutMods);
+
+            // Gliding there rather than jumping, and getting there.
+            AddAssert("drawn on the way", () => selectedPanel()?.DisplayedStarRating < selectedDifficultyStars());
+            AddUntilStep("drawn for DT's", () => selectedPanel()?.DisplayedStarRating == selectedDifficultyStars());
+
+            AddStep("no mods", () => SelectedMods.Value = System.Array.Empty<osu.Game.Rulesets.Mods.Mod>());
+            AddUntilStep("back as it was", () => selectedDifficultyStars() == withoutMods);
+
+            // Gliding back down too.
+            AddAssert("drawn on the way back", () => selectedPanel()?.DisplayedStarRating > withoutMods);
+            AddUntilStep("drawn as it was", () => selectedPanel()?.DisplayedStarRating == withoutMods);
+
+            AddStep("reset", () => skins.CurrentSkinInfo.SetDefault());
+        }
+
+        private double? selectedDifficultyStars() => selectedPanel()?.ShownStarRating;
+
+        private LegacyCarouselPanel? selectedPanel() => visibleStablePanels().FirstOrDefault(p => p.Item?.Model is GroupedBeatmap && p.Selected.Value);
+
+        [Test]
         public void TestStableBeatmapList()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
