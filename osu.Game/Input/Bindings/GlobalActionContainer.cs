@@ -109,6 +109,8 @@ namespace osu.Game.Input.Bindings
             new KeyBinding(new[] { InputKey.Control, InputKey.Shift, InputKey.T }, GlobalAction.NextSkin),
 
             new KeyBinding(InputKey.F10, GlobalAction.ToggleGameplayMouseButtons),
+            // Reprise: standardised and classic scoring, either way.
+            new KeyBinding(InputKey.F7, GlobalAction.ToggleScoringMode),
             new KeyBinding(InputKey.F12, GlobalAction.TakeScreenshot),
             new KeyBinding(new[] { InputKey.Shift, InputKey.F12 }, GlobalAction.TakeAndUploadScreeshot),
         };
@@ -635,6 +637,10 @@ namespace osu.Game.Input.Bindings
 
         [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.SeekToEnd))]
         EditorSeekToEnd,
+
+        // Reprise: at the end, as key bindings are stored by the action's number.
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.ToggleScoringMode))]
+        ToggleScoringMode,
     }
 
     public enum GlobalActionCategory

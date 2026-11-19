@@ -80,6 +80,11 @@ namespace osu.Game.Localisation
         public static LocalisableString ToggleGameplayMouseButtons => new TranslatableString(getKey(@"toggle_gameplay_mouse_buttons"), @"Toggle gameplay mouse buttons");
 
         /// <summary>
+        /// "Toggle scoring mode" (Reprise)
+        /// </summary>
+        public static LocalisableString ToggleScoringMode => new TranslatableString(getKey(@"toggle_scoring_mode"), @"Toggle scoring mode");
+
+        /// <summary>
         /// "Back"
         /// </summary>
         public static LocalisableString Back => new TranslatableString(getKey(@"back"), @"Back");

@@ -385,6 +385,13 @@ namespace osu.Game.Configuration
                     value: disabledState ? CommonStrings.Disabled.ToLower() : CommonStrings.Enabled.ToLower(),
                     shortcut: LookupKeyBindings(GlobalAction.ToggleGameplayMouseButtons))
                 ),
+                // Reprise: the scoring mode, as its key switches it.
+                new TrackedSetting<ScoringMode>(OsuSetting.ScoreDisplayMode, mode => new SettingDescription(
+                    rawValue: mode,
+                    name: GameplaySettingsStrings.ScoreDisplayMode,
+                    value: mode.GetLocalisableDescription(),
+                    shortcut: LookupKeyBindings(GlobalAction.ToggleScoringMode))
+                ),
                 new TrackedSetting<bool>(OsuSetting.GameplayLeaderboard, state => new SettingDescription(
                     rawValue: state,
                     name: GlobalActionKeyBindingStrings.ToggleInGameLeaderboard,

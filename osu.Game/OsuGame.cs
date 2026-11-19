@@ -67,6 +67,7 @@ using osu.Game.Overlays.SkinEditor;
 using osu.Game.Overlays.Toolbar;
 using osu.Game.Overlays.Volume;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Screens;
@@ -1348,7 +1349,7 @@ namespace osu.Game
             loadComponentSingleFile(Settings = new SettingsOverlay(), leftFloatingOverlayContent.Add, true);
             loadComponentSingleFile(changelogOverlay = new ChangelogOverlay(), overlayContent.Add, true);
             // Reprise: what's new after an update (release notes from GitHub; reprise.pw's changelog has no lazer builds).
-            loadComponentSingleFile(new WhatsNewOverlay(), overlayContent.Add, true);
+            var whatsNewOverlay = loadComponentSingleFile(new WhatsNewOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(userProfile = new UserProfileOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(beatmapSetOverlay = new BeatmapSetOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(wikiOverlay = new WikiOverlay(), overlayContent.Add, true);
@@ -1476,6 +1477,8 @@ namespace osu.Game
                 changelogOverlay,
                 rankingsOverlay,
                 wikiOverlay,
+                // Reprise: a full overlay like the changelog.
+                whatsNewOverlay,
             };
 
             foreach (var overlay in singleDisplayOverlays)
@@ -1981,6 +1984,12 @@ namespace osu.Game
                 case GlobalAction.ToggleGameplayMouseButtons:
                     var mouseDisableButtons = LocalConfig.GetBindable<bool>(OsuSetting.MouseDisableButtons);
                     mouseDisableButtons.Value = !mouseDisableButtons.Value;
+                    return true;
+
+                // Reprise: standardised and classic scoring, either way (shown on screen as the setting changes).
+                case GlobalAction.ToggleScoringMode:
+                    var scoringMode = LocalConfig.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
+                    scoringMode.Value = scoringMode.Value == ScoringMode.Standardised ? ScoringMode.Classic : ScoringMode.Standardised;
                     return true;
 
                 case GlobalAction.ToggleProfile:
