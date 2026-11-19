@@ -227,6 +227,20 @@ namespace osu.Game.Updater
                     Close(false);
             }
         }
+
+        /// <summary>
+        /// Reprise: what clicking "update ready" does: what's new in it first (its release notes, <paramref name="releaseTag"/>'s), with a
+        /// button to restart to it; straight to restarting without notes (or without the overlay).
+        /// </summary>
+        public static Func<bool> ShowNotesThenRestart(WhatsNewOverlay? whatsNew, string releaseTag, Action restart) => () =>
+        {
+            if (whatsNew != null)
+                whatsNew.ShowFor(releaseTag, restart);
+            else
+                restart();
+
+            return true;
+        };
     }
 
     public partial class UpdateCompleteNotification : SimpleNotification

@@ -16,6 +16,7 @@ using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Online.API;
+using osu.Game.Overlays;
 using osuTK;
 
 namespace osu.Game.Updater
@@ -33,6 +34,9 @@ namespace osu.Game.Updater
 
         protected override string PopInSampleName => @"UI/overlay-big-pop-in";
         protected override string PopOutSampleName => @"UI/overlay-big-pop-out";
+
+        [Resolved]
+        private INotificationOverlay? notificationOverlay { get; set; }
 
         private OsuSpriteText title = null!;
         private OsuMarkdownContainer notes = null!;
@@ -159,21 +163,29 @@ namespace osu.Game.Updater
         /// </summary>
         public void ShowFor(string version, Action? restart = null)
         {
+            // The notes come in on another thread; what's done with them is scheduled here (which runs while hidden: AlwaysPresent).
+            FetchNotes(version,
+                body => Schedule(() =>
+                {
+                    if (!ShowNotes(version, body, restart))
+                        restart?.Invoke();
+                }),
+                e =>
+                {
+                    Logger.Log($"No release notes for {version}: {e.Message}");
+
+                    if (restart != null)
+                        Schedule(restart);
+                });
+        }
+
+        /// <summary>Gets a release's notes (its tag's, from GitHub), calling back from another thread. Tests give their own.</summary>
+        protected virtual void FetchNotes(string version, Action<string?> onNotes, Action<Exception> onFailed)
+        {
             var request = new OsuJsonWebRequest<GitHubRelease>(RELEASES_API + version);
 
-            request.Finished += () => Schedule(() =>
-            {
-                if (!ShowNotes(version, request.ResponseObject?.Body, restart))
-                    restart?.Invoke();
-            });
-
-            request.Failed += e =>
-            {
-                Logger.Log($"No release notes for {version}: {e.Message}");
-
-                if (restart != null)
-                    Schedule(restart);
-            };
+            request.Finished += () => onNotes(request.ResponseObject?.Body);
+            request.Failed += onFailed;
             request.PerformAsync();
         }
 
@@ -198,6 +210,10 @@ namespace osu.Game.Updater
                 Hide();
                 restart?.Invoke();
             };
+
+            // The notifications closed (opened from one, they stayed open, and an open panel takes the next click anywhere to close
+            // itself: "Restart to update" took two clicks).
+            notificationOverlay?.Hide();
 
             Show();
             return true;

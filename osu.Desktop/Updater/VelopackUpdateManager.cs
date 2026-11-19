@@ -113,16 +113,9 @@ namespace osu.Desktop.Updater
 
             UpdateDownloadProgressNotification progressNotification = new UpdateDownloadProgressNotification(cancellationToken)
             {
-                CompletionClickAction = () =>
-                {
-                    // Reprise: what's new in it first (its release notes), with a button to restart; straight to restarting without notes.
-                    if (whatsNew != null)
-                        whatsNew.ShowFor(ReleaseTag(update.TargetFullRelease.Version.ToString()), () => restartToApplyUpdate(updateManager, update));
-                    else
-                        restartToApplyUpdate(updateManager, update);
-
-                    return true;
-                }
+                // Reprise: what's new in it first (its release notes), with a button to restart; straight to restarting without notes.
+                CompletionClickAction = ShowNotesThenRestart(whatsNew, ReleaseTag(update.TargetFullRelease.Version.ToString()),
+                    () => restartToApplyUpdate(updateManager, update)),
             };
 
             try
