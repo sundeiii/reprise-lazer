@@ -186,7 +186,8 @@ namespace osu.Game.Updater
 
             request.Finished += () => onNotes(request.ResponseObject?.Body);
             request.Failed += onFailed;
-            request.PerformAsync();
+            // Its failure is reported through Failed; observed here so it isn't left as an unobserved exception.
+            request.PerformAsync().ContinueWith(t => _ = t.Exception, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
         }
 
         /// <summary>

@@ -33,5 +33,29 @@ namespace osu.Game.Online.API.Requests.Responses
 
         [JsonProperty("pool")]
         public APIMatchmakingPool Pool { get; set; } = new APIMatchmakingPool();
+
+        /// <summary>Reprise: the latest matches (newest first, up to ten), as the profile shows them.</summary>
+        [JsonProperty("recent_history")]
+        public APIMatchmakingEloHistory[] RecentHistory { get; set; } = [];
+    }
+
+    /// <summary>Reprise: one ranked play match's result for a player, and their rating after it.</summary>
+    public class APIMatchmakingEloHistory
+    {
+        [JsonProperty("id")]
+        public long Id { get; set; }
+
+        [JsonProperty("room_id")]
+        public long RoomId { get; set; }
+
+        /// <summary>"win", "loss" or "draw".</summary>
+        [JsonProperty("result")]
+        public string Result { get; set; } = string.Empty;
+
+        [JsonProperty("elo_after")]
+        public int EloAfter { get; set; }
+
+        [JsonProperty("created_at")]
+        public System.DateTimeOffset CreatedAt { get; set; }
     }
 }

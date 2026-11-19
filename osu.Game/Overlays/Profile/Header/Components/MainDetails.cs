@@ -253,20 +253,22 @@ namespace osu.Game.Overlays.Profile.Header.Components
                 set => rankCount.Text = value.ToLocalisableString("#,##0");
             }
 
-            public ScoreRankInfo(ScoreRank rank)
+            /// <param name="rank">The grade.</param>
+            /// <param name="rankHeight">Reprise: the grade's height (22; the website's v2 count, in a profile card, 16).</param>
+            public ScoreRankInfo(ScoreRank rank, float rankHeight = 22)
             {
                 AutoSizeAxes = Axes.Both;
                 InternalChild = new FillFlowContainer
                 {
                     AutoSizeAxes = Axes.Y,
-                    Width = 44,
+                    Width = rankHeight * 2,
                     Direction = FillDirection.Vertical,
                     Children = new Drawable[]
                     {
                         new DrawableRank(rank)
                         {
                             RelativeSizeAxes = Axes.X,
-                            Height = 22,
+                            Height = rankHeight,
                         },
                         rankCount = new OsuSpriteText
                         {

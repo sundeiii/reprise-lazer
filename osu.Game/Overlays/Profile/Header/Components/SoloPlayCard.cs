@@ -15,83 +15,74 @@ using osuTK;
 namespace osu.Game.Overlays.Profile.Header.Components
 {
     /// <summary>
-    /// Reprise: the profile's "Solo Play" card, as the website's: global and country ranking, pp and medals, the grade counts, and the
-    /// rank graph.
+    /// Reprise: the profile's "Solo Play" card, as the website's (detail-stats-v2/solo.tsx): the global ranking and the country one under
+    /// it, pp and medals side by side; the grade counts in the middle; the rank graph ("No recent plays" without one) at the bottom.
     /// </summary>
-    public partial class SoloPlayCard : ProfileStatsCard
+    public partial class SoloPlayCard : SectionedProfileCard
     {
         private readonly Dictionary<ScoreRank, MainDetails.ScoreRankInfo> scoreRankInfos = new Dictionary<ScoreRank, MainDetails.ScoreRankInfo>();
 
         private GlobalRankDisplay globalRank = null!;
-        private ProfileValueDisplay countryRank = null!;
-        private ProfileValueDisplay ppInfo = null!;
-        private ProfileValueDisplay medalInfo = null!;
+        private CardValueDisplay countryRank = null!;
+        private CardValueDisplay ppInfo = null!;
+        private CardValueDisplay medalInfo = null!;
         private RankGraph rankGraph = null!;
-        private Container rankedPart = null!;
 
         public SoloPlayCard()
-            : base(FontAwesome.Solid.User, "Solo Play")
+            : base(FontAwesome.Solid.User, UsersStrings.ShowSoloTitle)
         {
         }
 
         [BackgroundDependencyLoader]
         private void load()
         {
-            Body.Children = new Drawable[]
+            TopContent.Children = new Drawable[]
             {
-                new FillFlowContainer
-                {
-                    AutoSizeAxes = Axes.Both,
-                    Direction = FillDirection.Horizontal,
-                    Spacing = new Vector2(20, 0),
-                    Children = new Drawable[]
-                    {
-                        globalRank = new GlobalRankDisplay(),
-                        countryRank = new ProfileValueDisplay(true) { Title = UsersStrings.ShowRankCountrySimple },
-                    }
-                },
-                rankedPart = new Container
+                globalRank = new GlobalRankDisplay(),
+                countryRank = new CardValueDisplay(CardValueSize.RankSmall) { Label = UsersStrings.ShowRankCountrySimple },
+                // profile-detail-stats-card__values--row: pp and medals sharing the width.
+                new GridContainer
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
-                    Children = new Drawable[]
+                    RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                    ColumnDimensions = new[] { new Dimension(), new Dimension(GridSizeMode.Absolute, 5), new Dimension() },
+                    Content = new[]
                     {
-                        new FillFlowContainer
+                        new Drawable[]
                         {
-                            Anchor = Anchor.CentreLeft,
-                            Origin = Anchor.CentreLeft,
-                            AutoSizeAxes = Axes.Both,
-                            Direction = FillDirection.Horizontal,
-                            Spacing = new Vector2(10, 0),
-                            Children = new Drawable[]
-                            {
-                                ppInfo = new ProfileValueDisplay { Title = "pp" },
-                                medalInfo = new ProfileValueDisplay { Title = UsersStrings.ShowStatsMedals },
-                            }
-                        },
-                        new FillFlowContainer
-                        {
-                            Anchor = Anchor.CentreRight,
-                            Origin = Anchor.CentreRight,
-                            AutoSizeAxes = Axes.Both,
-                            Direction = FillDirection.Horizontal,
-                            Spacing = new Vector2(4),
-                            Children = new[]
-                            {
-                                scoreRankInfos[ScoreRank.XH] = new MainDetails.ScoreRankInfo(ScoreRank.XH),
-                                scoreRankInfos[ScoreRank.X] = new MainDetails.ScoreRankInfo(ScoreRank.X),
-                                scoreRankInfos[ScoreRank.SH] = new MainDetails.ScoreRankInfo(ScoreRank.SH),
-                                scoreRankInfos[ScoreRank.S] = new MainDetails.ScoreRankInfo(ScoreRank.S),
-                                scoreRankInfos[ScoreRank.A] = new MainDetails.ScoreRankInfo(ScoreRank.A),
-                            }
-                        },
+                            ppInfo = new CardValueDisplay(CardValueSize.Plain) { Label = "pp" },
+                            Empty(),
+                            medalInfo = new CardValueDisplay(CardValueSize.Plain) { Label = UsersStrings.ShowStatsMedals },
+                        }
                     }
                 },
-                rankGraph = new RankGraph
+            };
+
+            // profile-rank-count--v2: the five grades, 16px, 8 apart, centred.
+            MiddleContent.Child = new FillFlowContainer
+            {
+                Anchor = Anchor.Centre,
+                Origin = Anchor.Centre,
+                AutoSizeAxes = Axes.Both,
+                Direction = FillDirection.Horizontal,
+                Spacing = new Vector2(8),
+                Children = new[]
                 {
-                    RelativeSizeAxes = Axes.X,
-                    Height = 60,
-                },
+                    scoreRankInfos[ScoreRank.XH] = new MainDetails.ScoreRankInfo(ScoreRank.XH, 16),
+                    scoreRankInfos[ScoreRank.X] = new MainDetails.ScoreRankInfo(ScoreRank.X, 16),
+                    scoreRankInfos[ScoreRank.SH] = new MainDetails.ScoreRankInfo(ScoreRank.SH, 16),
+                    scoreRankInfos[ScoreRank.S] = new MainDetails.ScoreRankInfo(ScoreRank.S, 16),
+                    scoreRankInfos[ScoreRank.A] = new MainDetails.ScoreRankInfo(ScoreRank.A, 16),
+                }
+            };
+
+            // profile-detail-stats-card__chart: inset 15 from the right. The graph says "No recent plays" itself when unranked.
+            BottomContent.Child = new Container
+            {
+                RelativeSizeAxes = Axes.Both,
+                Padding = new MarginPadding { Right = 15 },
+                Child = rankGraph = new RankGraph { RelativeSizeAxes = Axes.Both },
             };
         }
 
@@ -104,24 +95,21 @@ namespace osu.Game.Overlays.Profile.Header.Components
             globalRank.HighestRank.Value = user?.RankHighest;
             globalRank.UserStatistics.Value = !restricted ? user?.Statistics : null;
 
-            countryRank.Content.Text = !restricted && hasStatistics
+            countryRank.Value.Text = !restricted && hasStatistics
                 ? user!.Statistics.CountryRank?.ToLocalisableString("\\##,##0") ?? (LocalisableString)"-"
                 : (LocalisableString)"-";
-            countryRank.Content.TooltipText = !restricted ? MainDetails.GetCountryRankTooltipText(user) : default;
+            countryRank.Value.TooltipText = !restricted ? MainDetails.GetCountryRankTooltipText(user) : default;
 
-            ppInfo.Content.Text = !restricted && hasStatistics
+            ppInfo.Value.Text = !restricted && hasStatistics
                 ? user!.Statistics.PP?.ToLocalisableString("#,##0") ?? (LocalisableString)"0"
                 : (LocalisableString)"-";
-            ppInfo.Content.TooltipText = !restricted ? MainDetails.GetPPInfoTooltipText(user) : default;
-            medalInfo.Content.Text = restricted ? "-" : user?.Achievements?.Length.ToString() ?? "0";
+            ppInfo.Value.TooltipText = !restricted ? MainDetails.GetPPInfoTooltipText(user) : default;
+            medalInfo.Value.Text = restricted ? "-" : (user?.Achievements?.Length ?? 0).ToLocalisableString("#,##0");
 
             foreach (var info in scoreRankInfos)
                 info.Value.RankCount = !restricted && hasStatistics ? user!.Statistics.GradesCount[info.Key] : 0;
 
             rankGraph.Statistics.Value = !restricted ? user?.Statistics : null;
-
-            rankedPart.Alpha = restricted ? 0 : 1;
-            rankGraph.Alpha = restricted ? 0 : 1;
         }
     }
 }
