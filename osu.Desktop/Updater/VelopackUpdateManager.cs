@@ -12,6 +12,7 @@ using osu.Game.Configuration;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Notifications;
 using osu.Game.Screens.Play;
+using osu.Game.Updater;
 using Velopack;
 using Velopack.Sources;
 using UpdateManager = osu.Game.Updater.UpdateManager;
@@ -31,6 +32,9 @@ namespace osu.Desktop.Updater
 
         [Resolved]
         private OsuConfigManager config { get; set; } = null!;
+
+        [Resolved]
+        private WhatsNewOverlay? whatsNew { get; set; }
 
         private bool isInGameplay => localUserInfo?.PlayingState.Value != LocalUserPlayingState.NotPlaying;
 
@@ -111,7 +115,12 @@ namespace osu.Desktop.Updater
             {
                 CompletionClickAction = () =>
                 {
-                    restartToApplyUpdate(updateManager, update);
+                    // Reprise: what's new in it first (its release notes), with a button to restart; straight to restarting without notes.
+                    if (whatsNew != null)
+                        whatsNew.ShowFor(ReleaseTag(update.TargetFullRelease.Version.ToString()), () => restartToApplyUpdate(updateManager, update));
+                    else
+                        restartToApplyUpdate(updateManager, update);
+
                     return true;
                 }
             };
@@ -161,6 +170,12 @@ namespace osu.Desktop.Updater
             game.RestartOnExitAction = () => updateManager.WaitExitThenApplyUpdates(update.TargetFullRelease);
             game.AttemptExit();
         }
+
+        /// <summary>
+        /// Reprise: a release's tag from its Velopack version, which leaves out the tag's "v" and "-lazer" (2026.1119.0 is v2026.1119.0-lazer).
+        /// </summary>
+        public static string ReleaseTag(string velopackVersion) =>
+            $"v{(velopackVersion.Contains('-', StringComparison.Ordinal) ? velopackVersion : velopackVersion + "-lazer")}";
 
         private static void log(string text) => Logger.Log($"VelopackUpdateManager: {text}");
     }

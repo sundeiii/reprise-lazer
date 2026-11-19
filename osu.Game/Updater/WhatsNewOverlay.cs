@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -13,6 +14,7 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Containers.Markdown;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Online.API;
 using osuTK;
 
@@ -34,6 +36,8 @@ namespace osu.Game.Updater
 
         private OsuSpriteText title = null!;
         private OsuMarkdownContainer notes = null!;
+        private Container restartFooter = null!;
+        private RoundedButton restartButton = null!;
 
         public WhatsNewOverlay()
         {
@@ -60,7 +64,7 @@ namespace osu.Game.Updater
                 new GridContainer
                 {
                     RelativeSizeAxes = Axes.Both,
-                    RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                    RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize), new Dimension(), new Dimension(GridSizeMode.AutoSize) },
                     Content = new[]
                     {
                         new Drawable[]
@@ -121,33 +125,78 @@ namespace osu.Game.Updater
                                 }
                             }
                         },
+                        // An update that's ready (its notes shown before restarting): restarting to it from here.
+                        new Drawable[]
+                        {
+                            restartFooter = new Container
+                            {
+                                RelativeSizeAxes = Axes.X,
+                                AutoSizeAxes = Axes.Y,
+                                Padding = new MarginPadding(15),
+                                Alpha = 0,
+                                Child = restartButton = new RoundedButton
+                                {
+                                    Anchor = Anchor.Centre,
+                                    Origin = Anchor.Centre,
+                                    Width = 260,
+                                    Height = 40,
+                                    Text = "Restart to update",
+                                },
+                            }
+                        },
                     }
                 }
             };
         }
 
-        /// <summary>Shows what's new in <paramref name="version"/> once its notes come (not at all when there are none or they can't be had).</summary>
-        public void ShowFor(string version)
+        /// <summary>
+        /// Shows what's new in <paramref name="version"/> once its notes come (not at all when there are none or they can't be had).
+        /// With <paramref name="restart"/> (an update that's ready), a button restarts to it; without notes to show, it restarts straight away.
+        /// </summary>
+        public void ShowFor(string version, Action? restart = null)
         {
             var request = new OsuJsonWebRequest<GitHubRelease>(RELEASES_API + version);
 
-            request.Finished += () => Schedule(() => ShowNotes(version, request.ResponseObject?.Body));
+            request.Finished += () => Schedule(() =>
+            {
+                if (!ShowNotes(version, request.ResponseObject?.Body, restart))
+                    restart?.Invoke();
+            });
 
-            request.Failed += e => Logger.Log($"No release notes for {version}: {e.Message}");
+            request.Failed += e =>
+            {
+                Logger.Log($"No release notes for {version}: {e.Message}");
+
+                if (restart != null)
+                    Schedule(restart);
+            };
             request.PerformAsync();
         }
 
-        /// <summary>Shows <paramref name="body"/> (a release's notes, markdown) as what's new in <paramref name="version"/>, unless there's nothing in it.</summary>
-        public void ShowNotes(string version, string? body)
+        /// <summary>
+        /// Shows <paramref name="body"/> (a release's notes, markdown) as what's new in <paramref name="version"/>, unless there's nothing in it;
+        /// with <paramref name="restart"/>, a button restarts to it.
+        /// </summary>
+        /// <returns>Whether there was something to show.</returns>
+        public bool ShowNotes(string version, string? body, Action? restart = null)
         {
             body = Clean(body);
 
             if (string.IsNullOrWhiteSpace(body))
-                return;
+                return false;
 
             title.Text = $"What's new in {version}";
             notes.Text = body;
+
+            restartFooter.Alpha = restart != null ? 1 : 0;
+            restartButton.Action = () =>
+            {
+                Hide();
+                restart?.Invoke();
+            };
+
             Show();
+            return true;
         }
 
         /// <summary>The notes without GitHub's "Full Changelog" link (to a compare page, nothing to read in the game).</summary>

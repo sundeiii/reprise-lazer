@@ -2,8 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Testing;
+using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Updater;
 
 namespace osu.Game.Tests.Visual.UserInterface
@@ -37,6 +40,27 @@ namespace osu.Game.Tests.Visual.UserInterface
         {
             AddStep("only the changelog link", () => overlay.ShowNotes("v2026.1021.2-lazer", "**Full Changelog**: https://github.com/sundeiii/reprise-lazer/compare/a...b"));
             AddAssert("not shown", () => overlay.State.Value == Visibility.Hidden);
+        }
+
+        [Test]
+        public void TestRestartButtonForAReadyUpdate()
+        {
+            bool restarted = false;
+
+            AddStep("show notes of a ready update", () => overlay.ShowNotes("v2026.1119.0-lazer", "- skins from osu!lazer", () => restarted = true));
+            AddUntilStep("shown", () => overlay.State.Value == Visibility.Visible);
+
+            AddStep("press restart", () => overlay.ChildrenOfType<RoundedButton>().Single(b => b.Text.ToString() == "Restart to update").TriggerClick());
+            AddAssert("restarted", () => restarted);
+            AddUntilStep("closed", () => overlay.State.Value == Visibility.Hidden);
+        }
+
+        [Test]
+        public void TestNoRestartButtonAfterAnUpdate()
+        {
+            AddStep("show notes", () => overlay.ShowNotes("v2026.1119.0-lazer", "- skins from osu!lazer"));
+            AddUntilStep("shown", () => overlay.State.Value == Visibility.Visible);
+            AddAssert("no restart button", () => overlay.ChildrenOfType<RoundedButton>().Single(b => b.Text.ToString() == "Restart to update").Parent!.Alpha == 0);
         }
 
         [Test]

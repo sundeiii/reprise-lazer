@@ -196,7 +196,8 @@ namespace osu.Game.Updater
             public UpdateReadyNotification(CancellationToken cancellationToken)
             {
                 this.cancellationToken = cancellationToken;
-                Text = NotificationsStrings.UpdateReadyToInstall;
+                // Reprise: clicking shows what's new in it before restarting.
+                Text = "Update ready to install. Click to see what's new and restart!";
             }
 
             protected override void Update()
