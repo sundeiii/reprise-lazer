@@ -198,6 +198,15 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("show user in osu!", () => profile.ShowUser(new APIUser { Id = 4 }, new OsuRuleset().RulesetInfo));
             AddUntilStep("osu! when asked for", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osu"));
+
+            // Seen once: the next time it's asked for straight away.
+            AddStep("show user without a mode again", () =>
+            {
+                requested.Clear();
+                profile.ShowUser(new APIUser { Id = 4 });
+            });
+            AddUntilStep("osu!relax again", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
+            AddAssert("in one request", () => requested, () => Is.EqualTo(new string?[] { "osurx" }));
         }
 
         [Test]

@@ -109,10 +109,24 @@ namespace osu.Game.Overlays
 
             user = userToShow;
             ruleset = userRuleset;
+            rulesetIsDefault = false;
+
+            // Reprise: a player whose default Relax/Autopilot mode was seen already opens in it straight away (one request, not two).
+            if (userRuleset == null && knownDefaults.TryGetValue(userToShow.OnlineID, out var known) && known is RulesetInfo knownDefault)
+            {
+                ruleset = knownDefault;
+                rulesetIsDefault = true;
+            }
 
             Show();
             Scheduler.AddOnce(fetchAndSetContent);
         }
+
+        /// <summary>Reprise: players' default Relax/Autopilot modes as last seen (null: none), by user id.</summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, RulesetInfo?> knownDefaults = new System.Collections.Concurrent.ConcurrentDictionary<int, RulesetInfo?>();
+
+        // Reprise: the ruleset shown is the player's default as last seen, not one asked for (checked again once loaded).
+        private bool rulesetIsDefault;
 
         private void fetchAndSetContent()
         {
@@ -225,9 +239,16 @@ namespace osu.Game.Overlays
             Debug.Assert(sections != null && sectionsContainer != null && tabs != null);
 
             // Reprise: opened without a mode, a player who made Relax or Autopilot their profile's default gets it (as on the website).
-            if (userRuleset == null && DefaultVariant(rulesets, loadedUser) is RulesetInfo variant)
+            // Remembered, so the next time it's asked for straight away; shown from memory, it's checked against what they have now.
+            var defaultVariant = DefaultVariant(rulesets, loadedUser);
+            knownDefaults[loadedUser.Id] = defaultVariant;
+
+            bool wrongDefault = rulesetIsDefault && defaultVariant?.ShortName != userRuleset?.ShortName;
+
+            if ((userRuleset == null && defaultVariant != null) || wrongDefault)
             {
-                ruleset = variant;
+                ruleset = defaultVariant;
+                rulesetIsDefault = defaultVariant != null;
                 fetchAndSetContent();
                 return;
             }
