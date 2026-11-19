@@ -1336,6 +1336,8 @@ namespace osu.Game
             loadComponentSingleFile(FirstRunOverlay = new FirstRunSetupOverlay(), footerBasedOverlayContent.Add, true);
             // Reprise: skins, beatmaps and collections from osu!'s own lazer (from the settings), each a wizard in the first-run setup's style.
             loadComponentSingleFile(new LazerSkinImportOverlay(), footerBasedOverlayContent.Add, true);
+            // Reprise: a skin from the parts of others.
+            loadComponentSingleFile(new osu.Game.Overlays.SkinMixer.SkinMixerOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new LazerBeatmapImportOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new LazerCollectionImportOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new ManageCollectionsDialog(), overlayContent.Add, true);
