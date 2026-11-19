@@ -207,6 +207,16 @@ namespace osu.Game.Tests.Visual.Online
             });
             AddUntilStep("osu!relax again", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
             AddAssert("in one request", () => requested, () => Is.EqualTo(new string?[] { "osurx" }));
+
+            // Already showing osu!relax, opened again without a mode: it loads (the second request used to be skipped as "already
+            // shown" after the first had cleared the profile, leaving the loading spinner up for good).
+            AddStep("show user without a mode once more, default not remembered", () =>
+            {
+                UserProfileOverlay.ForgetDefaultModes();
+                profile.ShowUser(new APIUser { Id = 4 });
+            });
+            AddUntilStep("not stuck loading", () => profile.ChildrenOfType<osu.Game.Graphics.UserInterface.LoadingLayer>().All(l => l.State.Value == Visibility.Hidden));
+            AddAssert("osu!relax", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
         }
 
         [Test]

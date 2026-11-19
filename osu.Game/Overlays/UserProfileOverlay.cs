@@ -125,15 +125,24 @@ namespace osu.Game.Overlays
         /// <summary>Reprise: players' default Relax/Autopilot modes as last seen (null: none), by user id.</summary>
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, RulesetInfo?> knownDefaults = new System.Collections.Concurrent.ConcurrentDictionary<int, RulesetInfo?>();
 
+        /// <summary>Reprise: forgets the default modes seen (for tests).</summary>
+        internal static void ForgetDefaultModes() => knownDefaults.Clear();
+
         // Reprise: the ruleset shown is the player's default as last seen, not one asked for (checked again once loaded).
         private bool rulesetIsDefault;
 
-        private void fetchAndSetContent()
+        private void fetchAndSetContent() => fetchAndSetContent(false);
+
+        /// <param name="force">
+        /// Reprise: fetch even when that user and mode are already shown (the default mode's second request, after the first one cleared
+        /// the profile: skipping it left the loading spinner up for good).
+        /// </param>
+        private void fetchAndSetContent(bool force)
         {
             Debug.Assert(user != null);
 
             bool sameUser = user.OnlineID == Header.User.Value?.User.Id;
-            if (sameUser && ruleset?.MatchesOnlineID(Header.User.Value?.Ruleset) == true)
+            if (!force && sameUser && ruleset?.MatchesOnlineID(Header.User.Value?.Ruleset) == true)
                 return;
 
             sectionsContainer?.ExpandableHeader = null;
@@ -249,7 +258,7 @@ namespace osu.Game.Overlays
             {
                 ruleset = defaultVariant;
                 rulesetIsDefault = defaultVariant != null;
-                fetchAndSetContent();
+                fetchAndSetContent(force: true);
                 return;
             }
 
