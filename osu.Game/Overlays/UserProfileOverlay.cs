@@ -199,9 +199,38 @@ namespace osu.Game.Overlays
             }
         }
 
+        /// <summary>
+        /// Reprise: the Relax or Autopilot mode <paramref name="user"/> made their profile's default, if any (and only on their own ruleset,
+        /// as the website keeps it).
+        /// </summary>
+        public static RulesetInfo? DefaultVariant(RulesetStore rulesets, APIUser user)
+        {
+            (string baseName, int onlineId)? variant = user.TomYumDefaultVariant switch
+            {
+                RulesetInfo.OSU_RELAX_MODE_SHORTNAME => (RulesetInfo.OSU_MODE_SHORTNAME, RulesetInfo.OSU_RELAX_ONLINE_ID),
+                RulesetInfo.OSU_AUTOPILOT_MODE_SHORTNAME => (RulesetInfo.OSU_MODE_SHORTNAME, RulesetInfo.OSU_AUTOPILOT_ONLINE_ID),
+                RulesetInfo.TAIKO_RELAX_MODE_SHORTNAME => (RulesetInfo.TAIKO_MODE_SHORTNAME, RulesetInfo.TAIKO_RELAX_ONLINE_ID),
+                RulesetInfo.CATCH_RELAX_MODE_SHORTNAME => (RulesetInfo.CATCH_MODE_SHORTNAME, RulesetInfo.CATCH_RELAX_ONLINE_ID),
+                _ => null,
+            };
+
+            if (variant is not var (baseName, onlineId) || baseName != user.PlayMode)
+                return null;
+
+            return rulesets.GetRuleset(baseName)?.CreateSpecialRuleset(user.TomYumDefaultVariant, onlineId);
+        }
+
         private void userLoadComplete(APIUser loadedUser, IRulesetInfo? userRuleset)
         {
             Debug.Assert(sections != null && sectionsContainer != null && tabs != null);
+
+            // Reprise: opened without a mode, a player who made Relax or Autopilot their profile's default gets it (as on the website).
+            if (userRuleset == null && DefaultVariant(rulesets, loadedUser) is RulesetInfo variant)
+            {
+                ruleset = variant;
+                fetchAndSetContent();
+                return;
+            }
 
             currentProfileHue = loadedUser.ProfileHue ?? OverlayColourScheme.Pink.GetHue();
 

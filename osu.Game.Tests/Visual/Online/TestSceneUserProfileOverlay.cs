@@ -14,6 +14,7 @@ using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
+using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Tests.Resources;
 using osu.Game.Users;
@@ -170,6 +171,33 @@ namespace osu.Game.Tests.Visual.Online
             });
 
             AddStep("show user", () => profile.ShowUser(new APIUser { Id = 1 }));
+        }
+
+        [Test]
+        public void TestOpensInDefaultRelaxMode()
+        {
+            var requested = new System.Collections.Generic.List<string?>();
+
+            AddStep("set up request handling", () =>
+            {
+                requested.Clear();
+                dummyAPI.HandleRequest = req =>
+                {
+                    if (req is not GetUserRequest getUserRequest)
+                        return false;
+
+                    requested.Add(getUserRequest.Ruleset?.ShortName);
+                    getUserRequest.TriggerSuccess(new APIUser { Username = "Lilily", Id = 4, PlayMode = "osu", TomYumDefaultVariant = "osurx" });
+                    return true;
+                };
+            });
+
+            AddStep("show user without a mode", () => profile.ShowUser(new APIUser { Id = 4 }));
+            AddUntilStep("opened in osu!relax", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
+            AddAssert("asked again for that mode", () => requested, () => Is.EqualTo(new string?[] { null, "osurx" }));
+
+            AddStep("show user in osu!", () => profile.ShowUser(new APIUser { Id = 4 }, new OsuRuleset().RulesetInfo));
+            AddUntilStep("osu! when asked for", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osu"));
         }
 
         [Test]

@@ -225,6 +225,13 @@ namespace osu.Game.Online.API.Requests.Responses
         [JsonProperty(@"playmode")]
         public string PlayMode;
 
+        /// <summary>
+        /// Reprise: the Relax or Autopilot mode the player made their profile's default ("osurx", "osuap", "taikorx", "fruitsrx"), or null:
+        /// their profile opens in it.
+        /// </summary>
+        [JsonProperty(@"tomyum_default_variant")]
+        public string TomYumDefaultVariant;
+
         [JsonProperty(@"profile_hue")]
         public int? ProfileHue;
 
