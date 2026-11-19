@@ -119,7 +119,10 @@ namespace osu.Game.Overlays
             }
 
             Show();
-            Scheduler.AddOnce(fetchAndSetContent);
+
+            // As osu!'s: opening a profile (not picking a mode on it) loads it afresh, even when it's the one last shown. Filling in the
+            // known default mode above made a reopened profile look already shown, so it was never refreshed.
+            Scheduler.AddOnce(fetchAndSetContent, userRuleset == null);
         }
 
         /// <summary>Reprise: players' default Relax/Autopilot modes as last seen (null: none), by user id.</summary>

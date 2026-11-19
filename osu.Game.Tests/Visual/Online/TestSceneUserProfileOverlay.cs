@@ -53,6 +53,36 @@ namespace osu.Game.Tests.Visual.Online
             AddStep("show overlay", () => profile.Show());
         }
 
+        /// <summary>Reprise: as osu!'s, opening a profile again (the one shown last) loads it afresh, as it did the first time.</summary>
+        [Test]
+        public void TestReopeningRefreshes()
+        {
+            int requests = 0;
+
+            AddStep("set up request handling", () =>
+            {
+                requests = 0;
+                dummyAPI.HandleRequest = req =>
+                {
+                    if (req is GetUserRequest getUserRequest)
+                    {
+                        requests++;
+                        getUserRequest.TriggerSuccess(TEST_USER);
+                        return true;
+                    }
+
+                    return false;
+                };
+            });
+
+            AddStep("show user", () => profile.ShowUser(new APIUser { Id = TEST_USER.Id }));
+            AddUntilStep("loaded once", () => requests, () => Is.EqualTo(1));
+            AddStep("close", () => profile.Hide());
+
+            AddStep("open it again", () => profile.ShowUser(new APIUser { Id = TEST_USER.Id }));
+            AddUntilStep("loaded again", () => requests, () => Is.EqualTo(2));
+        }
+
         [Test]
         public void TestActualUser()
         {
@@ -217,6 +247,24 @@ namespace osu.Game.Tests.Visual.Online
             });
             AddUntilStep("not stuck loading", () => profile.ChildrenOfType<osu.Game.Graphics.UserInterface.LoadingLayer>().All(l => l.State.Value == Visibility.Hidden));
             AddAssert("osu!relax", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
+
+            // As osu!'s: closed and opened again while still showing osu!relax (its default known), it loads afresh.
+            AddStep("close", () => profile.Hide());
+            AddStep("open it again", () =>
+            {
+                requested.Clear();
+                profile.ShowUser(new APIUser { Id = 4 });
+            });
+            AddUntilStep("loaded afresh", () => requested, () => Is.EqualTo(new string?[] { "osurx" }));
+            AddUntilStep("osu!relax still", () => profile.Header.User.Value?.Ruleset.ShortName, () => Is.EqualTo("osurx"));
+
+            AddStep("pick osu!relax, the mode shown", () =>
+            {
+                requested.Clear();
+                profile.ShowUser(new APIUser { Id = 4 }, profile.Header.User.Value!.Ruleset);
+            });
+            AddWaitStep("wait", 5);
+            AddAssert("not loaded again", () => requested, () => Is.Empty);
         }
 
         [Test]
