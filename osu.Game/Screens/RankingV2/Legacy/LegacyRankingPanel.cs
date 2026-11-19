@@ -14,6 +14,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Framework.Localisation;
 using osu.Framework.Utils;
 using osu.Game.Configuration;
@@ -481,6 +482,21 @@ namespace osu.Game.Screens.RankingV2.Legacy
             private Drawable element = null!;
             private LegacySpriteText scoreTextSprite = null!;
 
+            /// <summary>
+            /// Reprise: the element's image as stable picks it: from the skin that has it (plain or as an animation's first frame), its plain
+            /// image ("hit300.png") over the first frame ("hit300-0.png"). Skins leave the first frame blank to hide 300s in gameplay and keep
+            /// the plain one for the results screen; taking the frame first left the results without their 300.
+            /// </summary>
+            public static Texture? GetElementTexture(ISkinSource skin, string name)
+            {
+                var provider = skin.FindProvider(s => s.GetTexture(name) != null || s.GetTexture($@"{name}-0") != null);
+
+                if (provider == null)
+                    return null;
+
+                return provider.GetTexture(name) ?? provider.GetTexture($@"{name}-0");
+            }
+
             [BackgroundDependencyLoader]
             private void load(ISkinSource skin)
             {
@@ -492,7 +508,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
                     AddInternal(element = new Sprite
                     {
                         // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/RankingElement.cs#L32
-                        Texture = skin.GetTextures(ElementName, default, default, true, "-", null, out _).FirstOrDefault(),
+                        Texture = GetElementTexture(skin, ElementName),
                         Anchor = Anchor.TopLeft,
                         Origin = Origin,
                         Scale = FinalElementScale,
