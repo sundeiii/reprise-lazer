@@ -35,6 +35,29 @@ namespace osu.Game.Tests.Visual.Navigation
         private SkinMixerOverlay mixer => Game.Dependencies.Get<SkinMixerOverlay>();
 
         [Test]
+        public void TestManySkins()
+        {
+            AddStep("import 40 skins", () =>
+            {
+                for (int i = 0; i < 40; i++)
+                    import($"Many Skin {i:00}", ("skin.ini", text($"[General]\nName: Many Skin {i:00}\n")),("cursor.png", png((byte)(i * 6), 0, 0)));
+            });
+
+            AddStep("open the mixer", () => mixer.Show());
+            AddUntilStep("shown", () => mixer.State.Value == Visibility.Visible && mixer.ChildrenOfType<ScreenSkinMixer>().Any(s => s.IsLoaded));
+            AddWaitStep("settle", 5);
+
+            AddStep("open the gameplay group's dropdown", () =>
+            {
+                var dropdown = mixer.ChildrenOfType<OsuDropdown<SkinMixerChoice>>().ElementAt(1);
+                InputManager.MoveMouseTo(dropdown.ChildrenOfType<OsuDropdown<SkinMixerChoice>.OsuDropdownHeader>().Single());
+                InputManager.Click(MouseButton.Left);
+            });
+            AddWaitStep("let it open", 5);
+            AddStep("screenshot", () => Screenshot?.Invoke("skin-mixer-many"));
+        }
+
+        [Test]
         public void TestMixCursorIntoBase()
         {
             AddStep("import two skins", () =>

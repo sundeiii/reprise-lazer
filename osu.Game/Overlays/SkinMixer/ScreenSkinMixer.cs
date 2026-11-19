@@ -13,6 +13,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
@@ -88,6 +89,7 @@ namespace osu.Game.Overlays.SkinMixer
                 baseDropdown = new FormDropdown<SkinMixerSource>
                 {
                     Caption = "Base skin",
+                    AlwaysShowSearchBar = true,
                     HintText = "What's kept wherever nothing else is picked.",
                     Items = new[] { classic }.Concat(sources).ToArray(),
                     Current = baseSkin,
@@ -234,7 +236,7 @@ namespace osu.Game.Overlays.SkinMixer
             private readonly SkinMixerOption part;
             private readonly int depth;
 
-            private OsuDropdown<SkinMixerChoice> dropdown = null!;
+            private ChoiceDropdown dropdown = null!;
             private SpriteIcon? chevron;
             private FillFlowContainer? children;
             private bool updating;
@@ -299,8 +301,11 @@ namespace osu.Game.Overlays.SkinMixer
                                 },
                             }
                         },
-                        dropdown = new OsuDropdown<SkinMixerChoice>
+                        dropdown = new ChoiceDropdown
                         {
+                            // A list of every skin: searchable, and no taller than a few of them.
+                            AlwaysShowSearchBar = true,
+                            Opened = bringToFront,
                             Anchor = Anchor.CentreRight,
                             Origin = Anchor.CentreRight,
                             Width = 280,
@@ -380,6 +385,45 @@ namespace osu.Game.Overlays.SkinMixer
             {
                 screen.rows.Remove(this);
                 base.Dispose(isDisposing);
+            }
+
+            /// <summary>Draws this row (and the groups it's in) over the rows after it, so its open list isn't covered by them.</summary>
+            private void bringToFront()
+            {
+                Drawable row = this;
+
+                while (row.Parent is Container<Drawable> container)
+                {
+                    if (row is PartRow)
+                        container.ChangeChildDepth(row, --front_depth);
+
+                    if (container == screen.partsFlow)
+                        break;
+
+                    row = container;
+                }
+            }
+
+            private static float front_depth;
+
+            /// <summary>The choices' list: at most <see cref="max_menu_height"/> tall, and saying when it opens.</summary>
+            private partial class ChoiceDropdown : OsuDropdown<SkinMixerChoice>
+            {
+                private const float max_menu_height = 260;
+
+                public Action? Opened;
+
+                protected override DropdownMenu CreateMenu()
+                {
+                    var menu = base.CreateMenu();
+                    menu.MaxHeight = max_menu_height;
+                    menu.StateChanged += state =>
+                    {
+                        if (state == MenuState.Open)
+                            Opened?.Invoke();
+                    };
+                    return menu;
+                }
             }
 
             private partial class GroupToggle : OsuClickableContainer
