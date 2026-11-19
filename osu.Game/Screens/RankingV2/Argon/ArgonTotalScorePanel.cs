@@ -24,6 +24,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Localisation;
 using osu.Game.Localisation.SkinComponents;
 using osu.Game.Online.API;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
@@ -50,6 +51,7 @@ namespace osu.Game.Screens.RankingV2.Argon
         private Drawable perfectIndicator = null!;
         private Container personalBestIndicator = null!;
         private Box personalBestFlash = null!;
+        private OsuSpriteText personalBestMarginText = null!;
         private TotalScoreCounter totalScoreText = null!;
 
         [Resolved]
@@ -68,6 +70,11 @@ namespace osu.Game.Screens.RankingV2.Argon
         /// in after the reveal has started; null while it doesn't know yet). Without it, the best of the scores stored locally.
         /// </summary>
         public IBindable<bool?>? PersonalBest { get; init; }
+
+        /// <summary>
+        /// Reprise: the player's best on the beatmap before this score (the server's), once known: a personal best says by how much it beat it.
+        /// </summary>
+        public IBindable<SoloScoreInfo?>? PreviousBest { get; init; }
 
         // When the reveal brings in the personal best indicator (Reprise: it's shown then, or once it's known if that's later).
         private double? personalBestRevealTime;
@@ -144,19 +151,35 @@ namespace osu.Game.Screens.RankingV2.Argon
                             RelativeSizeAxes = Axes.Both,
                             Colour = ColourInfo.GradientVertical(Colour4.FromHex(@"#FFE7A8"), Colour4.FromHex(@"#FFB800")),
                         },
-                        new OsuSpriteText
+                        // Reprise: and by how much it beat the last best, once that's known.
+                        new FillFlowContainer
                         {
-                            Colour = colourProvider.Background5,
-                            Text = ResultsScreenStrings.PersonalBest.ToUpper(),
-                            UseFullGlyphHeight = false,
-                            Spacing = new Vector2(1.5f),
-                            Font = OsuFont.Style.Body.With(weight: FontWeight.Bold),
+                            AutoSizeAxes = Axes.Both,
+                            Direction = FillDirection.Horizontal,
+                            Spacing = new Vector2(8, 0),
                             Shear = -OsuGame.SHEAR,
                             Margin = new MarginPadding
                             {
                                 Horizontal = 12,
                                 Vertical = 6,
-                            }
+                            },
+                            Children =
+                            [
+                                new OsuSpriteText
+                                {
+                                    Colour = colourProvider.Background5,
+                                    Text = ResultsScreenStrings.PersonalBest.ToUpper(),
+                                    UseFullGlyphHeight = false,
+                                    Spacing = new Vector2(1.5f),
+                                    Font = OsuFont.Style.Body.With(weight: FontWeight.Bold),
+                                },
+                                personalBestMarginText = new OsuSpriteText
+                                {
+                                    Colour = colourProvider.Background5,
+                                    UseFullGlyphHeight = false,
+                                    Font = OsuFont.Style.Body.With(weight: FontWeight.SemiBold),
+                                },
+                            ],
                         },
                         personalBestFlash = new Box
                         {
@@ -180,6 +203,17 @@ namespace osu.Game.Screens.RankingV2.Argon
             scoringMode.BindValueChanged(_ => updateState(), true);
 
             PersonalBest?.BindValueChanged(_ => updatePersonalBest());
+            PreviousBest?.BindValueChanged(_ => updatePersonalBestMargin());
+        }
+
+        // Reprise: "+84,299" on the badge (in the score display's mode, classic or standardised) for a play that beat a best set before.
+        private void updatePersonalBestMargin()
+        {
+            var previous = PreviousBest?.Value;
+            long margin = previous == null ? 0 : score.Value.GetDisplayScore(scoringMode.Value) - previous.GetDisplayScore(scoringMode.Value);
+
+            personalBestMarginText.Text = $"+{margin.ToLocalisableString(@"N0")}";
+            personalBestMarginText.Alpha = margin > 0 ? 1 : 0;
         }
 
         // Reprise: the server's answer came in. Before the reveal gets to the indicator, it brings it in as usual; after, it comes in now.
@@ -230,6 +264,7 @@ namespace osu.Game.Screens.RankingV2.Argon
 
             perfectIndicator.Alpha = score.Value.IsPerfect() ? 1 : 0;
             personalBestIndicator.Alpha = isScorePersonalBest(score.Value) ? 1 : 0;
+            updatePersonalBestMargin();
         }
 
         private bool isScorePersonalBest(IScoreInfo newScore)

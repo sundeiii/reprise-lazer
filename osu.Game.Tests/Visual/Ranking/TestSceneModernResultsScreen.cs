@@ -15,6 +15,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -37,6 +38,7 @@ namespace osu.Game.Tests.Visual.Ranking
 
         private bool exported;
         private readonly Bindable<double?> performance = new Bindable<double?>();
+        private readonly Bindable<ScoreBasedUserStatisticsUpdate?> statisticsUpdate = new Bindable<ScoreBasedUserStatisticsUpdate?>();
         private readonly Bindable<bool> favourited = new Bindable<bool>();
 
         [SetUpSteps]
@@ -95,12 +97,14 @@ namespace osu.Game.Tests.Visual.Ranking
 
                 exported = false;
                 performance.Value = null;
+                statisticsUpdate.Value = null;
                 favourited.Value = false;
 
                 var details = new LegacyRankingDetails
                 {
                     HasSecondPage = justSet,
                     Performance = performance,
+                    StatisticsUpdate = statisticsUpdate,
                     PreviousBest = new Bindable<SoloScoreInfo?>(new SoloScoreInfo { TotalScore = 912_345, Accuracy = 0.9681, MaxCombo = 1_120, PP = 261 }),
                     OnlineBeatmap = new Bindable<APIBeatmap?>(new APIBeatmap { BeatmapSet = new APIBeatmapSet { FavouriteCount = 4_231 } }),
                     ExportReplay = () => exported = true,
@@ -207,6 +211,45 @@ namespace osu.Game.Tests.Visual.Ranking
             AddUntilStep("server's pp", () => ppTexts().Any(t => t == "301pp"));
 
             string[] ppTexts() => this.ChildrenOfType<ArgonScoreStatisticsGrid>().Single().ChildrenOfType<OsuSpriteText>().Select(t => t.Text.ToString()).ToArray();
+        }
+
+        [Test]
+        public void TestPersonalBestMargin()
+        {
+            AddStep("load as just set", () => loadScreen(true));
+            AddUntilStep("revealed", () => this.ChildrenOfType<ArgonTotalScorePanel>().SingleOrDefault()?.Parent!.Alpha == 1);
+            AddStep("finish", () => this.ChildrenOfType<ModernResultsScreen>().Single().FinishAnimation());
+
+            // 956,789 over the last best's 912,345.
+            AddUntilStep("by how much", () => this.ChildrenOfType<ArgonTotalScorePanel>().Single().ChildrenOfType<OsuSpriteText>()
+                                                  .Any(t => t.Text.ToString() == "+44,444" && t.Alpha == 1));
+        }
+
+        [Test]
+        public void TestRankChange()
+        {
+            AddStep("load as just set", () => loadScreen(true));
+            AddUntilStep("revealed", () => this.ChildrenOfType<ArgonTotalScorePanel>().SingleOrDefault()?.Parent!.Alpha == 1);
+            AddAssert("not shown before the server says", () => this.ChildrenOfType<RankChangePanel>().Single().Alpha == 0);
+
+            AddStep("server's update comes in", () => statisticsUpdate.Value = new ScoreBasedUserStatisticsUpdate(new ScoreInfo(),
+                new UserStatistics { GlobalRank = 1_234, PP = 4_321.4m },
+                new UserStatistics { GlobalRank = 1_180, PP = 4_350.2m }));
+
+            AddUntilStep("shown", () => this.ChildrenOfType<RankChangePanel>().Single().Alpha == 1);
+            AddUntilStep("counted to after", () => texts(), () => Does.Contain("#1,180").And.Contain("4,350pp"));
+            AddAssert("how much it went up", () => texts(), () => Does.Contain("▲54").And.Contain("+29"));
+
+            string[] texts() => this.ChildrenOfType<RankChangePanel>().Single().ChildrenOfType<OsuSpriteText>().Select(t => t.Text.ToString()).ToArray();
+        }
+
+        [Test]
+        public void TestNoRankChangeForAScoreLookedAtLater()
+        {
+            AddStep("server's update", () => statisticsUpdate.Value = new ScoreBasedUserStatisticsUpdate(new ScoreInfo(),
+                new UserStatistics { GlobalRank = 1_234, PP = 4_321 }, new UserStatistics { GlobalRank = 1_180, PP = 4_350 }));
+            AddWaitStep("wait", 10);
+            AddAssert("not shown", () => this.ChildrenOfType<RankChangePanel>().Single().Alpha == 0);
         }
 
         [Test]

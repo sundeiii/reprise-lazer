@@ -18,6 +18,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Online;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Overlays;
@@ -96,6 +97,7 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private readonly List<IAnimatableSkinnable> animatables = new List<IAnimatableSkinnable>();
         private bool animationStarted;
+        private RankChangePanel rankChangePanel = null!;
 
         // Whether the play just set is the player's new best on the beatmap, by the server's scores (null until it's known).
         private readonly Bindable<bool?> personalBest = new Bindable<bool?>();
@@ -169,12 +171,16 @@ namespace osu.Game.Screens.Ranking.Modern
                             },
                             beatmapPanel = new ArgonBeatmapInfoPanel { Position = leftWedgeBase },
                             playerPanel = new ArgonPlayerInfoPanel { Position = leftWedgeBase + leftWedgeOffset(161) },
+                            // Reprise: what the play did to the player's rank and pp, next to them (once the server says).
+                            rankChangePanel = new RankChangePanel { Position = leftWedgeBase + leftWedgeOffset(161) + new Vector2(ArgonBeatmapInfoPanel.WIDTH + 24, 0) },
                             totalScorePanel = new ArgonTotalScorePanel
                             {
                                 Position = leftWedgeBase + leftWedgeOffset(233),
                                 // "Personal best" for a play just set by the server's scores (osu!'s goes by the scores stored here,
                                 // which missed it); a score looked at later keeps osu!'s.
                                 PersonalBest = this.details.HasSecondPage ? personalBest : null,
+                                // And by how much it beat the last best.
+                                PreviousBest = this.details.HasSecondPage ? this.details.PreviousBest : null,
                             },
                             statisticsHolder = new Container
                             {
@@ -246,9 +252,20 @@ namespace osu.Game.Screens.Ranking.Modern
             {
                 details.PreviousBest.BindValueChanged(_ => updatePersonalBest());
                 details.StatisticsUpdate.BindValueChanged(_ => updatePersonalBest(), true);
+                details.StatisticsUpdate.BindValueChanged(_ => showRankChange());
             }
 
             fetchRanks();
+        }
+
+        // Set a moment into the reveal (once the wedges are in).
+        private bool rankChangeReady;
+
+        // Reprise: the rank and pp change, once the reveal has got going and the server's update for the play is in (whichever is later).
+        private void showRankChange()
+        {
+            if (rankChangeReady && details.StatisticsUpdate.Value is ScoreBasedUserStatisticsUpdate update)
+                rankChangePanel.Show(update);
         }
 
         private void updatePersonalBest()
@@ -272,6 +289,16 @@ namespace osu.Game.Screens.Ranking.Modern
                 animationStarted = true;
                 startAnimation();
                 mainPage.Show();
+
+                // The rank and pp change once the wedges are in.
+                if (details.HasSecondPage)
+                {
+                    Scheduler.AddDelayed(() =>
+                    {
+                        rankChangeReady = true;
+                        showRankChange();
+                    }, 800);
+                }
             }
         }
 
