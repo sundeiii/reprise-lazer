@@ -72,7 +72,7 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private bool finished;
 
-        // The game's own sounds: the results' swoosh as it sweeps in, the section pass as it slams down, the badge's dink as the stars flash.
+        // The game's own sounds: a wind-up as it sweeps in (not the results' score swoosh), the section pass as it slams down, the badge's dink as the stars flash.
         private Sample? sweepSample;
         private Sample? slamSample;
         private Sample? starsSample;
@@ -89,7 +89,7 @@ namespace osu.Game.Screens.Ranking.Modern
         [BackgroundDependencyLoader]
         private void load(TextureStore textures, ISampleStore samples)
         {
-            sweepSample = samples.Get(@"Results/swoosh-up");
+            sweepSample = samples.Get(@"DailyChallenge/beatmap-windup");
             slamSample = samples.Get(@"Gameplay/sectionpass");
             starsSample = samples.Get(@"Results/badge-dink-max");
 
