@@ -6,7 +6,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using osu.Framework.Audio;
+using osu.Framework.Audio.Sample;
+using osu.Framework.IO.Stores;
+using osu.Framework.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -173,6 +178,68 @@ namespace osu.Game.Overlays.SkinMixer
             return choices.Length == 1 ? choices[0] : SkinMixerChoice.MIXED;
         }
 
+        [Resolved]
+        private AudioManager audio { get; set; } = null!;
+
+        [Resolved]
+        private ISampleStore gameSamples { get; set; } = null!;
+
+        private readonly Dictionary<SkinMixerSource, ISampleStore> previewStores = new Dictionary<SkinMixerSource, ISampleStore>();
+        private readonly List<ScheduledDelegate> pendingPreview = new List<ScheduledDelegate>();
+
+        /// <summary>
+        /// Plays a set of sounds one after another as picked (another skin's, the base's to keep it, the game's for its default; nothing
+        /// for blank); a sound the skin hasn't got is the game's, as in play.
+        /// </summary>
+        private void preview(string[] names, SkinMixerChoice choice)
+        {
+            if (choice.Type == SkinMixerChoice.Kind.Blank)
+                return;
+
+            var from = choice.Type switch
+            {
+                SkinMixerChoice.Kind.FromSkin => choice.Skin,
+                SkinMixerChoice.Kind.Default => null,
+                _ => baseSkin.Value,
+            };
+
+            foreach (var p in pendingPreview)
+                p.Cancel();
+            pendingPreview.Clear();
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                string name = names[i];
+                pendingPreview.Add(Scheduler.AddDelayed(() => playPreview(from, name), i * 350));
+            }
+        }
+
+        private void playPreview(SkinMixerSource? from, string name)
+        {
+            string? file = from?.Files.Keys.FirstOrDefault(f => !f.Contains('/') && Path.GetFileNameWithoutExtension(f).Equals(name, StringComparison.OrdinalIgnoreCase)
+                                                               && new[] { ".wav", ".ogg", ".mp3" }.Contains(Path.GetExtension(f).ToLowerInvariant()));
+
+            if (from != null && file != null)
+            {
+                if (!previewStores.TryGetValue(from, out var store))
+                    previewStores[from] = store = audio.GetSampleStore(new SkinMixerSourceStore(from));
+
+                store.Get(file)?.Play();
+                return;
+            }
+
+            gameSamples.Get($@"Gameplay/{name}")?.Play();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            foreach (var store in previewStores.Values)
+                store.Dispose();
+            previewStores.Clear();
+
+            base.Dispose(isDisposing);
+        }
+
         /// <summary>Scrolls so an opened list (under its field, <see cref="list_height"/> at most) is all in view.</summary>
         private void reveal(Drawable field)
         {
@@ -257,6 +324,7 @@ namespace osu.Game.Overlays.SkinMixer
             private ChoiceDropdown dropdown = null!;
             private SpriteIcon? chevron;
             private GroupToggle? groupToggle;
+            private Container? previewHolder;
             private FillFlowContainer? children;
             private bool updating;
 
@@ -293,7 +361,12 @@ namespace osu.Game.Overlays.SkinMixer
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
-                    ColumnDimensions = new[] { new Dimension(GridSizeMode.Absolute, gutter), new Dimension() },
+                    ColumnDimensions = new[]
+                    {
+                        new Dimension(GridSizeMode.Absolute, gutter),
+                        new Dimension(),
+                        new Dimension(GridSizeMode.Absolute, group?.PreviewFileNames != null ? gutter + 8 : 0),
+                    },
                     Content = new[]
                     {
                         new Drawable[]
@@ -314,6 +387,20 @@ namespace osu.Game.Overlays.SkinMixer
                                     },
                                 },
                             dropdown,
+                            group?.PreviewFileNames == null
+                                ? Empty()
+                                : previewHolder = new Container
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Child = new IconButton
+                                    {
+                                        Anchor = Anchor.CentreRight,
+                                        Origin = Anchor.CentreRight,
+                                        Icon = FontAwesome.Solid.Play,
+                                        TooltipText = "Hear these (as picked here)",
+                                        Action = () => screen.preview(group.PreviewFileNames, shownChoice(part)),
+                                    },
+                                },
                         }
                     }
                 };
@@ -363,6 +450,9 @@ namespace osu.Game.Overlays.SkinMixer
 
                 if (groupToggle != null)
                     groupToggle.Height = dropdown.MainDrawHeight;
+
+                if (previewHolder != null)
+                    previewHolder.Height = dropdown.MainDrawHeight;
             }
 
             /// <summary>Shows the part's choice as it is now (after a group above or below it changed).</summary>
@@ -444,6 +534,29 @@ namespace osu.Game.Overlays.SkinMixer
                     Action = action;
                 }
             }
+        }
+    }
+
+    /// <summary>Reprise: a mixer skin's files, read as resources (for playing its sounds).</summary>
+    internal class SkinMixerSourceStore : IResourceStore<byte[]>
+    {
+        private readonly SkinMixerSource source;
+
+        public SkinMixerSourceStore(SkinMixerSource source)
+        {
+            this.source = source;
+        }
+
+        public byte[] Get(string name) => source.Files.TryGetValue(name, out var read) ? read() : null!;
+
+        public Task<byte[]> GetAsync(string name, CancellationToken cancellationToken = default) => Task.Run(() => Get(name), cancellationToken);
+
+        public Stream? GetStream(string name) => source.Files.TryGetValue(name, out var read) ? new MemoryStream(read()) : null;
+
+        public IEnumerable<string> GetAvailableResources() => source.Files.Keys;
+
+        public void Dispose()
+        {
         }
     }
 }

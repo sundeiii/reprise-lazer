@@ -75,6 +75,26 @@ namespace osu.Game.Tests.Visual.Navigation
         }
 
         [Test]
+        public void TestHitsoundPreview()
+        {
+            AddStep("import a skin with hitsounds", () =>
+                import("Mixer Sounds", ("skin.ini", text("[General]\nName: Mixer Sounds\n")),("normal-hitnormal.wav", SkinMixing.SILENT_WAV), ("soft-hitnormal.wav", SkinMixing.SILENT_WAV)));
+
+            AddStep("open the mixer", () => mixer.Show());
+            AddUntilStep("shown", () => mixer.State.Value == Visibility.Visible && mixer.ChildrenOfType<ScreenSkinMixer>().Any(s => s.IsLoaded));
+
+            AddStep("hitsounds from Mixer Sounds", () =>
+            {
+                var hitsounds = mixer.ChildrenOfType<FormDropdown<SkinMixerChoice>>().Single(d => d.Caption.ToString() == "Hitsounds");
+                hitsounds.Current.Value = hitsounds.Items.Single(c => c.Skin?.Name == "Mixer Sounds");
+            });
+
+            AddStep("press play", () => mixer.ChildrenOfType<osu.Game.Graphics.UserInterface.IconButton>().Single(b => b.TooltipText.ToString() == "Hear these (as picked here)").TriggerClick());
+            AddWaitStep("let them play (its own, then the game's for the rest)", 15);
+            AddAssert("still open, nothing broke", () => mixer.State.Value == Visibility.Visible);
+        }
+
+        [Test]
         public void TestMixCursorIntoBase()
         {
             AddStep("import two skins", () =>
