@@ -1339,6 +1339,8 @@ namespace osu.Game
             // Reprise: a skin from the parts of others.
             loadComponentSingleFile(new osu.Game.Overlays.SkinMixer.SkinMixerOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new osu.Game.Overlays.SkinMixer.SkinModifierOverlay(), footerBasedOverlayContent.Add, true);
+            // Reprise: a map played to another song.
+            loadComponentSingleFile(new osu.Game.Overlays.SongSwap.SongSwapOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new LazerBeatmapImportOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new LazerCollectionImportOverlay(), footerBasedOverlayContent.Add, true);
             loadComponentSingleFile(new ManageCollectionsDialog(), overlayContent.Add, true);

@@ -93,6 +93,12 @@ namespace osu.Game.Screens.SelectV1.Carousel
         [Resolved]
         private BeatmapManager? manager { get; set; }
 
+        [Resolved]
+        private Overlays.SongSwap.SongSwapOverlay? songSwap { get; set; }
+
+        [Resolved]
+        private Beatmaps.SongSwap.SongSwapManager? songSwaps { get; set; }
+
         private IBindable<StarDifficulty> starDifficultyBindable = null!;
         private CancellationTokenSource? starDifficultyCancellationSource;
 
@@ -305,6 +311,15 @@ namespace osu.Game.Screens.SelectV1.Carousel
 
                 if (manager != null)
                     items.Add(new OsuMenuItem("Mark as played", MenuItemType.Standard, () => manager.MarkPlayed(beatmapInfo)));
+
+                // Reprise: the map played to another song (only its song changes, so plays still count), or its own again.
+                if (songSwap != null)
+                {
+                    items.Add(new OsuMenuItem("Swap song...", MenuItemType.Standard, () => songSwap.ShowFor(beatmapInfo)));
+
+                    if (beatmapInfo.BeatmapSet != null && songSwaps?.IsSwapped(beatmapInfo.BeatmapSet) == true)
+                        items.Add(new OsuMenuItem("Restore original song", MenuItemType.Standard, () => songSwap.Restore(beatmapInfo)));
+                }
 
                 if (hideRequested != null)
                     items.Add(new OsuMenuItem(WebCommonStrings.ButtonsHide.ToSentence(), MenuItemType.Destructive, () => hideRequested(beatmapInfo)));

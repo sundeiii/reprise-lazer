@@ -38,6 +38,12 @@ namespace osu.Game.Screens.Select
         private BeatmapSetOverlay? beatmapOverlay { get; set; }
 
         [Resolved]
+        private Overlays.SongSwap.SongSwapOverlay? songSwap { get; set; }
+
+        [Resolved]
+        private Beatmaps.SongSwap.SongSwapManager? songSwaps { get; set; }
+
+        [Resolved]
         private BeatmapManager beatmaps { get; set; } = null!;
 
         [Resolved]
@@ -86,6 +92,15 @@ namespace osu.Game.Screens.Select
 
             foreach (var i in CreateCollectionMenuActions(beatmap))
                 yield return i;
+
+            // Reprise: the map played to another song (only its song changes, so plays still count), or its own again.
+            if (songSwap != null)
+            {
+                yield return new OsuMenuItem("Swap song...", MenuItemType.Standard, () => songSwap.ShowFor(beatmap)) { Icon = FontAwesome.Solid.Music };
+
+                if (beatmap.BeatmapSet != null && songSwaps?.IsSwapped(beatmap.BeatmapSet) == true)
+                    yield return new OsuMenuItem("Restore original song", MenuItemType.Standard, () => songSwap.Restore(beatmap)) { Icon = FontAwesome.Solid.Undo };
+            }
 
             if (beatmap.LastPlayed == null)
                 yield return new OsuMenuItem(SongSelectStrings.MarkAsPlayed, MenuItemType.Standard, () => beatmaps.MarkPlayed(beatmap)) { Icon = FontAwesome.Solid.TimesCircle };
