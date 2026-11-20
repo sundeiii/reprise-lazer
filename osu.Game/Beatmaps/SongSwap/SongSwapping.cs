@@ -53,20 +53,82 @@ namespace osu.Game.Beatmaps.SongSwap
         // A spinner (osu!'s, taiko's swell, catch's banana shower): not where the music's beat is felt.
         private static bool isSpinner(HitObject h) => h.GetType().Name is "Spinner" or "Swell" or "BananaShower";
 
-        /// <summary>
-        /// Where the swapped song starts in this map's time (ms; above 0, after a silence, below 0, cut short at its start): its first
-        /// object on this map's, then moved to the nearest place its beats land on this map's beats.
-        /// </summary>
-        /// <param name="map">This map (its timing and first object).</param>
-        /// <param name="song">The song's map (its timing and first object).</param>
-        /// <param name="stretch">How much the song's stretched by (see <see cref="Fit"/>).</param>
-        public static double Offset(IBeatmap map, IBeatmap song, double stretch)
+        /// <summary>A way of lining the song up: a moment of the song's put on a moment of the map's.</summary>
+        public enum Anchor
         {
-            double offset = FirstObjectTime(map) - FirstObjectTime(song) / stretch;
+            /// <summary>Their kiai (the song's highlight on the map's).</summary>
+            Kiai,
 
-            // On the beat: this map's beat and the song's (stretched) at the first object, a whole number of this map's beats apart.
-            var mapTiming = map.ControlPointInfo.TimingPointAt(FirstObjectTime(map));
-            var songTiming = song.ControlPointInfo.TimingPointAt(FirstObjectTime(song));
+            /// <summary>Their preview points (where song select plays them from: their best part).</summary>
+            Preview,
+
+            /// <summary>Their first notes (as SongSwapper lines songs up).</summary>
+            FirstObject,
+        }
+
+        /// <summary>How the swapped song's placed: where it starts in the map's time, by what, and how much of the map's play it covers.</summary>
+        public record Placement(double Offset, Anchor By, double Coverage);
+
+        /// <summary>When a map's first kiai starts, if it has one.</summary>
+        public static double? FirstKiai(IBeatmap beatmap) =>
+            beatmap.ControlPointInfo.EffectPoints.FirstOrDefault(e => e.KiaiMode)?.Time;
+
+        /// <summary>A map's preview point, if it has one.</summary>
+        public static double? PreviewTime(IBeatmap beatmap) =>
+            beatmap.Metadata.PreviewTime > 0 ? beatmap.Metadata.PreviewTime : null;
+
+        /// <summary>When a map's play ends: its last object's end.</summary>
+        public static double EndTime(IBeatmap beatmap) => beatmap.HitObjects.Count == 0 ? 0 : beatmap.HitObjects.Max(h => h.GetEndTime());
+
+        /// <summary>
+        /// The best way of placing the song on the map (its "optimal part"): by their kiai, their preview points or their first notes, whichever
+        /// has the song cover most of the map's play (its first note to its last), preferring them in that order when they cover about as
+        /// much; each moved to the nearest place the song's beats land on the map's.
+        /// </summary>
+        /// <param name="map">This map (its timing, kiai, preview point and notes).</param>
+        /// <param name="song">The song's map.</param>
+        /// <param name="stretch">How much the song's stretched by (see <see cref="Fit"/>).</param>
+        /// <param name="songLength">How long the song is (ms, unstretched).</param>
+        public static Placement Place(IBeatmap map, IBeatmap song, double stretch, double songLength)
+        {
+            double playStart = FirstObjectTime(map);
+            double playEnd = Math.Max(playStart + 1, EndTime(map));
+            double stretchedLength = songLength / stretch;
+
+            var options = new[]
+            {
+                (by: Anchor.Kiai, map: FirstKiai(map), song: FirstKiai(song)),
+                (by: Anchor.Preview, map: PreviewTime(map), song: PreviewTime(song)),
+                (by: Anchor.FirstObject, map: (double?)FirstObjectTime(map), song: (double?)FirstObjectTime(song)),
+            };
+
+            var placements = options.Where(o => o.map != null && o.song != null)
+                                    .Select(o =>
+                                    {
+                                        double offset = snapToBeat(map, song, stretch, o.map!.Value - o.song!.Value / stretch, o.map.Value);
+                                        double covered = Math.Min(playEnd, offset + stretchedLength) - Math.Max(playStart, offset);
+                                        return new Placement(offset, o.by, Math.Clamp(covered / (playEnd - playStart), 0, 1));
+                                    })
+                                    .ToList();
+
+            double best = placements.Max(p => p.Coverage);
+
+            // In order of preference, the first that covers about as much as the best does.
+            return placements.First(p => p.Coverage >= best - 0.05);
+        }
+
+        /// <summary>
+        /// Where the swapped song starts in this map's time (ms; above 0, after a silence, below 0, cut short at its start) lining up their
+        /// first notes, on the beat (see <see cref="Place"/> for the best place).
+        /// </summary>
+        public static double Offset(IBeatmap map, IBeatmap song, double stretch) =>
+            snapToBeat(map, song, stretch, FirstObjectTime(map) - FirstObjectTime(song) / stretch, FirstObjectTime(map));
+
+        // The offset moved so the song's beat (stretched) lands on the map's, around the given moment of the map.
+        private static double snapToBeat(IBeatmap map, IBeatmap song, double stretch, double offset, double at)
+        {
+            var mapTiming = map.ControlPointInfo.TimingPointAt(at);
+            var songTiming = song.ControlPointInfo.TimingPointAt((at - offset) * stretch);
 
             double beat = mapTiming.BeatLength;
 
@@ -79,11 +141,39 @@ namespace osu.Game.Beatmaps.SongSwap
             return offset - (apart - Math.Round(apart)) * beat;
         }
 
+        /// <summary>How long a song is (ms), as BASS reads it (which must be set up).</summary>
+        public static double LengthOf(byte[] song)
+        {
+            int decode = Bass.CreateStream(song, 0, song.Length, BassFlags.Decode | BassFlags.Prescan);
+
+            if (decode == 0)
+                throw new InvalidOperationException($"The song couldn't be read ({Bass.LastError}).");
+
+            try
+            {
+                return Bass.ChannelBytes2Seconds(decode, Bass.ChannelGetLength(decode)) * 1000;
+            }
+            finally
+            {
+                Bass.StreamFree(decode);
+            }
+        }
+
+        /// <summary>How long after the map's play ends the song goes on (full), before fading out.</summary>
+        public const double TAIL = 2000;
+
+        /// <summary>How long a song longer than the map takes to fade out (after <see cref="TAIL"/>).</summary>
+        public const double FADE_OUT = 3000;
+
+        /// <summary>How long a song cut into (started part of the way in) takes to fade in.</summary>
+        public const double FADE_IN = 800;
+
         /// <summary>
-        /// The song stretched (its pitch kept) and placed (see <see cref="Offset"/>), as a 16-bit wave file at least <paramref name="minimumLength"/>
-        /// long (silence after it, so the map never outlasts its song). Uses BASS (the game's audio), which must be set up.
+        /// The song stretched (its pitch kept) and placed (see <see cref="Place"/>), as a 16-bit wave file: faded in if it's cut into, faded
+        /// out after the map's play ends (<paramref name="mapEnd"/>, plus <see cref="TAIL"/>) if it goes on longer, or followed by silence if
+        /// it's shorter (so the map never outlasts its song). Uses BASS (the game's audio), which must be set up.
         /// </summary>
-        public static byte[] Render(byte[] song, double stretch, double offset, double minimumLength)
+        public static byte[] Render(byte[] song, double stretch, double offset, double mapEnd)
         {
             int decode = Bass.CreateStream(song, 0, song.Length, BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
 
@@ -106,15 +196,23 @@ namespace osu.Game.Beatmaps.SongSwap
                 int channels = info.Channels;
                 int rate = info.Frequency;
 
+                long samplesAt(double ms) => (long)Math.Round(ms / 1000 * rate) * channels;
+
+                long fadeOutStart = samplesAt(mapEnd + TAIL);
+                long end = samplesAt(mapEnd + TAIL + FADE_OUT);
+                long fadeOutLength = Math.Max(1, end - fadeOutStart);
+                long fadeInLength = offset < 0 ? Math.Max(1, samplesAt(FADE_IN)) : 0;
+
                 using var output = new MemoryStream();
                 using var writer = new BinaryWriter(output);
 
                 writeWaveHeader(writer, rate, channels, 0);
 
                 long written = 0;
+                long songWritten = 0;
 
-                // Silence before it, or its start skipped.
-                long samplesBefore = (long)Math.Round(offset / 1000 * rate) * channels;
+                // Silence before it, or its start skipped (and what's left of it faded in).
+                long samplesBefore = samplesAt(offset);
                 long skip = 0;
 
                 if (samplesBefore > 0)
@@ -127,7 +225,7 @@ namespace osu.Game.Beatmaps.SongSwap
 
                 try
                 {
-                    while (true)
+                    while (written < end)
                     {
                         int bytes = Bass.ChannelGetData(tempo, handle.AddrOfPinnedObject(), buffer.Length * sizeof(float) | (int)DataFlags.Float);
 
@@ -144,10 +242,20 @@ namespace osu.Game.Beatmaps.SongSwap
                             start = skipped;
                         }
 
-                        for (int i = start; i < count; i++)
-                            writer.Write((short)Math.Round(Math.Clamp(buffer[i], -1f, 1f) * short.MaxValue));
+                        for (int i = start; i < count && written < end; i++)
+                        {
+                            float gain = 1;
 
-                        written += count - start;
+                            if (songWritten < fadeInLength)
+                                gain *= (float)songWritten / fadeInLength;
+
+                            if (written >= fadeOutStart)
+                                gain *= 1 - (float)(written - fadeOutStart) / fadeOutLength;
+
+                            writer.Write((short)Math.Round(Math.Clamp(buffer[i] * gain, -1f, 1f) * short.MaxValue));
+                            written++;
+                            songWritten++;
+                        }
                     }
                 }
                 finally
@@ -155,8 +263,8 @@ namespace osu.Game.Beatmaps.SongSwap
                     handle.Free();
                 }
 
-                // Silence after it, as long as the map needs.
-                long minimum = (long)Math.Ceiling(minimumLength / 1000 * rate) * channels;
+                // Silence after it (a song shorter than the map), as long as the map needs.
+                long minimum = samplesAt(mapEnd + TAIL);
 
                 if (written < minimum)
                     written += writeSilence(writer, minimum - written);

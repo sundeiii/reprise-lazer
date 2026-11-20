@@ -105,10 +105,11 @@ namespace osu.Game.Beatmaps.SongSwap
 
             var fit = SongSwapping.Fit(map.BPM, song.BPM) ?? throw new InvalidOperationException("The songs' BPMs don't fit.");
 
-            double offset = SongSwapping.Offset(mapBeatmap, songBeatmap, fit.Stretch);
-            double length = Math.Max(map.Length, mapBeatmap.HitObjects.LastOrDefault()?.GetEndTime() ?? 0) + 3000;
+            byte[] songData = ReadFile(songSet, song.Metadata.AudioFile);
 
-            byte[] rendered = SongSwapping.Render(ReadFile(songSet, song.Metadata.AudioFile), fit.Stretch, offset, length);
+            // The song's best part on the map's (by their kiai, preview points or first notes); faded out after the map's play ends.
+            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, fit.Stretch, SongSwapping.LengthOf(songData));
+            byte[] rendered = SongSwapping.Render(songData, fit.Stretch, placement.Offset, SongSwapping.EndTime(mapBeatmap));
 
             // The set's own song, to keep (unless it's swapped already: that one's kept already).
             byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);

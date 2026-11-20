@@ -69,6 +69,39 @@ namespace osu.Game.Tests.NonVisual
             Assert.That(SongSwapping.FirstObjectTime(beatmap), Is.EqualTo(1500));
         }
 
+        private static Beatmap withKiai(Beatmap beatmap, double kiai)
+        {
+            beatmap.ControlPointInfo.Add(kiai, new EffectControlPoint { KiaiMode = true });
+            return beatmap;
+        }
+
+        [Test]
+        public void TestBestPartByKiai()
+        {
+            // The map's kiai at 30s, the song's at 60s (a 120s song): the song's kiai goes on the map's, and it covers the whole map.
+            var mapBeatmap = withKiai(map(0, 500, 1000, 90000), 30000);
+            var songBeatmap = withKiai(map(0, 500, 2000, 100000), 60000);
+
+            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, 1, 120000);
+
+            Assert.That(placement.By, Is.EqualTo(SongSwapping.Anchor.Kiai));
+            Assert.That(placement.Offset, Is.EqualTo(-30000).Within(1));
+            Assert.That(placement.Coverage, Is.EqualTo(1).Within(0.01));
+        }
+
+        [Test]
+        public void TestFirstNotesWhenKiaiWouldLeaveTheMapShort()
+        {
+            // Lining up the kiai would have the (short) song end long before the map does: by the first notes it covers more.
+            var mapBeatmap = withKiai(map(0, 500, 1000, 90000), 10000);
+            var songBeatmap = withKiai(map(0, 500, 1000, 60000), 55000);
+
+            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, 1, 62000);
+
+            Assert.That(placement.By, Is.EqualTo(SongSwapping.Anchor.FirstObject));
+            Assert.That(placement.Offset, Is.EqualTo(0).Within(1));
+        }
+
         [Test]
         public void TestRender()
         {
@@ -77,19 +110,30 @@ namespace osu.Game.Tests.NonVisual
 
             byte[] song = tone(seconds: 2);
 
-            // A second later, at its own speed, at least 5s long.
-            byte[] placed = SongSwapping.Render(song, 1, 1000, 5000);
-            Assert.That(durationMs(placed), Is.EqualTo(5000).Within(50));
+            // A second later, at its own speed, for a map ending at 3s: silence after it to 2s past the map's end.
+            byte[] placed = SongSwapping.Render(song, 1, 1000, 3000);
+            Assert.That(durationMs(placed), Is.EqualTo(3000 + SongSwapping.TAIL).Within(50));
             Assert.That(peak(placed, fromMs: 0, toMs: 900), Is.EqualTo(0), "silent before it");
-            Assert.That(peak(placed, fromMs: 1100, toMs: 2900), Is.GreaterThan(1000), "the song after");
+            Assert.That(peak(placed, fromMs: 1100, toMs: 2900), Is.GreaterThan(10000), "the song after, full");
+            Assert.That(peak(placed, fromMs: 3100, toMs: 4900), Is.EqualTo(0), "silent after it");
 
-            // Twice as fast: half as long (its pitch kept by the stretching), no minimum.
+            // Twice as fast: half as long (its pitch kept by the stretching).
             byte[] faster = SongSwapping.Render(song, 2, 0, 0);
-            Assert.That(durationMs(faster), Is.EqualTo(1000).Within(100));
+            Assert.That(peak(faster, fromMs: 100, toMs: 900), Is.GreaterThan(10000));
+            Assert.That(peak(faster, fromMs: 1100, toMs: 1900), Is.EqualTo(0), "over at 1s");
 
-            // Started half a second in.
+            // Started half a second in: what's left of it faded in.
             byte[] cut = SongSwapping.Render(song, 1, -500, 0);
-            Assert.That(durationMs(cut), Is.EqualTo(1500).Within(50));
+            Assert.That(peak(cut, fromMs: 0, toMs: 100), Is.LessThan(peak(cut, fromMs: 1000, toMs: 1400) / 4), "faded in");
+            Assert.That(peak(cut, fromMs: 1100, toMs: 1400), Is.GreaterThan(10000));
+            Assert.That(peak(cut, fromMs: 1600, toMs: 1900), Is.EqualTo(0), "over at 1.5s");
+
+            // Longer than the map (10s, the map over at 2s): full for 2s after it, then faded out over 3s, and cut there.
+            byte[] longer = SongSwapping.Render(tone(seconds: 10), 1, 0, 2000);
+            Assert.That(durationMs(longer), Is.EqualTo(2000 + SongSwapping.TAIL + SongSwapping.FADE_OUT).Within(50));
+            Assert.That(peak(longer, fromMs: 3000, toMs: 3900), Is.GreaterThan(10000), "full after the map, for a while");
+            Assert.That(peak(longer, fromMs: 5500, toMs: 5600), Is.LessThan(10000).And.GreaterThan(1000), "fading");
+            Assert.That(peak(longer, fromMs: 6900, toMs: 7000), Is.LessThan(500), "faded out");
         }
 
         /// <summary>A 440Hz tone, 16-bit stereo 44.1kHz.</summary>
