@@ -64,7 +64,10 @@ namespace osu.Game.Beatmaps.SongSwap
         public const double FADE_IN = 800;
 
         /// <summary>Renders the timing plan with pitch preserved, short joins between tempo sections, and intro/outro fades.</summary>
-        public static byte[] Render(byte[] song, SongSwapTiming.Plan plan, double mapEnd) => SongSwapAudio.Render(song, plan, mapEnd);
+        public static byte[] Render(byte[] song, SongSwapTiming.Plan plan, double mapEnd) => Render(song, plan, mapEnd, new SongSwapRenderOptions());
+
+        /// <summary>Renders the timing plan (all of it, or a preview's window), crossfading its joins and fading in and out.</summary>
+        public static byte[] Render(byte[] song, SongSwapTiming.Plan plan, double mapEnd, SongSwapRenderOptions options) => SongSwapAudio.Render(song, plan, mapEnd, options);
 
         /// <summary>Renders a song at a constant speed and offset.</summary>
         public static byte[] Render(byte[] song, double stretch, double offset, double mapEnd) =>

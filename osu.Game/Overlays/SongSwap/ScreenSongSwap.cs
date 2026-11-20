@@ -3,19 +3,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
+using osu.Framework.Audio.Track;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Audio;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Extensions;
 using osu.Framework.Input.Events;
+using osu.Framework.IO.Stores;
 using osu.Framework.Localisation;
+using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.SongSwap;
+using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
@@ -27,8 +37,8 @@ using osuTK;
 namespace osu.Game.Overlays.SongSwap
 {
     /// <summary>
-    /// The songs a map can be played to (closest tempo matches first), one to pick; and, when it's swapped
-    /// already, its own song to put back.
+    /// The songs a map can be played to (every one, closest tempo matches first), one to pick and hear first; whether short ones loop and
+    /// stretched ones keep their pitch; and, when it's swapped already, its own song to put back.
     /// </summary>
     [LocalisableDescription(typeof(ScreenSongSwap), nameof(Title))]
     public partial class ScreenSongSwap : WizardScreen
@@ -52,7 +62,23 @@ namespace osu.Game.Overlays.SongSwap
         [Resolved]
         private RealmAccess realm { get; set; } = null!;
 
+        [Resolved]
+        private AudioManager audio { get; set; } = null!;
+
+        [Resolved]
+        private MusicController music { get; set; } = null!;
+
         private readonly Bindable<Candidate?> picked = new Bindable<Candidate?>();
+        private Bindable<bool> loop = null!;
+        private Bindable<bool> keepPitch = null!;
+
+        private RoundedButton previewButton = null!;
+        private ITrackStore? previewStore;
+        private Track? previewTrack;
+        private DrawableTrack? mutedTrack;
+
+        // Odd: a preview being made or playing. Bumped (to even) to stop it, so a preview made late is dropped.
+        private int previewToken;
 
         private OsuTextFlowContainer description = null!;
         private TruncatingSpriteText mapTitle = null!;
@@ -67,8 +93,9 @@ namespace osu.Game.Overlays.SongSwap
 
         private IReadOnlyList<Candidate> candidates = Array.Empty<Candidate>();
 
-        /// <summary>A song that fits, represented by the longest visible difficulty using that audio file.</summary>
-        public record Candidate(BeatmapInfo Song, double Factor, double Stretch)
+        /// <summary>A song, represented by the longest visible difficulty using that audio file.</summary>
+        /// <param name="Loops">Whether it's shorter than the map (once stretched), so it'd be looped.</param>
+        public record Candidate(BeatmapInfo Song, double Factor, double Stretch, bool Loops = false)
         {
             public string Title => $@"{Song.Metadata.Artist} - {Song.Metadata.Title}";
 
@@ -85,11 +112,14 @@ namespace osu.Game.Overlays.SongSwap
                         _ => "1:1 beat match",
                     };
 
-                    return $@"{Song.BPM:0.#} BPM  ·  {pulse}";
+                    return $@"{Song.BPM:0.#} BPM  ·  {pulse}{(Loops ? "  ·  loops (shorter than the map)" : string.Empty)}";
                 }
             }
 
-            public string Speed => $"{Stretch:0.00}x base speed";
+            public string Speed => $"{Stretch:0.00}x speed";
+
+            /// <summary>How far its pitch moves when it's not kept (semitones).</summary>
+            public string Pitch => $"{12 * Math.Log2(Stretch):+0.0;-0.0;0} semitones";
 
             public bool Matches(string[] terms) => terms.All(t => Title.Contains(t, StringComparison.OrdinalIgnoreCase)
                                                                   || Song.Metadata.Source.Contains(t, StringComparison.OrdinalIgnoreCase)
@@ -97,8 +127,11 @@ namespace osu.Game.Overlays.SongSwap
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            loop = config.GetBindable<bool>(OsuSetting.SongSwapLoop);
+            keepPitch = config.GetBindable<bool>(OsuSetting.SongSwapKeepPitch);
+
             Content.Children = new Drawable[]
             {
                 mapTitle = new TruncatingSpriteText
@@ -155,6 +188,18 @@ namespace osu.Game.Overlays.SongSwap
                         },
                     }
                 },
+                new FormCheckBox
+                {
+                    Caption = "Loop songs shorter than the map",
+                    HintText = "A bar-aligned part of the song (its chorus, when it has one) repeats to the end, crossfaded on the beat.",
+                    Current = loop,
+                },
+                new FormCheckBox
+                {
+                    Caption = "Keep the song's pitch",
+                    HintText = "Off: a sped up song sounds higher and a slowed down one lower, like nightcore or a record.",
+                    Current = keepPitch,
+                },
                 search = new BasicSearchTextBox
                 {
                     RelativeSizeAxes = Axes.X,
@@ -169,12 +214,37 @@ namespace osu.Game.Overlays.SongSwap
                     Children = new Drawable[]
                     {
                         new Box { RelativeSizeAxes = Axes.Both, Colour = OverlayColourProvider.Background4 },
-                        selectionText = new OsuTextFlowContainer(t => t.Font = OsuFont.Default.With(size: 15))
+                        new GridContainer
                         {
                             RelativeSizeAxes = Axes.X,
                             AutoSizeAxes = Axes.Y,
-                            Colour = OverlayColourProvider.Content1,
                             Padding = new MarginPadding(12),
+                            ColumnDimensions = new[] { new Dimension(), new Dimension(GridSizeMode.Absolute, 10), new Dimension(GridSizeMode.Absolute, 160) },
+                            RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                            Content = new[]
+                            {
+                                new Drawable[]
+                                {
+                                    selectionText = new OsuTextFlowContainer(t => t.Font = OsuFont.Default.With(size: 15))
+                                    {
+                                        Anchor = Anchor.CentreLeft,
+                                        Origin = Anchor.CentreLeft,
+                                        RelativeSizeAxes = Axes.X,
+                                        AutoSizeAxes = Axes.Y,
+                                        Colour = OverlayColourProvider.Content1,
+                                    },
+                                    Empty(),
+                                    previewButton = new RoundedButton
+                                    {
+                                        Anchor = Anchor.CentreLeft,
+                                        Origin = Anchor.CentreLeft,
+                                        RelativeSizeAxes = Axes.X,
+                                        Height = 40,
+                                        Text = "Preview",
+                                        Action = togglePreview,
+                                    },
+                                }
+                            }
                         },
                     },
                 },
@@ -207,16 +277,158 @@ namespace osu.Game.Overlays.SongSwap
 
             picked.BindValueChanged(_ =>
             {
+                StopPreview();
+
                 foreach (var row in list)
                     row.Selected = row.Candidate == picked.Value;
 
-                selectionText.Text = picked.Value is Candidate candidate
-                    ? $"{candidate.Title}  ·  {candidate.Speed}\nBeats are aligned and tempo changes are matched automatically. Pitch is preserved."
-                    : "Automatic beat sync  ·  Pitch preserved\nPick a song. Its tempo adapts to this map, including BPM changes.";
+                updateSelectionText();
 
                 // The wizard's button says what it'll do.
                 overlay.NextButton?.Text = NextStepText ?? default;
             });
+
+            keepPitch.BindValueChanged(_ =>
+            {
+                StopPreview();
+                updateSelectionText();
+            });
+
+            // Short songs are offered (to loop) or not.
+            loop.BindValueChanged(_ =>
+            {
+                StopPreview();
+                Refresh();
+            });
+        }
+
+        private void updateSelectionText(string? status = null)
+        {
+            string pitch = keepPitch.Value ? "pitch kept" : "pitch follows its speed";
+
+            selectionText.Text = picked.Value is Candidate candidate
+                ? $"{candidate.Title}  ·  {candidate.Speed}{(keepPitch.Value ? string.Empty : $" ({candidate.Pitch})")}\n"
+                  + (status ?? $"Its best part lands on the map's, every beat on the map's beats, {pitch}{(candidate.Loops ? ", looped to the end" : string.Empty)}.")
+                : $"Automatic beat sync  ·  {pitch}\nPick a song. Its tempo adapts to this map, including BPM changes.";
+
+            previewButton.Enabled.Value = picked.Value != null;
+        }
+
+        private void togglePreview()
+        {
+            if (previewToken % 2 == 1)
+                StopPreview();
+            else
+                startPreview();
+        }
+
+        private void startPreview()
+        {
+            if (overlay.Map is not BeatmapInfo map || picked.Value is not Candidate candidate)
+                return;
+
+            int token = ++previewToken;
+            bool loops = loop.Value;
+            bool pitch = keepPitch.Value;
+
+            previewButton.Text = "Stop";
+            updateSelectionText("Making a preview of the map's best part...");
+
+            Task.Run(() => swaps.RenderPreview(map, candidate.Song, loops, pitch)).ContinueWith(t => Schedule(() =>
+            {
+                if (token != previewToken)
+                    return;
+
+                if (t.IsFaulted)
+                {
+                    Logger.Error(t.Exception, "Couldn't preview the song swap");
+                    StopPreview();
+                    updateSelectionText($"Can't play it to this song: {t.Exception?.InnerException?.Message}");
+                    return;
+                }
+
+                play(t.GetResultSafely());
+            }));
+        }
+
+        private void play(SongSwapManager.Preview preview)
+        {
+            string by = preview.By switch
+            {
+                SongSwapTiming.Anchor.Kiai => "its chorus (kiai) on the map's",
+                SongSwapTiming.Anchor.Preview => "its preview point on the map's",
+                _ => "its first notes on the map's",
+            };
+
+            updateSelectionText($"Previewing: {by}{(preview.Loops > 0 ? $", looped {preview.Loops}x" : string.Empty)}. Ticks are the map's notes.");
+
+            // The song playing faded out under the preview, and back in after it.
+            mutedTrack = music.CurrentTrack;
+            mutedTrack.VolumeTo(0, 300, Easing.OutQuad);
+
+            previewStore = audio.GetTrackStore(new SingleFileStore(preview.Song));
+            previewTrack = previewStore.Get(SingleFileStore.NAME);
+            previewTrack.Completed += () => Schedule(StopPreview);
+            previewTrack.Start();
+        }
+
+        /// <summary>Stops a preview (being made or playing), and brings back the song that was playing.</summary>
+        public void StopPreview()
+        {
+            stopPlayback(fade: true);
+
+            if (IsLoaded)
+            {
+                previewButton.Text = "Preview";
+                updateSelectionText();
+            }
+        }
+
+        private void stopPlayback(bool fade)
+        {
+            if (previewToken % 2 == 1)
+                previewToken++;
+
+            previewTrack?.Stop();
+            previewTrack?.Dispose();
+            previewTrack = null;
+            previewStore?.Dispose();
+            previewStore = null;
+
+            // Faded back in, or (off the update thread, while disposing) just put back.
+            if (fade)
+                mutedTrack?.VolumeTo(1, 300, Easing.OutQuad);
+            else
+                mutedTrack?.Volume.Value = 1;
+            mutedTrack = null;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            stopPlayback(fade: false);
+            base.Dispose(isDisposing);
+        }
+
+        /// <summary>A preview's wave file, as the one track of a track store.</summary>
+        private class SingleFileStore : IResourceStore<byte[]>
+        {
+            public const string NAME = "song-swap-preview";
+
+            private readonly byte[] data;
+
+            public SingleFileStore(byte[] data) => this.data = data;
+
+            public byte[] Get(string name) => data;
+
+            public Task<byte[]> GetAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(data);
+
+            public Stream GetStream(string name) => new MemoryStream(data);
+
+            public IEnumerable<string> GetAvailableResources() => new[] { NAME };
+
+            public void Dispose()
+            {
+            }
         }
 
         protected override void LoadComplete()
@@ -237,18 +449,19 @@ namespace osu.Game.Overlays.SongSwap
 
             mapTitle.Text = $"{map.Metadata.Artist} - {map.Metadata.Title}";
             description.Text = $"[{map.DifficultyName}]  ·  {map.BPM:0.#} BPM\n"
-                               + "Choose another song to play this map to. Its speed follows the map's beat, with pitch preserved. Your map and scores stay unchanged.";
+                               + "Choose any song to play this map to. Its tempo follows the map's beat and its best part lands on the map's. Your map and scores stay unchanged.";
 
             string? swappedWith = map.BeatmapSet != null ? swaps.SwappedWith(map.BeatmapSet) : null;
             swappedBox.Alpha = swappedWith != null ? 1 : 0;
             swappedText.Text = swappedWith != null ? $"It plays to {swappedWith} at the moment." : string.Empty;
 
-            candidates = ReadCandidates(realm, map);
+            candidates = ReadCandidates(realm, map, loop.Value);
             filter();
         }
 
         /// <summary>The songs (a map of each other set) a map can be played to, closest in BPM first.</summary>
-        public static IReadOnlyList<Candidate> ReadCandidates(RealmAccess realm, BeatmapInfo map)
+        /// <param name="includeShort">Whether songs shorter than the map (once stretched) are offered, to loop.</param>
+        public static IReadOnlyList<Candidate> ReadCandidates(RealmAccess realm, BeatmapInfo map, bool includeShort = false)
         {
             Guid ownSet = map.BeatmapSet?.ID ?? Guid.Empty;
             double bpm = map.BPM;
@@ -263,9 +476,11 @@ namespace osu.Game.Overlays.SongSwap
                                    .Select(b => (beatmap: b, fit: SongSwapping.Fit(bpm, b.BPM)))
                                    // A difficulty's play span is a conservative estimate of its song's length.
                                    // Check after stretching: speeding a song up also makes it shorter.
-                                   .Where(c => c.fit != null && SongSwapping.LongEnough(c.beatmap.Length, c.fit.Value.Stretch, map.Length))
+                                   .Where(c => c.fit != null)
+                                   .Select(c => (c.beatmap, c.fit, loops: !SongSwapping.LongEnough(c.beatmap.Length, c.fit!.Value.Stretch, map.Length)))
+                                   .Where(c => includeShort || !c.loops)
                                    .OrderBy(c => Math.Abs(Math.Log(c.fit!.Value.Stretch)))
-                                   .Select(c => new Candidate(c.beatmap.Detach(), c.fit!.Value.Factor, c.fit.Value.Stretch))
+                                   .Select(c => new Candidate(c.beatmap.Detach(), c.fit!.Value.Factor, c.fit.Value.Stretch, c.loops))
                                    .ToList());
         }
 
@@ -281,7 +496,7 @@ namespace osu.Game.Overlays.SongSwap
                 list.Add(new CandidateRow(c, () => picked.Value = c) { Selected = c == picked.Value });
 
             moreText.Text = candidates.Count == 0
-                ? "No songs long enough for this map were found. Try a shorter difficulty."
+                ? loop.Value ? "No other songs were found." : "No songs long enough for this map were found. Try turning on looping."
                 : matching.Count == 0
                     ? "No songs match your search. Try another artist, title or tag."
                     : matching.Count > max_rows

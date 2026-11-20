@@ -65,7 +65,7 @@ namespace osu.Game.Beatmaps.SongSwap
         /// Swaps <paramref name="map"/>'s song for <paramref name="song"/>'s: <see cref="Prepare"/> then <see cref="Apply"/>, both here (on the
         /// update thread; slow).
         /// </summary>
-        public void Swap(BeatmapInfo map, BeatmapInfo song) => Apply(Prepare(map, song));
+        public void Swap(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true) => Apply(Prepare(map, song, loop, keepPitch));
 
         /// <summary>
         /// Puts a prepared song in place of the set's own, keeping its own to put back. On the update thread (it writes to the database).
@@ -89,29 +89,55 @@ namespace osu.Game.Beatmaps.SongSwap
         /// Makes <paramref name="song"/>'s song ready to swap in for <paramref name="map"/>'s (stretched to fit and lined up, see
         /// <see cref="SongSwapping"/>). Slow (it reads and stretches the whole song): in the background.
         /// </summary>
-        public PreparedSwap Prepare(BeatmapInfo map, BeatmapInfo song)
+        /// <param name="loop">Whether a song too short for the map's looped (else it's refused).</param>
+        /// <param name="keepPitch">Whether a stretched song keeps its pitch (else it changes with its speed, like a record).</param>
+        public PreparedSwap Prepare(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true)
         {
             var mapSet = map.BeatmapSet ?? throw new InvalidOperationException("The map has no set.");
-            var songSet = song.BeatmapSet ?? throw new InvalidOperationException("The song's map has no set.");
-
             string audioFile = map.Metadata.AudioFile;
 
             if (string.IsNullOrEmpty(audioFile) || storagePath(mapSet, audioFile) == null)
                 throw new InvalidOperationException("The map has no song of its own to swap.");
 
+            var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
+            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap),
+                new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap)));
+
+            // The set's own song, to keep (unless it's swapped already: that one's kept already).
+            byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
+
+            return new PreparedSwap(mapSet, audioFile, rendered, original, $@"{song.Metadata.Artist} - {song.Metadata.Title}");
+        }
+
+        /// <summary>A short preview of a swap (as a wave file): the map's best part, with a tick on each of its notes.</summary>
+        public record Preview(byte[] Song, SongSwapTiming.Anchor By, int Loops);
+
+        /// <summary>
+        /// About 20 seconds of <paramref name="map"/> played to <paramref name="song"/>, from just before its kiai (else its preview point, else
+        /// its first note), with its notes ticked over it to hear how it lines up. Much quicker than <see cref="Prepare"/>: in the background.
+        /// </summary>
+        public Preview RenderPreview(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true)
+        {
+            var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
+            double from = Math.Max(0, SongSwapTiming.HighlightTime(mapBeatmap) - 2000);
+            var ticks = mapBeatmap.HitObjects.Where(h => !SongSwapping.IsSpinner(h)).Select(h => h.StartTime).ToList();
+
+            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap),
+                new SongSwapRenderOptions(keepPitch, SongSwapping.FirstObjectTime(mapBeatmap), from, from + 20000, ticks));
+
+            return new Preview(rendered, plan.By, plan.Loops);
+        }
+
+        private (IBeatmap map, byte[] songData, SongSwapTiming.Plan plan) makePlan(BeatmapInfo map, BeatmapInfo song, bool loop)
+        {
+            var songSet = song.BeatmapSet ?? throw new InvalidOperationException("The song's map has no set.");
             var mapBeatmap = beatmaps.GetWorkingBeatmap(map).Beatmap;
             var songBeatmap = beatmaps.GetWorkingBeatmap(song).Beatmap;
 
             // A previously swapped set still has its original timing data. Use its original audio as the source as well.
             byte[] songData = readOriginalSong(songSet, song.Metadata.AudioFile);
 
-            var plan = SongSwapTiming.Create(mapBeatmap, songBeatmap, SongSwapping.LengthOf(songData));
-            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap));
-
-            // The set's own song, to keep (unless it's swapped already: that one's kept already).
-            byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
-
-            return new PreparedSwap(mapSet, audioFile, rendered, original, $@"{song.Metadata.Artist} - {song.Metadata.Title}");
+            return (mapBeatmap, songData, SongSwapTiming.Create(mapBeatmap, songBeatmap, SongSwapping.LengthOf(songData), loop));
         }
 
         private byte[] readOriginalSong(BeatmapSetInfo set, string filename)

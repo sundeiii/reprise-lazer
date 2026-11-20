@@ -3,18 +3,22 @@
 
 using System;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
 using osu.Framework.Bindables;
+using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.SongSwap;
+using osu.Game.Configuration;
 using osu.Game.Overlays.Notifications;
 
 namespace osu.Game.Overlays.SongSwap
 {
     /// <summary>
-    /// Reprise: a beatmap played to another song (SlowDogged's SongSwapper, in the game): one of the same, half or double BPM, stretched to fit
-    /// and lined up on the beat, in place of the map's own song. Only the audio changes, so plays on the map count as ever. In the first-run
+    /// Reprise: a beatmap played to another song (SlowDogged's SongSwapper, in the game): any song, stretched to the map's tempo (the nearest
+    /// of its same, half, double or quarter time), its best part on the map's and every beat on the map's, looped if it's too short, in place of
+    /// the map's own song. Only the audio changes, so plays on the map count as ever. In the first-run
     /// setup's style; opened from a beatmap's menu in song select.
     /// </summary>
     [Cached]
@@ -34,6 +38,9 @@ namespace osu.Game.Overlays.SongSwap
 
         [Resolved]
         private INotificationOverlay? notifications { get; set; }
+
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
 
         /// <summary>The map whose song's being swapped.</summary>
         public BeatmapInfo? Map { get; private set; }
@@ -68,10 +75,18 @@ namespace osu.Game.Overlays.SongSwap
         // Its button swaps to the song picked (in the background) as it closes.
         protected override void ShowNextStep()
         {
+            (CurrentScreen as ScreenSongSwap)?.StopPreview();
+
             if (CurrentScreen is ScreenSongSwap screen && Map != null && screen.Picked != null)
                 Swap(Map, screen.Picked);
 
             base.ShowNextStep();
+        }
+
+        protected override void PopOut()
+        {
+            (CurrentScreen as ScreenSongSwap)?.StopPreview();
+            base.PopOut();
         }
 
         /// <summary>Swaps the map's song (in the background), with a notification of how it went.</summary>
@@ -94,7 +109,7 @@ namespace osu.Game.Overlays.SongSwap
                 try
                 {
                     // Made in the background; put in place here (it writes to the database).
-                    var prepared = swaps.Prepare(map, song);
+                    var prepared = swaps.Prepare(map, song, config.Get<bool>(OsuSetting.SongSwapLoop), config.Get<bool>(OsuSetting.SongSwapKeepPitch));
 
                     Schedule(() =>
                     {
@@ -151,13 +166,19 @@ namespace osu.Game.Overlays.SongSwap
 
             bool wasPlaying = music.IsPlaying;
             bool wasLooping = music.CurrentTrack.Looping;
+            double position = music.CurrentTrack.CurrentTime;
 
             working.Value = beatmaps.GetWorkingBeatmap(working.Value!.BeatmapInfo, true);
             working.Value.PrepareTrackForPreview(wasLooping);
 
-            // A freshly loaded track starts stopped. Resume here rather than waiting for a song-select/leaderboard refresh.
+            // A freshly loaded track starts stopped. Resume here (where it was, faded in) rather than waiting for a song-select/leaderboard
+            // refresh, or starting it over.
             if (wasPlaying)
-                music.Play(restart: true);
+            {
+                music.SeekTo(position);
+                music.Play();
+                music.CurrentTrack.VolumeTo(0).Then().VolumeTo(1, 400, Easing.OutQuad);
+            }
         }
     }
 }

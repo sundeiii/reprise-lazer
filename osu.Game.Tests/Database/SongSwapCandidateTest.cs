@@ -58,6 +58,13 @@ namespace osu.Game.Tests.Database
 
                 Assert.That(candidates.Select(c => c.Song.ID), Is.EqualTo(new[] { longSong.ID, alternateSong.ID, quarterSong.ID, quadrupleSong.ID, slowedSong.ID }));
                 Assert.That(candidates[^1].Stretch, Is.EqualTo(0.8));
+                Assert.That(candidates.Any(c => c.Loops), Is.False);
+
+                // With looping on, the short ones are offered too (marked as looping); the hidden, protected and deleted ones still aren't.
+                var all = ScreenSongSwap.ReadCandidates(realm, target, includeShort: true);
+                Assert.That(all.Count, Is.EqualTo(candidates.Count + 2));
+                Assert.That(all.Single(c => c.Song.ID == spedUpSong.ID).Loops, Is.True);
+                Assert.That(all.Where(c => !c.Loops).Select(c => c.Song.ID), Is.EquivalentTo(candidates.Select(c => c.Song.ID)));
             });
         }
     }

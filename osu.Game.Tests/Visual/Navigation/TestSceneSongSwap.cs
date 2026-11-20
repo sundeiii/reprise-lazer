@@ -11,11 +11,13 @@ using osu.Framework.Allocation;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Audio;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.SongSwap;
 using osu.Game.Database;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays.SongSwap;
 using osu.Game.Screens.Play.Leaderboards;
@@ -67,6 +69,13 @@ namespace osu.Game.Tests.Visual.Navigation
             AddWaitStep("show selected song", 5);
             AddStep("selected screenshot", () => Screenshot?.Invoke("song-swap-selected"));
 
+            AddStep("preview it", () => button("Preview").TriggerClick());
+            AddUntilStep("previewing", () => overlay.ChildrenOfType<SpriteText>().Any(t => t.Text.ToString().StartsWith("Previewing", StringComparison.Ordinal)));
+            AddWaitStep("let it play", 5);
+            AddStep("preview screenshot", () => Screenshot?.Invoke("song-swap-preview"));
+            AddStep("stop it", () => button("Stop").TriggerClick());
+            AddUntilStep("stopped", () => button("Preview").IsPresent);
+
             AddStep("swap", () => overlay.NextButton!.TriggerClick());
             AddUntilStep("swapped", () => swaps.IsSwapped(map), () => Is.True);
             AddUntilStep("its song changed", songHash, () => Is.Not.EqualTo(originalSongHash));
@@ -81,6 +90,8 @@ namespace osu.Game.Tests.Visual.Navigation
             AddAssert("its own song back", songHash, () => Is.EqualTo(originalSongHash));
             AddAssert("not swapped", () => swaps.IsSwapped(fresh()), () => Is.False);
         }
+
+        private RoundedButton button(string text) => overlay.ChildrenOfType<RoundedButton>().First(b => b.Text.ToString() == text);
 
         private BeatmapSetInfo fresh() => beatmaps.QueryBeatmapSet(s => s.ID == map.ID)!.PerformRead(s => s.Detach());
 
