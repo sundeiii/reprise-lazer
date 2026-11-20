@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Audio.Sample;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -53,6 +54,9 @@ namespace osu.Game.Screens.Ranking.Modern
         private const double hold = 260;
         private const double fade_out = 200;
 
+        // The design's centre line for the text and stars: 33 below the middle of its 1080.
+        private const float centre_line = 33;
+
         /// <summary>How long it runs, start to end.</summary>
         public const double DURATION = stars_at + stars_duration + hold + fade_out;
 
@@ -68,6 +72,11 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private bool finished;
 
+        // The results' own sounds: a swoosh as it sweeps in, the grade's impact as it slams down, the badge's dink as the stars flash.
+        private Sample? sweepSample;
+        private Sample? slamSample;
+        private Sample? starsSample;
+
         private Container textContainer = null!;
         private Sprite[] stars = null!;
         private LetterSweep[] letters = null!;
@@ -78,8 +87,12 @@ namespace osu.Game.Screens.Ranking.Modern
         }
 
         [BackgroundDependencyLoader]
-        private void load(TextureStore textures)
+        private void load(TextureStore textures, ISampleStore samples)
         {
+            sweepSample = samples.Get(@"Results/swoosh-up");
+            slamSample = samples.Get(@"Results/rank-impact-pass");
+            starsSample = samples.Get(@"Results/badge-dink-max");
+
             var starTexture = textures.Get(@"Results/full-combo-star");
 
             letters = text.Select((c, i) => new LetterSweep(c, stroke_colours[i % stroke_colours.Length])).ToArray();
@@ -111,7 +124,8 @@ namespace osu.Game.Screens.Ranking.Modern
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
                             AutoSizeAxes = Axes.Both,
-                            Y = 8,
+                            // On the stars' centre line, as in the design (its text sits 33 below the middle, level with them).
+                            Y = centre_line,
                             Child = new FillFlowContainer<LetterSweep>
                             {
                                 AutoSizeAxes = Axes.Both,
@@ -131,7 +145,7 @@ namespace osu.Game.Screens.Ranking.Modern
             {
                 star.Origin = Anchor.Centre;
                 star.Size = new Vector2(169);
-                star.Y = 33;
+                star.Y = centre_line;
                 star.Alpha = 0;
             }
         }
@@ -141,6 +155,18 @@ namespace osu.Game.Screens.Ranking.Modern
             base.LoadComplete();
 
             this.FadeInFromZero(80);
+
+            sweepSample?.Play();
+            Scheduler.AddDelayed(() =>
+            {
+                if (!finished)
+                    slamSample?.Play();
+            }, slam_at);
+            Scheduler.AddDelayed(() =>
+            {
+                if (!finished)
+                    starsSample?.Play();
+            }, stars_at);
 
             // The sweep: each letter drawn down from the top, a little after the one before it.
             for (int i = 0; i < letters.Length; i++)
