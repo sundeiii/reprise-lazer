@@ -89,6 +89,7 @@ namespace osu.Game.Overlays.Settings.Sections
                 // Reprise: skins from osu!'s own lazer, picked from a list.
                 new ImportLazerSkinsButton(),
                 new SkinMixerButton(),
+                new SkinModifierButton(),
                 // Reprise: osu!stable's layouts a part at a time (with a legacy skin).
                 stablePart(config, OsuSetting.StableMainMenu, "osu!stable main menu", "With a legacy skin, the main menu looks like osu!stable's."),
                 stablePart(config, OsuSetting.StableSongSelect, "osu!stable song select", "With a legacy skin, song select looks like osu!stable's."),

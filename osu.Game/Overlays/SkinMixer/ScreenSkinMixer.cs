@@ -44,7 +44,7 @@ namespace osu.Game.Overlays.SkinMixer
     /// setting all its parts) the base's own, the game's default, blank, or another skin's. The wizard's button makes the skin and uses it.
     /// </summary>
     [LocalisableDescription(typeof(ScreenSkinMixer), nameof(Title))]
-    public partial class ScreenSkinMixer : WizardScreen
+    public partial class ScreenSkinMixer : WizardScreen, ISkinMakingScreen
     {
         public static LocalisableString Title => "Mix a skin";
 
