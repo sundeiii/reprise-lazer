@@ -7,7 +7,6 @@ using System.Linq;
 using osu.Framework.Platform;
 using osu.Game.Database;
 using osu.Game.Extensions;
-using osu.Game.Rulesets.Objects;
 
 namespace osu.Game.Beatmaps.SongSwap
 {
@@ -103,18 +102,28 @@ namespace osu.Game.Beatmaps.SongSwap
             var mapBeatmap = beatmaps.GetWorkingBeatmap(map).Beatmap;
             var songBeatmap = beatmaps.GetWorkingBeatmap(song).Beatmap;
 
-            var fit = SongSwapping.Fit(map.BPM, song.BPM) ?? throw new InvalidOperationException("The songs' BPMs don't fit.");
+            // A previously swapped set still has its original timing data. Use its original audio as the source as well.
+            byte[] songData = readOriginalSong(songSet, song.Metadata.AudioFile);
 
-            byte[] songData = ReadFile(songSet, song.Metadata.AudioFile);
-
-            // The song's best part on the map's (by their kiai, preview points or first notes); faded out after the map's play ends.
-            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, fit.Stretch, SongSwapping.LengthOf(songData));
-            byte[] rendered = SongSwapping.Render(songData, fit.Stretch, placement.Offset, SongSwapping.EndTime(mapBeatmap));
+            var plan = SongSwapTiming.Create(mapBeatmap, songBeatmap, SongSwapping.LengthOf(songData));
+            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap));
 
             // The set's own song, to keep (unless it's swapped already: that one's kept already).
             byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
 
             return new PreparedSwap(mapSet, audioFile, rendered, original, $@"{song.Metadata.Artist} - {song.Metadata.Title}");
+        }
+
+        private byte[] readOriginalSong(BeatmapSetInfo set, string filename)
+        {
+            string path = backupPath(set, filename);
+            if (!backups.Exists(path))
+                return ReadFile(set, filename);
+
+            using var stream = backups.GetStream(path);
+            using var memory = new MemoryStream();
+            stream.CopyTo(memory);
+            return memory.ToArray();
         }
 
         /// <summary>Puts the set's own song back.</summary>
@@ -150,7 +159,12 @@ namespace osu.Game.Beatmaps.SongSwap
         private void replaceSong(BeatmapSetInfo set, string audioFile, byte[] data)
         {
             // Under its own name: the maps (their .osu files and hashes) stay as they are, so they're still ranked and their scores count.
-            beatmaps.AddFile(set, new MemoryStream(data), audioFile);
+            // AddFile synchronises the supplied model's Files in place. It may be the currently playing working beatmap's
+            // snapshot: changing that snapshot would make TryTransferTrack mistake its old audio for the replacement.
+            // Write through a separate model so the music controller can compare the old and new file hashes correctly.
+            var destination = new BeatmapSetInfo { ID = set.ID };
+            using var contents = new MemoryStream(data);
+            beatmaps.AddFile(destination, contents, audioFile);
             ((IWorkingBeatmapCache)beatmaps).Invalidate(set);
         }
     }

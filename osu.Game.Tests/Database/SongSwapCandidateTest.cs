@@ -31,6 +31,11 @@ namespace osu.Game.Tests.Database
 
                 var shortSong = difficulty(59000);
                 var longSong = difficulty(70000);
+                longSong.Metadata.AudioFile = "AUDIO.MP3";
+                var alternateSong = difficulty(65000);
+                alternateSong.Metadata.AudioFile = "alternate.mp3";
+                var quarterSong = difficulty(65000, 45);
+                var quadrupleSong = difficulty(65000, 720);
                 var spedUpSong = difficulty(70000, 144); // At 1.25x this only lasts 56 seconds.
                 var slowedSong = difficulty(50000, 225); // At 0.8x this lasts 62.5 seconds.
                 var hiddenSong = difficulty(120000);
@@ -39,7 +44,9 @@ namespace osu.Game.Tests.Database
                 realm.Write(r =>
                 {
                     r.Add(ownSet);
-                    r.Add(new BeatmapSetInfo(new[] { shortSong, longSong }));
+                    r.Add(new BeatmapSetInfo(new[] { shortSong, longSong, alternateSong }));
+                    r.Add(new BeatmapSetInfo(new[] { quarterSong }));
+                    r.Add(new BeatmapSetInfo(new[] { quadrupleSong }));
                     r.Add(new BeatmapSetInfo(new[] { spedUpSong }));
                     r.Add(new BeatmapSetInfo(new[] { slowedSong }));
                     r.Add(new BeatmapSetInfo(new[] { difficulty(59000), hiddenSong }));
@@ -49,8 +56,8 @@ namespace osu.Game.Tests.Database
 
                 var candidates = ScreenSongSwap.ReadCandidates(realm, target);
 
-                Assert.That(candidates.Select(c => c.Song.ID), Is.EqualTo(new[] { longSong.ID, slowedSong.ID }));
-                Assert.That(candidates[1].Stretch, Is.EqualTo(0.8));
+                Assert.That(candidates.Select(c => c.Song.ID), Is.EqualTo(new[] { longSong.ID, alternateSong.ID, quarterSong.ID, quadrupleSong.ID, slowedSong.ID }));
+                Assert.That(candidates[^1].Stretch, Is.EqualTo(0.8));
             });
         }
     }

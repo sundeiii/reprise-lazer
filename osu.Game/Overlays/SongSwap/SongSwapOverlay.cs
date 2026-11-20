@@ -30,6 +30,9 @@ namespace osu.Game.Overlays.SongSwap
         private Bindable<WorkingBeatmap> working { get; set; } = null!;
 
         [Resolved]
+        private MusicController music { get; set; } = null!;
+
+        [Resolved]
         private INotificationOverlay? notifications { get; set; }
 
         /// <summary>The map whose song's being swapped.</summary>
@@ -146,8 +149,15 @@ namespace osu.Game.Overlays.SongSwap
             if (working.Value?.BeatmapSetInfo?.ID != map.BeatmapSet?.ID)
                 return;
 
-            // The music player picks up the new song with it.
+            bool wasPlaying = music.IsPlaying;
+            bool wasLooping = music.CurrentTrack.Looping;
+
             working.Value = beatmaps.GetWorkingBeatmap(working.Value!.BeatmapInfo, true);
+            working.Value.PrepareTrackForPreview(wasLooping);
+
+            // A freshly loaded track starts stopped. Resume here rather than waiting for a song-select/leaderboard refresh.
+            if (wasPlaying)
+                music.Play(restart: true);
         }
     }
 }
