@@ -35,6 +35,13 @@ namespace osu.Game.Tests.NonVisual
         [TestCase(180, 0)]
         public void TestDoesntFit(double map, double song) => Assert.That(SongSwapping.Fit(map, song), Is.Null);
 
+        [TestCase(60000, 1, 60000, true)]
+        [TestCase(59999, 1, 60000, false)]
+        [TestCase(70000, 1.25, 60000, false)]
+        [TestCase(50000, 0.8, 60000, true)]
+        public void TestLongEnough(double songLength, double stretch, double mapLength, bool expected) =>
+            Assert.That(SongSwapping.LongEnough(songLength, stretch, mapLength), Is.EqualTo(expected));
+
         private static Beatmap map(double timingAt, double beatLength, params double[] objects)
         {
             var beatmap = new Beatmap();
@@ -92,14 +99,56 @@ namespace osu.Game.Tests.NonVisual
         [Test]
         public void TestFirstNotesWhenKiaiWouldLeaveTheMapShort()
         {
-            // Lining up the kiai would have the (short) song end long before the map does: by the first notes it covers more.
+            // Lining up the kiai would end before the map does; the first notes cover it without adjustment.
             var mapBeatmap = withKiai(map(0, 500, 1000, 90000), 10000);
             var songBeatmap = withKiai(map(0, 500, 1000, 60000), 55000);
 
-            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, 1, 62000);
+            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, 1, 92000);
 
             Assert.That(placement.By, Is.EqualTo(SongSwapping.Anchor.FirstObject));
             Assert.That(placement.Offset, Is.EqualTo(0).Within(1));
+        }
+
+        [TestCase(1)]
+        [TestCase(1.25)]
+        [TestCase(0.8)]
+        public void TestPlacementShiftedToCoverWholeMap(double stretch)
+        {
+            var mapBeatmap = withKiai(map(0, 500, 1000, 90000), 10000);
+            var songBeatmap = withKiai(map(0, 500, 10000 * stretch, 95000 * stretch), 55000 * stretch);
+
+            var placement = SongSwapping.Place(mapBeatmap, songBeatmap, stretch, 90000 * stretch);
+
+            Assert.That(placement.Offset, Is.InRange(0, 1000));
+            Assert.That(placement.Offset + 90000, Is.GreaterThanOrEqualTo(90000));
+            Assert.That(placement.Coverage, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TestTooShortSongRefused()
+        {
+            Assert.Throws<InvalidOperationException>(() => SongSwapping.Place(map(0, 500, 1000, 90000), map(0, 500, 1000), 1, 62000));
+        }
+
+        [Test]
+        public void TestPlacementCoversOpeningSpinner()
+        {
+            var mapBeatmap = map(0, 500, 1500, 90000);
+            mapBeatmap.HitObjects.Insert(0, new Spinner { StartTime = 100, Duration = 1000 });
+
+            var placement = SongSwapping.Place(mapBeatmap, map(0, 500, 1000), 1, 90000);
+
+            Assert.That(placement.Offset, Is.LessThanOrEqualTo(100));
+            Assert.That(placement.Offset + 90000, Is.GreaterThanOrEqualTo(90000));
+        }
+
+        [Test]
+        public void TestCoverageTakesPriorityOverBeatSnap()
+        {
+            var placement = SongSwapping.Place(map(0, 500, 1000.25, 90000.25), map(0, 500, 0), 1, 89000);
+
+            Assert.That(placement.Offset, Is.EqualTo(1000.25));
+            Assert.That(placement.Coverage, Is.EqualTo(1));
         }
 
         [Test]

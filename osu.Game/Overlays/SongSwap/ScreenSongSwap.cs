@@ -64,7 +64,7 @@ namespace osu.Game.Overlays.SongSwap
 
         private IReadOnlyList<Candidate> candidates = Array.Empty<Candidate>();
 
-        /// <summary>A song that fits, by its set's first map with a song.</summary>
+        /// <summary>A song that fits, by its set's longest visible map with a song.</summary>
         public record Candidate(BeatmapInfo Song, double Factor, double Stretch)
         {
             public string Title => $@"{Song.Metadata.Artist} - {Song.Metadata.Title}";
@@ -196,7 +196,7 @@ namespace osu.Game.Overlays.SongSwap
 
             description.Text = $"{map.Metadata.Artist} - {map.Metadata.Title} [{map.DifficultyName}] is {map.BPM:0.#} BPM. Pick a song of the same, half or "
                                + "double BPM to play it to: it's stretched to fit (its pitch kept) and lined up on the beat. Only the song changes, "
-                               + "not the map, so plays on it still count.";
+                               + "not the map, so plays on it still count. Only songs long enough to cover the whole map are listed.";
 
             string? swappedWith = map.BeatmapSet != null ? swaps.SwappedWith(map.BeatmapSet) : null;
             swappedBox.Alpha = swappedWith != null ? 1 : 0;
@@ -216,10 +216,14 @@ namespace osu.Game.Overlays.SongSwap
                                    .Where(s => !s.DeletePending && !s.Protected)
                                    .AsEnumerable()
                                    .Where(s => s.ID != ownSet)
-                                   .Select(s => s.Beatmaps.FirstOrDefault(b => !b.Hidden && b.BPM > 0 && !string.IsNullOrEmpty(b.Metadata.AudioFile)))
+                                   .Select(s => s.Beatmaps.Where(b => !b.Hidden && b.BPM > 0 && !string.IsNullOrEmpty(b.Metadata.AudioFile))
+                                                 .OrderByDescending(b => b.Length)
+                                                 .FirstOrDefault())
                                    .Where(b => b != null)
                                    .Select(b => (beatmap: b!, fit: SongSwapping.Fit(bpm, b!.BPM)))
-                                   .Where(c => c.fit != null)
+                                   // A difficulty's play span is a conservative estimate of its song's length.
+                                   // Check after stretching: speeding a song up also makes it shorter.
+                                   .Where(c => c.fit != null && SongSwapping.LongEnough(c.beatmap.Length, c.fit.Value.Stretch, map.Length))
                                    .OrderBy(c => Math.Abs(Math.Log(c.fit!.Value.Stretch)))
                                    .Select(c => new Candidate(c.beatmap.Detach(), c.fit!.Value.Factor, c.fit.Value.Stretch))
                                    .ToList());
@@ -236,7 +240,7 @@ namespace osu.Game.Overlays.SongSwap
                 list.Add(new CandidateRow(c, () => picked.Value = c) { Selected = c == picked.Value });
 
             moreText.Text = candidates.Count == 0
-                ? "No other song of yours fits this map's BPM (the same, half or double, within a quarter)."
+                ? "No other song of yours fits this map's BPM (the same, half or double, within a quarter) and is long enough to cover it."
                 : matching.Count > max_rows
                     ? $"and {matching.Count - max_rows} more (search to find them)"
                     : string.Empty;

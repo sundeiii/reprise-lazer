@@ -80,42 +80,59 @@ namespace osu.Game.Beatmaps.SongSwap
         /// <summary>When a map's play ends: its last object's end.</summary>
         public static double EndTime(IBeatmap beatmap) => beatmap.HitObjects.Count == 0 ? 0 : beatmap.HitObjects.Max(h => h.GetEndTime());
 
+        /// <summary>Whether a song (its length, unstretched) stretched by <paramref name="stretch"/> lasts the whole of a map's play.</summary>
+        public static bool LongEnough(double songLength, double stretch, double mapPlayLength) => songLength / stretch >= mapPlayLength;
+
         /// <summary>
-        /// The best way of placing the song on the map (its "optimal part"): by their kiai, their preview points or their first notes, whichever
-        /// has the song cover most of the map's play (its first note to its last), preferring them in that order when they cover about as
-        /// much; each moved to the nearest place the song's beats land on the map's.
+        /// The best way of placing the song on the map (its "optimal part"), always covering the whole of the map's play (its first note
+        /// to its last: the music never stops while playing): by their kiai, their preview points or their first notes, in that order of
+        /// preference, the first of them that covers it as it is; else the first moved as little as covering it takes. Then moved to
+        /// where the song's beats land on the map's (keeping it covered).
         /// </summary>
         /// <param name="map">This map (its timing, kiai, preview point and notes).</param>
         /// <param name="song">The song's map.</param>
         /// <param name="stretch">How much the song's stretched by (see <see cref="Fit"/>).</param>
         /// <param name="songLength">How long the song is (ms, unstretched).</param>
+        /// <exception cref="InvalidOperationException">The song (stretched) is shorter than the map's play.</exception>
         public static Placement Place(IBeatmap map, IBeatmap song, double stretch, double songLength)
         {
-            double playStart = FirstObjectTime(map);
+            double playStart = map.HitObjects.Count == 0 ? 0 : map.HitObjects.Min(h => h.StartTime);
             double playEnd = Math.Max(playStart + 1, EndTime(map));
             double stretchedLength = songLength / stretch;
+
+            if (stretchedLength < playEnd - playStart)
+                throw new InvalidOperationException("The song is shorter than the map: it would stop while playing.");
+
+            // The offsets that cover the whole play: the song starting by the first note and going on past the last.
+            double earliest = playEnd - stretchedLength;
+            double latest = playStart;
 
             var options = new[]
             {
                 (by: Anchor.Kiai, map: FirstKiai(map), song: FirstKiai(song)),
                 (by: Anchor.Preview, map: PreviewTime(map), song: PreviewTime(song)),
                 (by: Anchor.FirstObject, map: (double?)FirstObjectTime(map), song: (double?)FirstObjectTime(song)),
-            };
+            }.Where(o => o.map != null && o.song != null).ToList();
 
-            var placements = options.Where(o => o.map != null && o.song != null)
-                                    .Select(o =>
-                                    {
-                                        double offset = snapToBeat(map, song, stretch, o.map!.Value - o.song!.Value / stretch, o.map.Value);
-                                        double covered = Math.Min(playEnd, offset + stretchedLength) - Math.Max(playStart, offset);
-                                        return new Placement(offset, o.by, Math.Clamp(covered / (playEnd - playStart), 0, 1));
-                                    })
-                                    .ToList();
+            var chosen = options.FirstOrDefault(o => isWithin(o.map!.Value - o.song!.Value / stretch, earliest, latest));
 
-            double best = placements.Max(p => p.Coverage);
+            if (chosen == default)
+                chosen = options.OrderBy(o => distanceOutside(o.map!.Value - o.song!.Value / stretch, earliest, latest)).First();
 
-            // In order of preference, the first that covers about as much as the best does.
-            return placements.First(p => p.Coverage >= best - 0.05);
+            double raw = Math.Clamp(chosen.map!.Value - chosen.song!.Value / stretch, earliest, latest);
+            double snapped = snapToBeat(map, song, stretch, raw, chosen.map.Value);
+
+            // On the beat if that still covers it; else the nearest beat the other way (a beat either side), else where it was.
+            double beat = map.ControlPointInfo.TimingPointAt(chosen.map.Value).BeatLength;
+            double offset = new[] { snapped, snapped - beat, snapped + beat, raw }.First(o => isWithin(o, earliest, latest));
+
+            return new Placement(offset, chosen.by, 1);
         }
+
+        private static bool isWithin(double offset, double earliest, double latest) => offset >= earliest && offset <= latest;
+
+        private static double distanceOutside(double offset, double earliest, double latest) =>
+            offset < earliest ? earliest - offset : offset > latest ? offset - latest : 0;
 
         /// <summary>
         /// Where the swapped song starts in this map's time (ms; above 0, after a silence, below 0, cut short at its start) lining up their
