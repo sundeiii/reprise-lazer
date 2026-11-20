@@ -287,18 +287,34 @@ namespace osu.Game.Screens.Ranking.Modern
             if (!animationStarted && animatables.All(a => ((Drawable)a).IsLoaded))
             {
                 animationStarted = true;
-                startAnimation();
-                mainPage.Show();
 
-                // The rank and pp change once the wedges are in.
-                if (details.HasSecondPage)
+                // Reprise: a full combo just played gets its moment first (the storyboard's), the results after it.
+                if (sounds && FullComboIntro.IsFullCombo(score))
                 {
-                    Scheduler.AddDelayed(() =>
-                    {
-                        rankChangeReady = true;
-                        showRankChange();
-                    }, 800);
+                    AddInternal(fullComboIntro = new FullComboIntro { Finished = beginReveal });
+                    return;
                 }
+
+                beginReveal();
+            }
+        }
+
+        private FullComboIntro? fullComboIntro;
+
+        /// <summary>The results' own reveal (after the full combo moment, when there's one).</summary>
+        private void beginReveal()
+        {
+            startAnimation();
+            mainPage.Show();
+
+            // The rank and pp change once the wedges are in.
+            if (details.HasSecondPage)
+            {
+                Scheduler.AddDelayed(() =>
+                {
+                    rankChangeReady = true;
+                    showRankChange();
+                }, 800);
             }
         }
 
@@ -343,6 +359,9 @@ namespace osu.Game.Screens.Ranking.Modern
         /// </summary>
         public void FinishAnimation()
         {
+            // Past the full combo moment too (the reveal starts from its end, then finishes).
+            fullComboIntro?.Skip();
+
             foreach (var a in animatables)
                 a.FinishAnimating();
 
