@@ -72,7 +72,7 @@ namespace osu.Game.Screens.Ranking.Modern
 
         private bool finished;
 
-        // The results' own sounds: a swoosh as it sweeps in, the grade's impact as it slams down, the badge's dink as the stars flash.
+        // The game's own sounds: the results' swoosh as it sweeps in, the section pass as it slams down, the badge's dink as the stars flash.
         private Sample? sweepSample;
         private Sample? slamSample;
         private Sample? starsSample;
@@ -90,7 +90,7 @@ namespace osu.Game.Screens.Ranking.Modern
         private void load(TextureStore textures, ISampleStore samples)
         {
             sweepSample = samples.Get(@"Results/swoosh-up");
-            slamSample = samples.Get(@"Results/rank-impact-pass");
+            slamSample = samples.Get(@"Gameplay/sectionpass");
             starsSample = samples.Get(@"Results/badge-dink-max");
 
             var starTexture = textures.Get(@"Results/full-combo-star");
