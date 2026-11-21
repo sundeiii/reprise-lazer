@@ -22,6 +22,7 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.UI;
 using osu.Game.Skinning;
 using osu.Game.Storyboards;
+using osu.Game.Configuration;
 
 namespace osu.Game.Beatmaps
 {
@@ -313,6 +314,14 @@ namespace osu.Game.Beatmaps
                     mod.ApplyToDifficulty(converted.Difficulty);
                 }
             }
+
+            // Approach rate override.
+            if (GameplayOverrides.ApproachRateEnabled)
+            {
+                converted.Difficulty.ApproachRate =
+                    (float)GameplayOverrides.ApproachRate;
+            }
+
 
             var processor = rulesetInstance.CreateBeatmapProcessor(converted);
 

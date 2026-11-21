@@ -6,6 +6,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Framework.Input.StateChanges;
 using osu.Framework.Lists;
 using osu.Framework.Localisation;
 using osu.Game.Input.Bindings;
@@ -41,6 +42,9 @@ namespace osu.Game.Rulesets.Osu
         /// </summary>
         public bool AllowUserCursorMovement { get; set; } = true;
 
+        private Vector2? aimCorrectionPosition;
+        private int aimCorrectionFramesRemaining;
+
         protected override KeyBindingContainer<OsuAction> CreateKeyBindingContainer(RulesetInfo ruleset, int variant, SimultaneousBindingMode unique)
             => new OsuKeyBindingContainer(ruleset, variant, unique);
 
@@ -62,9 +66,36 @@ namespace osu.Game.Rulesets.Osu
             Add(new OsuTouchInputMapper(this) { RelativeSizeAxes = Axes.Both });
         }
 
+        public void ApplyAimCorrection(Vector2 screenSpacePosition)
+        {
+            aimCorrectionPosition = screenSpacePosition;
+
+            // Stable Skooter keeps the corrected cursor position for two input updates.
+            aimCorrectionFramesRemaining = 2;
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            if (aimCorrectionPosition == null)
+                return;
+
+            new MousePositionAbsoluteInput
+            {
+                Position = aimCorrectionPosition.Value
+            }.Apply(CurrentState, this);
+
+            aimCorrectionFramesRemaining--;
+
+            if (aimCorrectionFramesRemaining <= 0)
+                aimCorrectionPosition = null;
+        }
+
         protected override bool Handle(UIEvent e)
         {
-            if ((e is MouseMoveEvent || e is TouchMoveEvent) && !AllowUserCursorMovement) return false;
+            if ((e is MouseMoveEvent || e is TouchMoveEvent) && !AllowUserCursorMovement)
+                return false;
 
             return base.Handle(e);
         }

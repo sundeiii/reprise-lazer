@@ -1297,6 +1297,9 @@ namespace osu.Game
 
             LocalUserStatisticsProvider statisticsProvider;
 
+            if (RuntimeInfo.IsDesktop)
+                Add(new OverridesLink());
+
             loadComponentSingleFile(statisticsProvider = new LocalUserStatisticsProvider(), Add, true);
             loadComponentSingleFile(difficultyRecommender = new DifficultyRecommender(statisticsProvider), Add, true);
             loadComponentSingleFile(new UserStatisticsWatcher(statisticsProvider), Add, true);

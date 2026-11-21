@@ -115,6 +115,12 @@ namespace osu.Game.Screens.Play
                 return false;
             }
 
+            if (GameplayOverrides.AnyActive && !GameplayOverrides.MaySubmit(api.LocalUser.Value?.Username))
+            {
+                handleTokenFailure(new InvalidOperationException("Gameplay overrides are on, so this play stays offline."), displayNotification: true);
+                return false;
+            }
+
             if (!api.IsLoggedIn || api.State.Value == APIState.Failing)
             {
                 handleTokenFailure(new InvalidOperationException("Online functionality is not available."), displayNotification: api.State.Value == APIState.Failing);

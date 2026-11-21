@@ -204,6 +204,8 @@ namespace osu.Game.Screens.Play
         /// </summary>
         protected Player(PlayerConfiguration configuration = null)
         {
+            GameplayOverrides.Hold();
+
             Configuration = configuration ?? new PlayerConfiguration();
         }
 
@@ -1250,8 +1252,25 @@ namespace osu.Game.Screens.Play
             GameplayClockContainer.AdjustmentsFromMods.RemoveAllAdjustments(
                 AdjustableProperty.Tempo);
 
+            musicController.SetOverrideTimewarpSuppressed(true);
+
             foreach (var mod in GameplayState.Mods.OfType<IApplicableToTrack>())
+            {
+                if (GameplayOverrides.TimewarpEnabled
+                    && (mod is ModDoubleTime || mod is ModHalfTime))
+                {
+                    continue;
+                }
+
                 mod.ApplyToTrack(GameplayClockContainer.AdjustmentsFromMods);
+            }
+
+            if (GameplayOverrides.TimewarpEnabled)
+            {
+                GameplayClockContainer.AdjustmentsFromMods.AddAdjustment(
+                    AdjustableProperty.Frequency,
+                    GameplayOverrides.TimewarpRate);
+            }
 
             updateGameplayState();
 
@@ -1316,9 +1335,30 @@ namespace osu.Game.Screens.Play
 
             musicController.ResetTrackAdjustments();
 
+            musicController.SetOverrideTimewarpSuppressed(false);
+
             fadeOut();
 
-            return base.OnExiting(e);
+            bool cancelled = base.OnExiting(e);
+
+            if (!cancelled)
+                releaseOverridesHold();
+
+            return cancelled;
+        }
+
+        private int holdingOverrides = 1;
+
+        private void releaseOverridesHold()
+        {
+            if (Interlocked.Exchange(ref holdingOverrides, 0) == 1)
+                GameplayOverrides.Release();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            releaseOverridesHold();
+            base.Dispose(isDisposing);
         }
 
         /// <summary>

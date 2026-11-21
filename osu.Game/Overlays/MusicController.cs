@@ -52,6 +52,9 @@ namespace osu.Game.Overlays
 
         public readonly BindableBool Shuffle = new BindableBool(true);
 
+        private readonly IBindable<bool> overrideTimewarpEnabled = new Bindable<bool>();
+        private readonly IBindable<double> overrideTimewarpRate = new BindableDouble();
+
         /// <summary>
         /// Fired when the global <see cref="WorkingBeatmap"/> has changed.
         /// Includes direction information for display purposes.
@@ -84,10 +87,21 @@ namespace osu.Game.Overlays
         private void load(AudioManager audio, OsuConfigManager configManager)
         {
             AddInternal(audioDuckFilter = new AudioFilter(audio.TrackMixer));
-            audio.Tracks.AddAdjustment(AdjustableProperty.Volume, audioDuckVolume);
+
+            audio.Tracks.AddAdjustment(
+                AdjustableProperty.Volume,
+                audioDuckVolume);
+
             sampleVolume = audio.VolumeSample.GetBoundCopy();
 
-            configManager.BindWith(OsuSetting.RandomSelectAlgorithm, randomSelectAlgorithm);
+            configManager.BindWith(
+                OsuSetting.RandomSelectAlgorithm,
+                randomSelectAlgorithm);
+
+            overrideTimewarpEnabled.BindTo(GameplayOverrides.TimewarpEnabledBindable);
+            overrideTimewarpRate.BindTo(GameplayOverrides.TimewarpRate);
+            overrideTimewarpEnabled.BindValueChanged(_ => ResetTrackAdjustments());
+            overrideTimewarpRate.BindValueChanged(_ => ResetTrackAdjustments());
         }
 
         protected override void LoadComplete()
@@ -548,6 +562,7 @@ namespace osu.Game.Overlays
         }
 
         private bool applyModTrackAdjustments;
+        private bool suppressOverrideTimewarp;
 
         /// <summary>
         /// Whether mod track adjustments are allowed to be applied.
@@ -565,6 +580,15 @@ namespace osu.Game.Overlays
             }
         }
 
+        public void SetOverrideTimewarpSuppressed(bool suppressed)
+        {
+            if (suppressOverrideTimewarp == suppressed)
+                return;
+
+            suppressOverrideTimewarp = suppressed;
+            ResetTrackAdjustments();
+        }
+
         private AudioAdjustments? modTrackAdjustments;
 
         /// <summary>
@@ -575,7 +599,6 @@ namespace osu.Game.Overlays
         /// </remarks>
         public void ResetTrackAdjustments()
         {
-            // todo: we probably want a helper method rather than this.
             CurrentTrack.RemoveAllAdjustments(AdjustableProperty.Balance);
             CurrentTrack.RemoveAllAdjustments(AdjustableProperty.Frequency);
             CurrentTrack.RemoveAllAdjustments(AdjustableProperty.Tempo);
@@ -583,10 +606,27 @@ namespace osu.Game.Overlays
 
             if (applyModTrackAdjustments)
             {
-                CurrentTrack.BindAdjustments(modTrackAdjustments = new AudioAdjustments());
+                CurrentTrack.BindAdjustments(
+                    modTrackAdjustments = new AudioAdjustments());
 
                 foreach (var mod in mods.Value.OfType<IApplicableToTrack>())
+                {
+                    if (GameplayOverrides.TimewarpEnabled
+                        && (mod is ModDoubleTime || mod is ModHalfTime))
+                    {
+                        continue;
+                    }
+
                     mod.ApplyToTrack(modTrackAdjustments);
+                }
+            }
+
+            if (GameplayOverrides.TimewarpEnabled
+                && !suppressOverrideTimewarp)
+            {
+                CurrentTrack.AddAdjustment(
+                    AdjustableProperty.Frequency,
+                    GameplayOverrides.TimewarpRate);
             }
         }
     }

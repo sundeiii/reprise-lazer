@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,6 +64,9 @@ namespace osu.Game.Screens.Select
 
         private StatisticPlayCount playCount = null!;
         private FavouriteButton favouriteButton = null!;
+        private readonly IBindable<bool> overrideTimewarpEnabled = new Bindable<bool>();
+        private readonly IBindable<double> overrideTimewarpRate = new BindableDouble();
+
         private Statistic lengthStatistic = null!;
         private Statistic bpmStatistic = null!;
 
@@ -188,6 +192,12 @@ namespace osu.Game.Screens.Select
             ruleset.BindValueChanged(_ => updateDisplay());
             onlineLookupResult.BindValueChanged(_ => updateDisplay());
 
+            // length and BPM depend on the speed, which Timewarp changes just like Double Time would.
+            overrideTimewarpEnabled.BindTo(GameplayOverrides.TimewarpEnabledBindable);
+            overrideTimewarpRate.BindTo(GameplayOverrides.TimewarpRate);
+            overrideTimewarpEnabled.BindValueChanged(_ => updateLengthAndBpmStatistics());
+            overrideTimewarpRate.BindValueChanged(_ => updateLengthAndBpmStatistics());
+
             mods.BindValueChanged(m =>
             {
                 settingChangeTracker?.Dispose();
@@ -262,7 +272,10 @@ namespace osu.Game.Screens.Select
                 // This can take time as it is a synchronous task.
                 var beatmap = working.Value.Beatmap;
 
-                double rate = ModUtils.CalculateRateWithMods(mods.Value);
+                bool timewarp = GameplayOverrides.TimewarpEnabled;
+                string timewarpText = GameplayOverrides.TimewarpRate.Value.ToString("0.##", CultureInfo.InvariantCulture);
+
+                double rate = GameplayOverrides.GetEffectiveRate(mods.Value);
 
                 int bpmMax = FormatUtils.RoundBPM(beatmap.ControlPointInfo.BPMMaximum, rate);
                 int bpmMin = FormatUtils.RoundBPM(beatmap.ControlPointInfo.BPMMinimum, rate);
@@ -271,17 +284,31 @@ namespace osu.Game.Screens.Select
                 double drainLength = Math.Round(beatmap.CalculateDrainLength() / rate);
                 double hitLength = Math.Round(beatmapInfo.Length / rate);
 
+                // what it would be at normal speed, to show alongside when Timewarp is changing it.
+                double normalHitLength = Math.Round((double)beatmapInfo.Length);
+                int normalBpmMin = FormatUtils.RoundBPM(beatmap.ControlPointInfo.BPMMinimum, 1);
+                int normalBpmMax = FormatUtils.RoundBPM(beatmap.ControlPointInfo.BPMMaximum, 1);
+
                 Schedule(() =>
                 {
                     if (token.IsCancellationRequested)
                         return;
 
-                    lengthStatistic.Text = hitLength.ToFormattedDuration();
-                    lengthStatistic.TooltipText = BeatmapsetsStrings.ShowStatsTotalLength(drainLength.ToFormattedDuration());
+                    lengthStatistic.Text = timewarp
+                        ? LocalisableString.Interpolate($"{hitLength.ToFormattedDuration()} (Timewarp {timewarpText}x)")
+                        : hitLength.ToFormattedDuration();
+
+                    lengthStatistic.TooltipText = timewarp
+                        ? LocalisableString.Interpolate($"{BeatmapsetsStrings.ShowStatsTotalLength(drainLength.ToFormattedDuration())}\nAt normal speed: {normalHitLength.ToFormattedDuration()}")
+                        : BeatmapsetsStrings.ShowStatsTotalLength(drainLength.ToFormattedDuration());
 
                     bpmStatistic.Text = bpmMin == bpmMax
                         ? $"{bpmMin}"
                         : LocalisableString.Interpolate($"{bpmMin}-{bpmMax} ({SongSelectStrings.MostlyBPM(mostCommonBPM)})");
+
+                    bpmStatistic.TooltipText = timewarp
+                        ? LocalisableString.Interpolate($"{BeatmapsetsStrings.ShowStatsBpm} with Timewarp {timewarpText}x (normal speed: {(normalBpmMin == normalBpmMax ? $"{normalBpmMin}" : $"{normalBpmMin}-{normalBpmMax}")})")
+                        : BeatmapsetsStrings.ShowStatsBpm;
                 });
             }, token);
         }
