@@ -70,7 +70,7 @@ namespace osu.Game.Beatmaps.SongSwap
                         continue;
 
                     // The stretcher's own delay is measured and taken off, so beats land where planned rather than early.
-                    double skipMs = (songAt - sourceStart) / section.Stretch + Latency(rate, channels, section.Stretch, options.KeepPitch);
+                    double skipMs = (songAt - sourceStart) / section.Stretch + Latency(rate, channels, section.Stretch, TimeStretched(section.Stretch, options.KeepPitch));
                     long writeFrame = frameAt(writeStart) - baseFrame;
                     if (skipMs < 0)
                     {
@@ -99,7 +99,7 @@ namespace osu.Game.Beatmaps.SongSwap
                         return bytes | (remaining <= 0 || bytes == 0 ? (int)StreamProcedureType.End : 0);
                     };
 
-                    int tempo = createTempo(read, rate, channels, section.Stretch, options.KeepPitch);
+                    int tempo = createTempo(read, rate, channels, section.Stretch, TimeStretched(section.Stretch, options.KeepPitch));
 
                     try
                     {
@@ -197,6 +197,16 @@ namespace osu.Game.Beatmaps.SongSwap
         }
 
         private static double sCurve(double x) => (1 - Math.Cos(Math.Clamp(x, 0, 1) * Math.PI)) / 2;
+
+        /// <summary>
+        /// The biggest speed change (as a fraction) made by resampling even when the pitch is to be kept: at most 0.17 of a semitone, which
+        /// can't be heard without the original beside it, while time-stretching would soften every drum hit. SongSwapper leaves songs of the
+        /// same BPM untouched for the same reason (it lets them drift instead; resampling them doesn't).
+        /// </summary>
+        public const double RESAMPLE_WITHIN = 0.01;
+
+        /// <summary>Whether a section's stretched with its pitch kept (else resampled: its pitch moves with its speed, its sound untouched).</summary>
+        public static bool TimeStretched(double stretch, bool keepPitch) => keepPitch && Math.Abs(stretch - 1) > RESAMPLE_WITHIN;
 
         // A tempo stream over the given source: its pitch kept (time-stretched), or changed with its speed (resampled).
         private static int createTempo(StreamProcedure read, int rate, int channels, double stretch, bool keepPitch)

@@ -102,11 +102,12 @@ namespace osu.Game.Beatmaps.SongSwap
             var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
             double mapEnd = SongSwapping.EndTime(mapBeatmap);
             var options = new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap));
-            byte[] rendered = SongSwapping.Render(songData, plan, mapEnd, options);
+            var joined = plan.Joined();
+            byte[] rendered = SongSwapping.Render(songData, joined, mapEnd, options);
 
-            // Moved (part by part) to sit on the map's beats as the map's own song does, then made again there.
-            var matched = matchFeel(mapBeatmap, readOriginalSong(mapSet, audioFile), rendered, 0, plan, out _);
-            if (!ReferenceEquals(matched, plan))
+            // Moved (part by part) to sit on the map's beats as the map's own song does, then made again there (if it moved).
+            var matched = matchFeel(mapBeatmap, readOriginalSong(mapSet, audioFile), rendered, 0, plan, out _).Joined();
+            if (!matched.SameAs(joined))
                 rendered = SongSwapping.Render(songData, matched, mapEnd, options);
 
             // The set's own song, to keep (unless it's swapped already: that one's kept already).
@@ -132,9 +133,9 @@ namespace osu.Game.Beatmaps.SongSwap
             var options = new SongSwapRenderOptions(keepPitch, SongSwapping.FirstObjectTime(mapBeatmap), from, from + 30000);
 
             // Measured over a little more than is heard (without the ticks), then made again where it sits as the map's own song does.
-            byte[] probe = SongSwapping.Render(songData, plan, mapEnd, options);
+            byte[] probe = SongSwapping.Render(songData, plan.Joined(), mapEnd, options);
             var mapSet = map.BeatmapSet ?? throw new InvalidOperationException("The map has no set.");
-            var matched = matchFeel(mapBeatmap, readOriginalSong(mapSet, map.Metadata.AudioFile), probe, from, plan, out double shift);
+            var matched = matchFeel(mapBeatmap, readOriginalSong(mapSet, map.Metadata.AudioFile), probe, from, plan, out double shift).Joined();
 
             byte[] rendered = SongSwapping.Render(songData, matched, mapEnd, options with { To = from + 20000, Ticks = ticks });
 

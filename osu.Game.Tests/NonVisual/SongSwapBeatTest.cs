@@ -281,6 +281,47 @@ namespace osu.Game.Tests.NonVisual
             return max;
         }
 
+        [TestCase(1.005, true, false)]
+        [TestCase(0.991, true, false)]
+        [TestCase(1.02, true, true)]
+        [TestCase(0.8, true, true)]
+        [TestCase(1.02, false, false)]
+        public void TestSmallSpeedChangesResampled(double stretch, bool keepPitch, bool stretched) =>
+            Assert.That(SongSwapAudio.TimeStretched(stretch, keepPitch), Is.EqualTo(stretched));
+
+        [Test]
+        public void TestMainBpmByNotes()
+        {
+            // A long 90 BPM intro with two notes, then a shorter 180 BPM part with most of the notes: the main BPM's 180 (as SongSwapper
+            // picks it), though the intro lasts longer.
+            var beatmap = map(0, 60000 / 90.0, 1000, 2000);
+            beatmap.ControlPointInfo.Add(100000, new TimingControlPoint { BeatLength = 60000 / 180.0 });
+            foreach (int i in Enumerable.Range(0, 100))
+                beatmap.HitObjects.Add(new HitCircle { StartTime = 100000 + i * 500 });
+
+            Assert.That(60000 / SongSwapTiming.MainBeatLength(beatmap), Is.EqualTo(180).Within(0.001));
+            Assert.That(SongSwapTiming.SyncTime(beatmap), Is.EqualTo(100000));
+        }
+
+        [Test]
+        public void TestSeamlessSectionsJoined()
+        {
+            var plan = new SongSwapTiming.Plan(new[]
+            {
+                new SongSwapTiming.Section(0, 10000, 0, 1),
+                new SongSwapTiming.Section(10000, 20000, 10000, 1, SongSwapTiming.TEMPO_JOIN),
+                new SongSwapTiming.Section(20000, 30000, 20005, 1, SongSwapTiming.TEMPO_JOIN),
+                new SongSwapTiming.Section(5000, 15000, 30005, 1, SongSwapTiming.SEAM_JOIN, true),
+            });
+
+            var joined = plan.Joined();
+
+            Assert.That(joined.Sections.Count, Is.EqualTo(3), "the first two carry straight on; the moved one and the loop stay apart");
+            Assert.That(joined.Sections[0].SongEnd, Is.EqualTo(20000));
+            Assert.That(joined.SameAs(plan.Joined()), Is.True);
+            Assert.That(joined.SameAs(plan.Shifted(1).Joined()), Is.False);
+        }
+
         [Test]
         public void TestNoBeatNotTrusted()
         {

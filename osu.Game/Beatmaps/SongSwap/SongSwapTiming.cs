@@ -49,12 +49,57 @@ namespace osu.Game.Beatmaps.SongSwap
 
             /// <summary>The same plan, all of it later on the map by <paramref name="ms"/> (earlier, if negative).</summary>
             public Plan Shifted(double ms) => this with { Sections = Sections.Select(s => s with { MapStart = s.MapStart + ms }).ToList() };
+
+            /// <summary>
+            /// The same plan with sections that carry straight on from each other (the same song, speed and place on the map) made one: it's
+            /// rendered as one stream, without a join (a join between two separately stretched streams can be heard).
+            /// </summary>
+            public Plan Joined()
+            {
+                var joined = new List<Section>();
+
+                foreach (var section in Sections)
+                {
+                    if (joined.Count > 0 && !section.Seam
+                                         && Math.Abs(section.SongStart - joined[^1].SongEnd) < 1e-6
+                                         && Math.Abs(section.Stretch - joined[^1].Stretch) < 1e-9
+                                         && Math.Abs(section.MapStart - joined[^1].MapEnd) < 1e-6)
+                        joined[^1] = joined[^1] with { SongEnd = section.SongEnd };
+                    else
+                        joined.Add(section);
+                }
+
+                return this with { Sections = joined };
+            }
+
+            /// <summary>Whether another plan places the song the same way.</summary>
+            public bool SameAs(Plan other) =>
+                Sections.Count == other.Sections.Count
+                && Sections.Zip(other.Sections).All(p => Math.Abs(p.First.MapStart - p.Second.MapStart) < 1e-6
+                                                         && Math.Abs(p.First.SongStart - p.Second.SongStart) < 1e-6
+                                                         && Math.Abs(p.First.SongEnd - p.Second.SongEnd) < 1e-6);
+        }
+
+        /// <summary>
+        /// A map's main beat length: the one most of its notes are played at (as SongSwapper picks it; the faster on a tie), so a long intro
+        /// or outro with few notes doesn't count for more than where the map's actually played.
+        /// </summary>
+        public static double MainBeatLength(IBeatmap beatmap)
+        {
+            var mostNotes = beatmap.HitObjects.Where(h => !SongSwapping.IsSpinner(h))
+                                   .GroupBy(h => Math.Round(beatmap.ControlPointInfo.TimingPointAt(h.StartTime).BeatLength, 3))
+                                   .Where(g => g.Key > 0)
+                                   .OrderByDescending(g => g.Count())
+                                   .ThenBy(g => g.Key)
+                                   .FirstOrDefault();
+
+            return mostNotes != null ? beatmap.ControlPointInfo.TimingPointAt(mostNotes.First().StartTime).BeatLength : beatmap.GetMostCommonBeatLength();
         }
 
         /// <summary>The first playable note in the main BPM section, falling back to the first non-spinner.</summary>
         public static double SyncTime(IBeatmap beatmap)
         {
-            double mainBeatLength = beatmap.GetMostCommonBeatLength();
+            double mainBeatLength = MainBeatLength(beatmap);
             return beatmap.HitObjects.FirstOrDefault(h => !SongSwapping.IsSpinner(h)
                                                         && Math.Abs(beatmap.ControlPointInfo.TimingPointAt(h.StartTime).BeatLength - mainBeatLength) < 0.01)?.StartTime
                    ?? SongSwapping.FirstObjectTime(beatmap);
@@ -100,7 +145,7 @@ namespace osu.Game.Beatmaps.SongSwap
 
             var target = new BeatTimeline(map.ControlPointInfo.TimingPoints);
             var source = new BeatTimeline(song.ControlPointInfo.TimingPoints);
-            var fit = SongSwapping.Fit(60000 / map.GetMostCommonBeatLength(), 60000 / song.GetMostCommonBeatLength())
+            var fit = SongSwapping.Fit(60000 / MainBeatLength(map), 60000 / MainBeatLength(song))
                       ?? throw new InvalidOperationException("The song has unsupported timing data.");
             double factor = fit.Factor;
             double playStart = map.HitObjects.Count == 0 ? 0 : map.HitObjects.Min(h => h.StartTime);

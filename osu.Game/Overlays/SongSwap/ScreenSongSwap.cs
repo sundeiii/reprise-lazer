@@ -197,7 +197,7 @@ namespace osu.Game.Overlays.SongSwap
                 new FormCheckBox
                 {
                     Caption = "Keep the song's pitch",
-                    HintText = "Off: a sped up song sounds higher and a slowed down one lower, like nightcore or a record.",
+                    HintText = "Off: a sped up song sounds higher and a slowed down one lower, like nightcore or a record. Speed changes under 1% are never stretched (that would soften the drums): their pitch moves too little to hear.",
                     Current = keepPitch,
                 },
                 search = new BasicSearchTextBox
