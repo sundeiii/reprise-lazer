@@ -239,7 +239,11 @@ namespace osu.Game.Beatmaps.SongSwap
                     if (!double.IsFinite(stretch) || stretch < 0.05 || stretch > 51)
                         throw new InvalidOperationException("These timing changes need an unsupported playback speed. Pick another song.");
 
-                    if (!first && Math.Abs(sections[^1].Stretch - stretch) < 1e-9)
+                    // Kept apart at the song's own timing points even at the same speed: each can be off from the music by its own amount,
+                    // which matching the map's feel corrects section by section (see SongSwapAnalysis.MatchFeel).
+                    bool songTimingPoint = song.ControlPointInfo.TimingPoints.Any(t => Math.Abs(t.Time - a) < 0.5);
+
+                    if (!first && !songTimingPoint && Math.Abs(sections[^1].Stretch - stretch) < 1e-9)
                         sections[^1] = sections[^1] with { SongEnd = b };
                     else
                     {

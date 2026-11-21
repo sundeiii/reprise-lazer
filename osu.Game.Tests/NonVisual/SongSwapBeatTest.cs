@@ -223,6 +223,65 @@ namespace osu.Game.Tests.NonVisual
         }
 
         [Test]
+        public void TestFeelMatchedSectionBySection()
+        {
+            initBass();
+
+            // A 120 BPM map whose own song is right on its beats, and a song at the same tempo whose mapper put the music 8ms after their first
+            // timing point and, after resetting the beat at 60s, 6ms before it.
+            var target = map(0, 500, 1000, 118000);
+            byte[] own = clicks(122, Enumerable.Range(0, 240).Select(i => i * 500.0).ToList());
+            var song = map(0, 500, 1000, 118000);
+            song.ControlPointInfo.Add(60000, new TimingControlPoint { BeatLength = 500 });
+            byte[] songAudio = clicks(122, Enumerable.Range(0, 240).Select(i => i * 500.0 + (i < 120 ? 8 : -6)).Where(t => t > 0).ToList());
+
+            var plan = SongSwapTiming.Create(target, song, SongSwapping.LengthOf(songAudio));
+            Assert.That(plan.Sections.Count, Is.GreaterThanOrEqualTo(2), "kept apart at the song's own timing point");
+
+            byte[] first = SongSwapping.Render(songAudio, plan, 118000);
+            var matched = SongSwapAnalysis.MatchFeel(plan, target, SongSwapAnalysis.OnsetStrength(own), SongSwapAnalysis.OnsetStrength(first), 0, out _);
+            byte[] rendered = SongSwapping.Render(songAudio, matched, 118000);
+
+            var ownPhase = SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(own), 0, target, 1000, 118000);
+            var strength = SongSwapAnalysis.OnsetStrength(rendered);
+            var before = SongSwapAnalysis.Measure(strength, 0, target, 2000, 58000);
+            var after = SongSwapAnalysis.Measure(strength, 0, target, 62000, 117000);
+
+            Assert.That(before.Lag - ownPhase.Lag, Is.EqualTo(0).Within(1.5), "its first part on the map's beats as the map's own song is");
+            Assert.That(after.Lag - ownPhase.Lag, Is.EqualTo(0).Within(1.5), "and its second, moved by its own amount");
+        }
+
+        [Test]
+        public void TestNoSilenceWhereAPartMovesLater()
+        {
+            initBass();
+
+            // The second section moved 20ms later than where the first ends: the first plays on until it takes over.
+            byte[] tone = clicks(25, new List<double>());
+            for (int i = 44; i + 1 < tone.Length; i += 2)
+                BitConverter.GetBytes((short)(Math.Sin(2 * Math.PI * 440 * ((i - 44) / 4) / 44100.0) * 12000)).CopyTo(tone, i);
+
+            var plan = new SongSwapTiming.Plan(new[]
+            {
+                new SongSwapTiming.Section(0, 10000, 0, 1),
+                new SongSwapTiming.Section(10000, 20000, 10020, 1, SongSwapTiming.TEMPO_JOIN),
+            });
+            byte[] rendered = SongSwapping.Render(tone, plan, 19000);
+
+            for (double ms = 9900; ms < 10200; ms += 2)
+                Assert.That(peakBetween(rendered, ms, ms + 3), Is.GreaterThan(3000), $"sound at {ms}ms");
+        }
+
+        private static int peakBetween(byte[] wave, double fromMs, double toMs)
+        {
+            int rate = BitConverter.ToInt32(wave, 24), channels = BitConverter.ToInt16(wave, 22);
+            int max = 0;
+            for (int f = (int)(fromMs * rate / 1000); f < (int)(toMs * rate / 1000); f++)
+                max = Math.Max(max, Math.Abs((int)BitConverter.ToInt16(wave, 44 + f * channels * 2)));
+            return max;
+        }
+
+        [Test]
         public void TestNoBeatNotTrusted()
         {
             initBass();

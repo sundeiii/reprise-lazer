@@ -49,12 +49,17 @@ namespace osu.Game.Beatmaps.SongSwap
                 var output = new float[checked((int)(Math.Max(0, frameAt(to) - baseFrame) * channels))];
                 bool rendered = false;
 
-                foreach (var section in plan.Sections)
+                for (int index = 0; index < plan.Sections.Count; index++)
                 {
+                    var section = plan.Sections[index];
+
                     // Crossfaded over the end of the previous section (when there's one in this window), ending on its own start.
                     double join = rendered ? section.Join : 0;
                     double writeStart = Math.Max(section.MapStart - join, from);
-                    double writeEnd = Math.Min(section.MapEnd, to);
+
+                    // Played on until the next section takes over: a part moved a little later (to match the map's feel) leaves no silence.
+                    double nextStart = index + 1 < plan.Sections.Count ? plan.Sections[index + 1].MapStart : section.MapEnd;
+                    double writeEnd = Math.Min(Math.Max(section.MapEnd, nextStart), to);
                     if (writeEnd <= writeStart)
                         continue;
 
