@@ -100,8 +100,14 @@ namespace osu.Game.Beatmaps.SongSwap
                 throw new InvalidOperationException("The map has no song of its own to swap.");
 
             var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
-            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap),
-                new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap)));
+            double mapEnd = SongSwapping.EndTime(mapBeatmap);
+            var options = new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap));
+            byte[] rendered = SongSwapping.Render(songData, plan, mapEnd, options);
+
+            // Moved to sit on the map's beats as the map's own song does, then made again there.
+            double shift = feelShift(mapBeatmap, readOriginalSong(mapSet, audioFile), rendered, 0, plan);
+            if (shift != 0)
+                rendered = SongSwapping.Render(songData, plan.Shifted(shift), mapEnd, options);
 
             // The set's own song, to keep (unless it's swapped already: that one's kept already).
             byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
@@ -110,7 +116,8 @@ namespace osu.Game.Beatmaps.SongSwap
         }
 
         /// <summary>A short preview of a swap (as a wave file): the map's best part, with a tick on each of its notes.</summary>
-        public record Preview(byte[] Song, SongSwapTiming.Anchor By, int Loops);
+        /// <param name="Shift">How far (ms) it was moved to sit on the map's beats as the map's own song does.</param>
+        public record Preview(byte[] Song, SongSwapTiming.Anchor By, int Loops, double Shift);
 
         /// <summary>
         /// About 20 seconds of <paramref name="map"/> played to <paramref name="song"/>, from just before its kiai (else its preview point, else
@@ -119,13 +126,51 @@ namespace osu.Game.Beatmaps.SongSwap
         public Preview RenderPreview(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true)
         {
             var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
+            double mapEnd = SongSwapping.EndTime(mapBeatmap);
             double from = Math.Max(0, SongSwapTiming.HighlightTime(mapBeatmap) - 2000);
             var ticks = mapBeatmap.HitObjects.Where(h => !SongSwapping.IsSpinner(h)).Select(h => h.StartTime).ToList();
+            var options = new SongSwapRenderOptions(keepPitch, SongSwapping.FirstObjectTime(mapBeatmap), from, from + 30000);
 
-            byte[] rendered = SongSwapping.Render(songData, plan, SongSwapping.EndTime(mapBeatmap),
-                new SongSwapRenderOptions(keepPitch, SongSwapping.FirstObjectTime(mapBeatmap), from, from + 20000, ticks));
+            // Measured over a little more than is heard (without the ticks), then made again where it sits as the map's own song does.
+            byte[] probe = SongSwapping.Render(songData, plan, mapEnd, options);
+            var mapSet = map.BeatmapSet ?? throw new InvalidOperationException("The map has no set.");
+            double shift = feelShift(mapBeatmap, readOriginalSong(mapSet, map.Metadata.AudioFile), probe, from, plan);
 
-            return new Preview(rendered, plan.By, plan.Loops);
+            byte[] rendered = SongSwapping.Render(songData, plan.Shifted(shift), mapEnd, options with { To = from + 20000, Ticks = ticks });
+
+            return new Preview(rendered, plan.By, plan.Loops, shift);
+        }
+
+        /// <summary>The most a swapped song's moved (ms) to match the map's own song's feel: more than this, and the measurement's off.</summary>
+        public const double MAX_FEEL_SHIFT = 50;
+
+        /// <summary>
+        /// How far (ms) a rendered song (starting at <paramref name="renderedFrom"/> on the map) is to be moved for its beats to sit on the map's
+        /// as the map's own song's do (mappers' timing differs by tens of milliseconds, and stretching moves beats a little): 0 if either's
+        /// beat isn't clear enough to be sure, and never so far it'd stop covering the map's notes.
+        /// </summary>
+        private static double feelShift(IBeatmap mapBeatmap, byte[] mapAudio, byte[] rendered, double renderedFrom, SongSwapTiming.Plan plan)
+        {
+            double playStart = mapBeatmap.HitObjects.Count == 0 ? 0 : mapBeatmap.HitObjects.Min(h => h.StartTime);
+            double playEnd = Math.Max(playStart + 1, SongSwapping.EndTime(mapBeatmap));
+
+            var own = SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(mapAudio), 0, mapBeatmap, playStart, playEnd);
+            if (!own.Trusted)
+                return 0;
+
+            var strength = SongSwapAnalysis.OnsetStrength(rendered);
+            var swapped = SongSwapAnalysis.Measure(strength, renderedFrom, mapBeatmap, Math.Max(playStart, renderedFrom), Math.Min(playEnd, renderedFrom + strength.Length));
+            if (!swapped.Trusted)
+                return 0;
+
+            double shift = own.Lag - swapped.Lag;
+            if (Math.Abs(shift) > MAX_FEEL_SHIFT || Math.Abs(shift) < 0.5)
+                return 0;
+
+            // Still starting by the first note and lasting to the last.
+            double latest = playStart - plan.Start;
+            double earliest = playEnd - plan.End;
+            return earliest <= latest ? Math.Clamp(shift, Math.Min(0, earliest), Math.Max(0, latest)) : 0;
         }
 
         private (IBeatmap map, byte[] songData, SongSwapTiming.Plan plan) makePlan(BeatmapInfo map, BeatmapInfo song, bool loop)

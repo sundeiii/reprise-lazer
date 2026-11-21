@@ -360,7 +360,8 @@ namespace osu.Game.Overlays.SongSwap
                 _ => "its first notes on the map's",
             };
 
-            updateSelectionText($"Previewing: {by}{(preview.Loops > 0 ? $", looped {preview.Loops}x" : string.Empty)}. Ticks are the map's notes.");
+            string feel = Math.Abs(preview.Shift) >= 1 ? $", {Math.Abs(preview.Shift):0}ms {(preview.Shift > 0 ? "later" : "earlier")} to feel like the map's own song" : string.Empty;
+            updateSelectionText($"Previewing: {by}{(preview.Loops > 0 ? $", looped {preview.Loops}x" : string.Empty)}{feel}. Ticks are the map's notes.");
 
             // The song playing faded out under the preview, and back in after it.
             mutedTrack = music.CurrentTrack;

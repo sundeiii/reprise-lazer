@@ -196,6 +196,72 @@ namespace osu.Game.Tests.NonVisual
             Assert.That(onsets(preview).Select(o => o + 20000), Is.EqualTo(new[] { 25000.0 }).Within(1), "a tick on the map's note");
         }
 
+        [TestCase(12)]
+        [TestCase(-18)]
+        [TestCase(35)]
+        public void TestBeatFeelMeasured(double late)
+        {
+            initBass();
+
+            // Clicks every beat of a 150 BPM map, and the same 'late' ms after the timing points (as a mapper's offset might leave them).
+            // Only the difference between two measurements is used (to match one song's feel to another's), so that's what's checked.
+            var grid = map(500, 400, 500, 60000);
+            byte[] clicksAt(double shift) => clicks(62, Enumerable.Range(0, 200).Select(i => 500 + shift + i * 400.0).Where(t => t > 0 && t < 61900).ToList());
+
+            var onTime = SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(clicksAt(0)), 0, grid, 500, 60000);
+            var shifted = SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(clicksAt(late)), 0, grid, 500, 60000);
+
+            Assert.That(onTime.Trusted && shifted.Trusted, Is.True);
+            Assert.That(shifted.Lag - onTime.Lag, Is.EqualTo(late).Within(0.5));
+
+            // Measured on a window (a preview's), its strength starting 20s into the map: within a millisecond (a shorter excerpt reads a
+            // little differently; nobody feels a millisecond).
+            byte[] window = SongSwapping.Render(clicksAt(late), new SongSwapTiming.Plan(new[] { new SongSwapTiming.Section(0, 62000, 0, 1) }), 60000,
+                new SongSwapRenderOptions(From: 20000, To: 40000));
+            var part = SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(window), 20000, grid, 20000, 40000);
+            Assert.That(part.Lag - onTime.Lag, Is.EqualTo(late).Within(1));
+        }
+
+        [Test]
+        public void TestNoBeatNotTrusted()
+        {
+            initBass();
+            Assert.That(SongSwapAnalysis.Measure(SongSwapAnalysis.OnsetStrength(clicks(30, new List<double>())), 0, map(0, 400, 0, 29000), 0, 29000).Trusted, Is.False);
+        }
+
+        [Test]
+        public void TestPlanShifted()
+        {
+            var plan = SongSwapTiming.Create(map(0, 500, 1000, 50000), map(0, 500, 1000, 55000), 60000).Shifted(-15);
+            Assert.That(placedAt(plan, 1000), Is.EqualTo(985).Within(0.01));
+        }
+
+        [Test]
+        public void TestLegacySpinnersSkipped()
+        {
+            // A map as read from its file: legacy objects (song swap reads maps this way), its spinner first.
+            const string file = @"osu file format v14
+
+[General]
+AudioFilename: audio.mp3
+
+[Difficulty]
+SliderMultiplier:1.4
+SliderTickRate:1
+
+[TimingPoints]
+0,500,4,2,0,60,1,0
+
+[HitObjects]
+256,192,100,12,0,1100,0:0:0:0:
+256,192,1500,1,0,0:0:0:0:
+";
+            using var stream = new osu.Game.IO.LineBufferedReader(new MemoryStream(Encoding.UTF8.GetBytes(file)));
+            var beatmap = osu.Game.Beatmaps.Formats.Decoder.GetDecoder<Beatmap>(stream).Decode(stream);
+
+            Assert.That(SongSwapping.FirstObjectTime(beatmap), Is.EqualTo(1500));
+        }
+
         private static List<double> renderClicks(double songBpm, double mapBpm, double songSeconds, bool keepPitch, bool loop)
         {
             double songBeat = 60000 / songBpm, mapBeat = 60000 / mapBpm;

@@ -46,6 +46,9 @@ namespace osu.Game.Beatmaps.SongSwap
         {
             public double Start => Sections[0].MapStart;
             public double End => Sections[^1].MapEnd;
+
+            /// <summary>The same plan, all of it later on the map by <paramref name="ms"/> (earlier, if negative).</summary>
+            public Plan Shifted(double ms) => this with { Sections = Sections.Select(s => s with { MapStart = s.MapStart + ms }).ToList() };
         }
 
         /// <summary>The first playable note in the main BPM section, falling back to the first non-spinner.</summary>

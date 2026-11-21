@@ -4,7 +4,9 @@
 using System;
 using System.Linq;
 using ManagedBass;
+using osu.Game.Beatmaps.Legacy;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Legacy;
 
 namespace osu.Game.Beatmaps.SongSwap
 {
@@ -33,8 +35,10 @@ namespace osu.Game.Beatmaps.SongSwap
         public static double FirstObjectTime(IBeatmap beatmap) =>
             (beatmap.HitObjects.FirstOrDefault(h => !IsSpinner(h)) ?? beatmap.HitObjects.FirstOrDefault())?.StartTime ?? 0;
 
-        // A spinner (osu!'s, taiko's swell, catch's banana shower) isn't a useful musical onset.
-        internal static bool IsSpinner(HitObject h) => h.GetType().Name is "Spinner" or "Swell" or "BananaShower";
+        // A spinner (osu!'s, taiko's swell, catch's banana shower) isn't a useful musical onset. A map read from its file (as song swap
+        // reads them) has legacy objects, which say what they are by their legacy type.
+        internal static bool IsSpinner(HitObject h) =>
+            h is IHasLegacyHitObjectType legacy ? legacy.LegacyType.HasFlag(LegacyHitObjectType.Spinner) : h.GetType().Name is "Spinner" or "Swell" or "BananaShower";
 
         /// <summary>When a map's play ends: its last object's end.</summary>
         public static double EndTime(IBeatmap beatmap) => beatmap.HitObjects.Count == 0 ? 0 : beatmap.HitObjects.Max(h => h.GetEndTime());
