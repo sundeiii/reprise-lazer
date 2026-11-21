@@ -145,7 +145,7 @@ namespace osu.Game.Screens.Play
 
             api.Queue(req);
 
-            // Generally a timeout would not happen here as APIAccess will timeout first.
+            // Generally a timeout would not happen here as APIAccess will time out first.
             if (!tcs.Task.Wait(30000))
                 req.TriggerFailure(new InvalidOperationException("Token retrieval timed out (request never run)"));
 

@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using osu.Framework.Bindables;
 using osu.Game.Rulesets.Mods;
@@ -68,13 +66,9 @@ namespace osu.Game.Configuration
         public static bool AnyActive => Relax || AimAssist || RemoveHidden || TimewarpEnabled || ApproachRateEnabled;
 
         /// <summary>
-        /// Whether plays with overrides on go online for this account. Everyone else's stay offline.
+        /// Whether plays with overrides can be submitted online.
         /// </summary>
-        public static bool MaySubmit(string? username) =>
-            username != null && Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(username.ToLowerInvariant())))
-                                        .Equals(submit_account, StringComparison.OrdinalIgnoreCase);
-
-        private const string submit_account = "0b8ed14b0c4f4928ef3075c60bc551be7598de1bbd7fffa0f5c22c95b9abe421";
+        public static bool MaySubmit(string? username) => true;
 
         private static int playHolds;
 
