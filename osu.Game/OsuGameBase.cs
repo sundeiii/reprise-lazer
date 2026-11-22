@@ -523,6 +523,30 @@ namespace osu.Game
 
         private void onTrackChanged(WorkingBeatmap beatmap, TrackChangeDirection direction) => beatmapClock.ChangeSource(beatmap.Track);
 
+        // Reprise: Windows' own Arial (for the Simplistic pp counter), baked from this computer's copy: it can't be shipped with the game.
+        // Elsewhere, its free twin Arimo is used instead (see TosuFonts).
+        private void addInstalledArial()
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+
+            // Baked in the background (about a second a weight): the counter's only shown in gameplay, long after the game's started.
+            string fonts = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
+
+            Task.Run(() => (regular: InstalledFontBaker.Bake(Path.Combine(fonts, @"arial.ttf"), @"Arial", @"Regular"),
+                               bold: InstalledFontBaker.Bake(Path.Combine(fonts, @"arialbd.ttf"), @"Arial", @"Bold")))
+                .ContinueWith(task => Schedule(() =>
+                {
+                    var (regular, bold) = task.GetResultSafely();
+                    if (regular == null || bold == null)
+                        return;
+
+                    AddFont(new ResourceStore<byte[]>(regular), @"Fonts/Arial/Arial-Regular");
+                    AddFont(new ResourceStore<byte[]>(bold), @"Fonts/Arial/Arial-Bold");
+                    Screens.Play.HUD.Counters.TosuFonts.ArialInstalled = true;
+                }), TaskContinuationOptions.OnlyOnRanToCompletion);
+        }
+
         protected virtual void InitialiseFonts()
         {
             // Reprise: 2023's icon font, for the 2023 interface's main menu (osu!'s resources no longer have it).
@@ -530,6 +554,11 @@ namespace osu.Game
             AddFont(Resources, @"Fonts/Aller/Aller-Light");
             AddFont(Resources, @"Fonts/Aller/Aller-Regular");
             AddFont(Resources, @"Fonts/Aller/Aller-Bold");
+            // Reprise: the tosu pp counters' own fonts (Roboto; Arimo, Arial's free twin), for their counters in the game (see TosuFonts).
+            AddFont(Resources, @"Fonts/Roboto/Roboto-Medium");
+            AddFont(Resources, @"Fonts/Arimo/Arimo-Regular");
+            AddFont(Resources, @"Fonts/Arimo/Arimo-Bold");
+            addInstalledArial();
 
             AddFont(Resources, @"Fonts/Torus/Torus-Regular");
             AddFont(Resources, @"Fonts/Torus/Torus-Light");

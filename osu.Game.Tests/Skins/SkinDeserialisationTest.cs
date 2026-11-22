@@ -90,6 +90,8 @@ namespace osu.Game.Tests.Skins
             // Covers results screen components
             "Archives/modified-argon-20261109.osk",
             "Archives/modified-classic-20261028.osk",
+            // Covers the Simplistic and DarkAndWhite (tosu) pp counters
+            "Archives/modified-argon-20261121.osk",
         };
 
         /// <summary>
