@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Utils;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Skinning;
@@ -148,11 +149,17 @@ namespace osu.Game.Screens.Play.HUD.Counters
             };
         }
 
+        protected override void Update()
+        {
+            base.Update();
+
+            // Following the play smoothly whatever the frame rate (as the overlay's eased width transition does, a step at a time).
+            progressFill.Width = (float)Interpolation.DampContinuously(progressFill.Width, stats.MapProgress.Value, 100, Time.Elapsed);
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
-
-            stats.MapProgress.BindValueChanged(p => progressFill.ResizeWidthTo((float)p.NewValue, 500, Easing.InOutSine), true);
 
             // Nothing shown before the first note (as the overlay does), then the pp counting up and the hits straight away.
             stats.Started.BindValueChanged(_ => update(), true);

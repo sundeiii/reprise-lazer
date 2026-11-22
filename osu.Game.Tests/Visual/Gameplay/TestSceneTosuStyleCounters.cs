@@ -109,6 +109,15 @@ namespace osu.Game.Tests.Visual.Gameplay
                                                               .ChildrenOfType<osu.Game.Graphics.Sprites.OsuSpriteText>()
                                                               .Select(t => t.Text.ToString()).ToList() is var texts
                                                           && texts.Contains("4") && texts.Contains("1") && texts.Any(t => t.EndsWith("PP", StringComparison.Ordinal) && t != "0PP"));
+
+            int fullComboBefore = 0;
+            AddStep("miss 20 more", () =>
+            {
+                fullComboBefore = stats()[0].FullComboPerformancePoints.Value;
+                apply(HitResult.Miss, 20);
+            });
+            AddUntilStep("misses lower the full combo pp (as tosu's: the play's accuracy over the map)",
+                () => stats().All(s => s.Misses.Value == 21 && s.FullComboPerformancePoints.Value < fullComboBefore));
             AddWaitStep("let the numbers count up", 10);
             AddStep("screenshot", () => Screenshot?.Invoke("tosu-counters"));
         }

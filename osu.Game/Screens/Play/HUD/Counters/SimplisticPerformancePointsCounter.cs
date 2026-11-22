@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Utils;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Scoring;
@@ -168,12 +169,19 @@ namespace osu.Game.Screens.Play.HUD.Counters
             };
         }
 
+        protected override void Update()
+        {
+            base.Update();
+
+            // Following the play smoothly whatever the frame rate (as the overlay's 100ms width transition does, a step at a time).
+            progressFill.Width = (float)Interpolation.DampContinuously(progressFill.Width, stats.SongProgress.Value, 25, Time.Elapsed);
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
             stats.Rank.BindValueChanged(r => showRank(r.NewValue), true);
-            stats.SongProgress.BindValueChanged(p => progressFill.ResizeWidthTo((float)p.NewValue, 100), true);
             stats.PerformancePoints.BindValueChanged(v => pp.CountTo(v.NewValue), true);
             stats.Oks.BindValueChanged(v => oks.CountTo(v.NewValue), true);
             stats.Mehs.BindValueChanged(v => mehs.CountTo(v.NewValue), true);
