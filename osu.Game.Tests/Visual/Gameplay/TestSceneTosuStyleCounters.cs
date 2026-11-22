@@ -116,8 +116,10 @@ namespace osu.Game.Tests.Visual.Gameplay
                 fullComboBefore = stats()[0].FullComboPerformancePoints.Value;
                 apply(HitResult.Miss, 20);
             });
-            AddUntilStep("misses lower the full combo pp (as tosu's: the play's accuracy over the map)",
-                () => stats().All(s => s.Misses.Value == 21 && s.FullComboPerformancePoints.Value < fullComboBefore));
+            AddUntilStep("misses don't change the full combo pp (as tosu's: a miss counts as a 300)",
+                () => stats().All(s => s.Misses.Value == 21 && s.FullComboPerformancePoints.Value == fullComboBefore));
+            AddStep("another 100", () => apply(HitResult.Ok, 1));
+            AddUntilStep("a 100 lowers it", () => stats().All(s => s.Oks.Value == 5 && s.FullComboPerformancePoints.Value < fullComboBefore));
             AddWaitStep("let the numbers count up", 10);
             AddStep("screenshot", () => Screenshot?.Invoke("tosu-counters"));
         }

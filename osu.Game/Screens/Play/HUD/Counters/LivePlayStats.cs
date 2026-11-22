@@ -28,15 +28,15 @@ using osu.Game.Skinning;
 namespace osu.Game.Screens.Play.HUD.Counters
 {
     /// <summary>
-    /// Reprise: what a play's pp counters show, live (as tosu gives its overlays): its pp so far, its pp if full combo'd (as tosu has it: the whole map at
-    /// its accuracy so far, with no misses or slider breaks), its 100s, 50s, misses and slider breaks, its grade, and how far into the map it is.
+    /// Reprise: what a play's pp counters show, live (as tosu gives its overlays): its pp so far, its pp if full combo'd (as tosu has it: its 100s and 50s
+    /// so far kept, its misses and slider breaks and the rest of the map 300s), its 100s, 50s, misses and slider breaks, its grade, and how far into the map it is.
     /// </summary>
     public partial class LivePlayStats : Component
     {
         /// <summary>The play's pp so far (as the game's own pp counter has it).</summary>
         public readonly BindableInt PerformancePoints = new BindableInt();
 
-        /// <summary>The play's pp if it were a full combo, as tosu has it: the whole map at its accuracy so far, with no misses or slider breaks.</summary>
+        /// <summary>The play's pp if it were a full combo, as tosu has it: its 100s and 50s so far kept, its misses, slider breaks and the rest of the map 300s.</summary>
         public readonly BindableInt FullComboPerformancePoints = new BindableInt();
 
         public readonly BindableInt Oks = new BindableInt();
@@ -152,58 +152,38 @@ namespace osu.Game.Screens.Play.HUD.Counters
             FullComboPerformancePoints.Value = round(performanceCalculator.Calculate(fullCombo(scoreInfo, timedAttributes[^1].Attributes), timedAttributes[^1].Attributes).Total);
         }
 
-        // The play as a full combo, as tosu has it: the whole map at the play's accuracy so far (its misses counted in it), with no misses
-        // and every combo kept. Its notes are hit the best they can, then 100s (and 50s, if need be) until they're down to that accuracy.
+        // The play as a full combo, as tosu works it out (its calculateFcScore): the 100s and 50s (and the like) played so far kept as they
+        // are, every miss and slider break a 300, every note still to come a 300, and every slider tick and end hit.
         private ScoreInfo fullCombo(ScoreInfo score, DifficultyAttributes attributes)
         {
             var maximum = score.MaximumStatistics;
+            var played = score.Statistics;
             var result = new Dictionary<HitResult, int>(maximum);
 
             var basic = maximum.Where(s => s.Key.IsBasic() && s.Value > 0).Select(s => s.Key).ToList();
             HitResult best = basic.DefaultIfEmpty(HitResult.Great).Max();
             int totalNotes = basic.Sum(r => maximum[r]);
 
+            int lesser = 0;
+
+            foreach (var (type, count) in played.Where(s => s.Key.IsBasic() && s.Key.IsHit() && s.Key != best && s.Value > 0))
+            {
+                result[type] = count;
+                lesser += count;
+            }
+
+            result[best] = Math.Max(0, totalNotes - lesser);
+
             foreach (var miss in result.Keys.Where(k => k.IsMiss()).ToList())
                 result[miss] = 0;
 
-            if (scoreProcessor != null && totalNotes > 0)
+            // Small ticks (as droplets) don't break combo: those missed stay missed.
+            int smallTickMisses = played.GetValueOrDefault(HitResult.SmallTickMiss);
+
+            if (smallTickMisses > 0 && maximum.ContainsKey(HitResult.SmallTickHit))
             {
-                double target = score.Accuracy;
-
-                foreach (var lesser in new[] { HitResult.Ok, HitResult.Meh })
-                {
-                    // The most of the best hits that can stay (the fewest of this lesser hit) at or above the play's accuracy.
-                    int available = result.GetValueOrDefault(best);
-                    int low = 0, high = available;
-
-                    while (low < high)
-                    {
-                        int count = (low + high + 1) / 2;
-                        if (accuracyWith(best, lesser, count) >= target)
-                            low = count;
-                        else
-                            high = count - 1;
-                    }
-
-                    result[best] = available - low;
-                    result[lesser] = result.GetValueOrDefault(lesser) + low;
-
-                    if (low < available)
-                        break;
-
-                    // Even all 100s keep it above: the rest of the way with 50s, in place of 100s.
-                    best = lesser;
-                }
-
-                double accuracyWith(HitResult from, HitResult to, int count)
-                {
-                    var trial = new Dictionary<HitResult, int>(result)
-                    {
-                        [from] = result.GetValueOrDefault(from) - count,
-                        [to] = result.GetValueOrDefault(to) + count,
-                    };
-                    return StandardisedScoreMigrationTools.ComputeAccuracy(trial, maximum, scoreProcessor);
-                }
+                result[HitResult.SmallTickHit] = Math.Max(0, maximum[HitResult.SmallTickHit] - smallTickMisses);
+                result[HitResult.SmallTickMiss] = smallTickMisses;
             }
 
             var fc = score.DeepClone();
