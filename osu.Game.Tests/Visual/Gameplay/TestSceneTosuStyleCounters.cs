@@ -26,7 +26,7 @@ using osuTK.Graphics;
 
 namespace osu.Game.Tests.Visual.Gameplay
 {
-    /// <summary>Reprise: the Simplistic (jassper0) and DarkAndWhite (cyperdark) tosu pp counters, in the game.</summary>
+    /// <summary>Reprise: the Simplistic (jassper0), DarkAndWhite (cyperdark) and BTMC (Happy_24) tosu pp counters, in the game.</summary>
     public partial class TestSceneTosuStyleCounters : OsuTestScene
     {
         /// <summary>Set by a screenshot runner: called with a name once the counters are shown.</summary>
@@ -69,6 +69,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                             {
                                 new SimplisticPerformancePointsCounter { Scale = Vector2.One },
                                 new DarkAndWhitePerformancePointsCounter { Scale = Vector2.One },
+                                new BtmcPerformancePointsCounter { Scale = Vector2.One },
                             },
                         },
                     },

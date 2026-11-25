@@ -92,6 +92,8 @@ namespace osu.Game.Tests.Skins
             "Archives/modified-classic-20261028.osk",
             // Covers the Simplistic and DarkAndWhite (tosu) pp counters
             "Archives/modified-argon-20261121.osk",
+            // Covers the BTMC (tosu) pp counter
+            "Archives/modified-argon-20261125.osk",
         };
 
         /// <summary>

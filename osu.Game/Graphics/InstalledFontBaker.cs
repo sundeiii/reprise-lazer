@@ -59,7 +59,8 @@ namespace osu.Game.Graphics
 
                     if (bounds.Width <= 0 || bounds.Height <= 0)
                     {
-                        glyphs.Add((c, 0, 0, 0, 0, 0, 0, advance));
+                        // An empty glyph (space) still points at a pixel: the framework can't load a 0-pixel glyph. The page's last corner stays clear.
+                        glyphs.Add((c, page - 1, page - 1, 1, 1, 0, 0, advance));
                         continue;
                     }
 

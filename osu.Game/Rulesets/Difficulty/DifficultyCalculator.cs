@@ -91,6 +91,70 @@ namespace osu.Game.Rulesets.Difficulty
         }
 
         /// <summary>
+        /// Reprise: each skill's highest difficulty in every 400ms of the map (at its rate, from its first note's section), as tosu's overlays graph
+        /// a map's difficulty (rosu-pp's strains). From the skills' difficulty at each note, as osu!'s aim and speed no longer keep fixed sections.
+        /// </summary>
+        /// <param name="mods">The mods that should be applied to the beatmap.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The skills, with their peaks.</returns>
+        public IReadOnlyList<(Skill Skill, double[] Peaks)> CalculateStrainPeaks([NotNull] IEnumerable<Mod> mods, CancellationToken cancellationToken = default)
+        {
+            const double section_length = 400;
+
+            using var timedCancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+            if (!cancellationToken.CanBeCanceled)
+                cancellationToken = timedCancellationSource.Token;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            preProcess(mods, cancellationToken);
+
+            var skills = CreateSkills(Beatmap, playableMods);
+
+            if (!Beatmap.HitObjects.Any())
+                return Array.Empty<(Skill, double[])>();
+
+            var objects = getDifficultyHitObjects().ToList();
+
+            foreach (var hitObject in objects)
+            {
+                foreach (var skill in skills)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    skill.Process(hitObject);
+                }
+            }
+
+            return skills.Select(skill =>
+            {
+                var difficulties = skill.GetObjectDifficulties();
+                var peaks = new List<double>();
+
+                if (objects.Count == 0 || difficulties.Count != objects.Count)
+                    return (skill, peaks.ToArray());
+
+                double sectionEnd = Math.Ceiling(objects[0].StartTime / section_length) * section_length;
+                double peak = 0;
+
+                for (int i = 0; i < objects.Count; i++)
+                {
+                    while (objects[i].StartTime > sectionEnd)
+                    {
+                        peaks.Add(peak);
+                        peak = 0;
+                        sectionEnd += section_length;
+                    }
+
+                    peak = Math.Max(peak, difficulties[i]);
+                }
+
+                peaks.Add(peak);
+                return (skill, peaks.ToArray());
+            }).ToArray();
+        }
+
+        /// <summary>
         /// Calculates the difficulty of the beatmap with no mods applied and returns a set of <see cref="TimedDifficultyAttributes"/> representing the difficulty at every relevant time value in the beatmap.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>

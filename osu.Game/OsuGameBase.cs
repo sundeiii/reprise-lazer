@@ -558,6 +558,8 @@ namespace osu.Game
             AddFont(Resources, @"Fonts/Roboto/Roboto-Medium");
             AddFont(Resources, @"Fonts/Arimo/Arimo-Regular");
             AddFont(Resources, @"Fonts/Arimo/Arimo-Bold");
+            AddFont(Resources, @"Fonts/Baloo2/Baloo2-Bold");
+            AddFont(Resources, @"Fonts/Baloo2/Baloo2-Medium");
             addInstalledArial();
 
             AddFont(Resources, @"Fonts/Torus/Torus-Regular");

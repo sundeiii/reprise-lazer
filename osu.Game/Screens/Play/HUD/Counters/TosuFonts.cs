@@ -18,5 +18,15 @@ namespace osu.Game.Screens.Play.HUD.Counters
         public static bool ArialInstalled { get; set; }
 
         public static FontUsage Arial(float size, bool bold = false) => new FontUsage(ArialInstalled ? @"Arial" : @"Arimo", size, bold ? @"Bold" : @"Regular");
+
+        /// <summary>BTMC's Baloo 2 (Bold, its main font; Medium, its difficulty names).</summary>
+        public static FontUsage BalooBold(float size) => new FontUsage(@"Baloo2", size, @"Bold");
+
+        public static FontUsage BalooMedium(float size) => new FontUsage(@"Baloo2", size, @"Medium");
+
+        /// <summary>Baloo 2's line heights, in ems (as baked): CSS sets a line of text with its line height centred on the line.</summary>
+        public const float BALOO_BOLD_LINE_HEIGHT = 1.61f;
+
+        public const float BALOO_MEDIUM_LINE_HEIGHT = 1.58f;
     }
 }
