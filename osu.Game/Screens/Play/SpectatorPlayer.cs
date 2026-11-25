@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
@@ -113,7 +114,14 @@ namespace osu.Game.Screens.Play
         protected override Score CreateScore(IBeatmap beatmap) => score;
 
         protected override ResultsScreen CreateResults(ScoreInfo score)
-            => new SpectatorResultsScreen(score);
+        {
+            // Reprise: a spectated play had no date ("Achieved on 1/1/0001"): it's set as its results come up, as a played one's is
+            // when it's submitted.
+            if (score.Date == default)
+                score.Date = DateTimeOffset.Now;
+
+            return new SpectatorResultsScreen(score);
+        }
 
         protected override void PrepareReplay()
         {
