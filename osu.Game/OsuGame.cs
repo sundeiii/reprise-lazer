@@ -1334,6 +1334,8 @@ namespace osu.Game
 
             // dependency on notification overlay, dependent by settings overlay
             loadComponentSingleFile(CreateUpdateManager(), Add, true);
+            // Reprise: the player's local scores take their current name after a name change.
+            loadComponentSingleFile(new osu.Game.Scoring.LocalScoreUsernameUpdater(), Add);
 
             // overlay elements
             loadComponentSingleFile(FirstRunOverlay = new FirstRunSetupOverlay(), footerBasedOverlayContent.Add, true);
