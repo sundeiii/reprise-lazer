@@ -198,9 +198,14 @@ namespace osu.Game.Users
 
         private void updateClientBadges(UserPresence? presence)
         {
-            string[] clients = presence != null
-                ? new[] { "lazer" }
-                : User.CurrentClients ?? Array.Empty<string>();
+            // The website says which game clients they're in (stable, lazer). Online here with nothing from it (an older website), lazer.
+            // Stable players are in lazer's online lists too (Reprise's spectator server), so being online here isn't lazer by itself.
+            // Only while online: the website's list is from when the user was looked up.
+            string[] clients = presence == null
+                ? Array.Empty<string>()
+                : User.CurrentClients?.Length > 0
+                    ? User.CurrentClients
+                    : new[] { "lazer" };
 
             clients = clients.Distinct().ToArray();
 
