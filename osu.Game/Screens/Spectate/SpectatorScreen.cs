@@ -178,6 +178,10 @@ namespace osu.Game.Screens.Spectate
                     User = user,
                     Mods = spectatorState.Mods.Select(m => m.ToMod(resolvedRuleset)).ToArray(),
                     Ruleset = resolvedRuleset.RulesetInfo,
+                    // Reprise: a stable player watched through the server (TomYum's spectator build) sends no maximum
+                    // statistics, which lazer always does. Their frames are a stable replay's: Relax plays have no key
+                    // presses, so Relax has to click for them, as it does for imported stable replays.
+                    IsLegacyScore = spectatorState.MaximumStatistics.Count == 0,
                 },
                 Replay = new Replay { HasReceivedAllFrames = false },
             };
