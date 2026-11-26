@@ -101,6 +101,12 @@ namespace osu.Game.Screens.Ranking
         public bool AllowWatchingReplay { get; init; } = true;
 
         /// <summary>
+        /// Reprise: saves the play's replay when it's only here (a spectated play's: no score on the server to download it from),
+        /// for the replay button to watch or export it. Null when there's no such replay.
+        /// </summary>
+        protected Func<Task<ScoreInfo?>>? SaveLocalReplay { get; init; }
+
+        /// <summary>
         /// Whether the provided score is for a local user's play.
         /// This will trigger elements like the user's ranking to display.
         /// </summary>
@@ -336,7 +342,8 @@ namespace osu.Game.Screens.Ranking
                 buttons.Add(replayButton = new ReplayDownloadButton(SelectedScore.Value)
                 {
                     Score = { BindTarget = SelectedScore },
-                    Width = 300
+                    Width = 300,
+                    SaveLocalReplay = SaveLocalReplay,
                 });
 
                 // for simplicity, only allow this when coming from a replay player where we know the replay is ready to be played.

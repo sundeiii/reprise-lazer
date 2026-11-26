@@ -1465,6 +1465,15 @@ namespace osu.Game.Screens.Play
             if (DrawableRuleset.ReplayScore != null)
                 return Task.CompletedTask;
 
+            return ImportScoreWithReplay(score);
+        }
+
+        /// <summary>
+        /// Reprise: imports <paramref name="score"/> with its replay, whatever was played (a spectated play's too, which
+        /// <see cref="ImportScore"/> leaves out as a replay already in the database).
+        /// </summary>
+        protected Task ImportScoreWithReplay(Score score)
+        {
             ByteArrayArchiveReader replayReader = null;
 
             if (score.ScoreInfo.Ruleset.IsLegacyRuleset())

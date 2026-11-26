@@ -1,8 +1,11 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Bindings;
@@ -37,12 +40,22 @@ namespace osu.Game.Screens.Ranking
                 if (State.Value == DownloadState.LocallyAvailable)
                     return ReplayAvailability.Local;
 
+                // Reprise: a spectated play's replay, here to be saved (it has no score on the server to download from).
+                if (SaveLocalReplay != null && Score.Value is { OnlineID: <= 0, LegacyOnlineID: <= 0 })
+                    return ReplayAvailability.Unsaved;
+
                 if (Score.Value?.HasOnlineReplay == true)
                     return ReplayAvailability.Online;
 
                 return ReplayAvailability.NotAvailable;
             }
         }
+
+        /// <summary>
+        /// Reprise: saves the replay when it's only here (a spectated play's: no score on the server to download it from), and
+        /// gives the saved score, or null. Used instead of a download for a score with no online id.
+        /// </summary>
+        public Func<Task<ScoreInfo?>>? SaveLocalReplay { get; init; }
 
         public ReplayDownloadButton(ScoreInfo? score)
         {
@@ -94,6 +107,12 @@ namespace osu.Game.Screens.Ranking
                         break;
 
                     case DownloadState.NotDownloaded:
+                        if (SaveLocalReplay != null && Score.Value is { OnlineID: <= 0, LegacyOnlineID: <= 0 } unsaved)
+                        {
+                            saveLocally(unsaved, SaveLocalReplay);
+                            break;
+                        }
+
                         scoreDownloader.Download(Score.Value!);
                         break;
 
@@ -110,19 +129,7 @@ namespace osu.Game.Screens.Ranking
                 // Reset this to meet user expectations (a new score which has just been switched to shouldn't export)
                 State.ValueChanged -= exportWhenReady;
 
-                downloadTracker?.RemoveAndDisposeImmediately();
-                downloadTracker = null;
-                State.SetDefault();
-
-                if (score.NewValue != null)
-                {
-                    AddInternal(downloadTracker = new ScoreDownloadTracker(score.NewValue)
-                    {
-                        State = { BindTarget = State }
-                    });
-                }
-
-                updateState();
+                track(score.NewValue);
             }, true);
 
             State.BindValueChanged(state =>
@@ -130,6 +137,43 @@ namespace osu.Game.Screens.Ranking
                 button.State.Value = state.NewValue;
                 updateState();
             }, true);
+        }
+
+        private void track(ScoreInfo? score)
+        {
+            downloadTracker?.RemoveAndDisposeImmediately();
+            downloadTracker = null;
+            State.SetDefault();
+
+            if (score != null)
+            {
+                AddInternal(downloadTracker = new ScoreDownloadTracker(score)
+                {
+                    State = { BindTarget = State }
+                });
+            }
+
+            updateState();
+        }
+
+        // Reprise: the replay saved here, then tracked as any local one (its hash known now), so the button watches or exports it.
+        private void saveLocally(ScoreInfo score, Func<Task<ScoreInfo?>> save)
+        {
+            State.Value = DownloadState.Importing;
+
+            save().ContinueWith(t => Schedule(() =>
+            {
+                if (t.IsCompletedSuccessfully && t.GetResultSafely() is ScoreInfo saved && Score.Value == score)
+                {
+                    score.ID = saved.ID;
+                    score.Hash = saved.Hash;
+                    track(score);
+                }
+                else
+                {
+                    State.Value = DownloadState.NotDownloaded;
+                }
+            }));
         }
 
         #region Export via hotkey logic (also in SaveFailedScoreButton)
@@ -182,6 +226,11 @@ namespace osu.Game.Screens.Ranking
                     button.Enabled.Value = true;
                     break;
 
+                case ReplayAvailability.Unsaved:
+                    button.TooltipText = @"save replay";
+                    button.Enabled.Value = true;
+                    break;
+
                 default:
                     button.TooltipText = @"replay unavailable";
                     button.Enabled.Value = false;
@@ -193,6 +242,7 @@ namespace osu.Game.Screens.Ranking
         {
             Local,
             Online,
+            Unsaved,
             NotAvailable,
         }
     }

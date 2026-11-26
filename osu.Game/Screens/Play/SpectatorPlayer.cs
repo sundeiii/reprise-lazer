@@ -2,6 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
@@ -10,6 +12,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Online.Spectator;
+using osu.Game.Replays;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.Replays.Types;
 using osu.Game.Scoring;
@@ -120,7 +123,16 @@ namespace osu.Game.Screens.Play
             if (score.Date == default)
                 score.Date = DateTimeOffset.Now;
 
-            return new SpectatorResultsScreen(score);
+            // Reprise: the watched play has no score on the server to download its replay from (a stable player's has none, a lazer
+            // one may not yet), but its frames are all here: saved when asked (Save Replay / Watch Replay), not every time.
+            var frames = this.score.Replay.Frames.ToList();
+
+            return new SpectatorResultsScreen(score, () => Task.Run(() =>
+            {
+                var watched = new Score { ScoreInfo = score.DeepClone(), Replay = new Replay { Frames = frames } };
+                ImportScoreWithReplay(watched);
+                return watched.ScoreInfo.ID == Guid.Empty ? null : watched.ScoreInfo;
+            }));
         }
 
         protected override void PrepareReplay()

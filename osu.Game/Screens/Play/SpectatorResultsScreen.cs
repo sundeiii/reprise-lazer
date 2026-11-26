@@ -1,6 +1,8 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Screens;
@@ -12,9 +14,10 @@ namespace osu.Game.Screens.Play
 {
     public partial class SpectatorResultsScreen : SoloResultsScreen
     {
-        public SpectatorResultsScreen(ScoreInfo score)
+        public SpectatorResultsScreen(ScoreInfo score, Func<Task<ScoreInfo?>>? saveWatchedReplay = null)
             : base(score)
         {
+            SaveLocalReplay = saveWatchedReplay;
         }
 
         [Resolved]

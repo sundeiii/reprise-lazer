@@ -141,6 +141,46 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestWatchedReplaySavedWhenAsked()
+        {
+            // Reprise: a spectated play has no score on the server, but its replay is here: the button saves it, then watches it.
+            ScoreInfo watched = null;
+            bool saved = false;
+
+            AddStep("create button for a watched play", () =>
+            {
+                watched = getScoreInfo(false, false);
+                Child = downloadButton = new TestReplayDownloadButton(watched)
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    SaveLocalReplay = () => System.Threading.Tasks.Task.Run(() =>
+                    {
+                        saved = true;
+                        // Saved with its replay, as the spectator's results save it: a hash from its replay file.
+                        var live = scoreManager.Import(watched.DeepClone())!;
+                        Realm.Write(r => r.Find<ScoreInfo>(live.ID)!.Hash = @"watched-replay");
+                        return (ScoreInfo)live.PerformRead(s => s.Detach());
+                    }),
+                };
+            });
+
+            AddUntilStep("wait for load", () => downloadButton.IsLoaded);
+            checkState(DownloadState.NotDownloaded);
+            AddAssert("button is enabled", () => downloadButton.ChildrenOfType<DownloadButton>().First().Enabled.Value);
+
+            AddStep("click button", () =>
+            {
+                InputManager.MoveMouseTo(downloadButton);
+                InputManager.Click(MouseButton.Left);
+            });
+
+            AddUntilStep("saved", () => saved);
+            checkState(DownloadState.LocallyAvailable);
+            AddAssert("the score knows its saved copy", () => watched.ID != System.Guid.Empty);
+        }
+
+        [Test]
         public void TestLocallyAvailableWithoutReplay()
         {
             Live<ScoreInfo> imported = null;
