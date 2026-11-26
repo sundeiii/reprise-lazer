@@ -20,7 +20,7 @@ namespace osu.Game.Beatmaps.SongSwap
 {
     /// <summary>
     /// Reprise: a song's instrumental, its vocals taken out by UVR's MDX-Net "Inst HQ 3" model (run on the CPU with ONNX Runtime; fetched
-    /// from UVR's model repository the first time). Each song's is kept, so it's only made once (about a minute and a half for a song).
+    /// from UVR's model repository the first time). Each song's is kept, so it's only made once (it takes about as long as the song).
     /// </summary>
     public class SongSwapVocalRemoval
     {
