@@ -485,7 +485,31 @@ namespace osu.Game.Screens.Play
                 },
             };
 
+            // Reprise: osu!stable's countdown, under the objects and not dimmed, with its intro (OsuSetting.StableIntroSkip).
+            if (stableCountdown() is var (go, beat))
+                container.Add(new StableCountdownOverlay(go, beat) { Clock = DrawableRuleset.FrameStableClock, ProcessCustomClock = false });
+
             return container;
+        }
+
+        private (double Go, double Beat)? stableCountdownTiming;
+        private bool stableCountdownWorkedOut;
+
+        /// <summary>
+        /// Reprise: when osu!stable's countdown says "go" and how long its counts are, with its intro on and when stable would show one.
+        /// </summary>
+        private (double Go, double Beat)? stableCountdown()
+        {
+            if (!stableCountdownWorkedOut)
+            {
+                stableCountdownWorkedOut = true;
+                stableCountdownTiming = osuConfig.Get<bool>(OsuSetting.StableIntroSkip)
+                    ? StableCountdownOverlay.Timing(GameplayState.Beatmap, Beatmap.Value.Beatmap.Countdown, Beatmap.Value.Beatmap.CountdownOffset,
+                        Ruleset.Value.OnlineID)
+                    : null;
+            }
+
+            return stableCountdownTiming;
         }
 
         private Drawable createGameplayComponents() => new ScalingContainer(ScalingMode.Gameplay)
@@ -551,8 +575,8 @@ namespace osu.Game.Screens.Play
                         WarningArrowsPreempt = Ruleset.Value.OnlineID is 0 or 2
                             ? IBeatmapDifficultyInfo.DifficultyRange(GameplayState.Beatmap.Difficulty.ApproachRate, 1800, 1200, 450)
                             : null,
-                        // Before the first object too, when stable would show no countdown there.
-                        IntroArrowsBefore = Beatmap.Value.Beatmap.Countdown == CountdownType.None
+                        // Before the first object too, when there's no countdown there (stable's arrows and countdown never both show).
+                        IntroArrowsBefore = stableCountdown() == null && (osuConfig.Get<bool>(OsuSetting.StableIntroSkip) || Beatmap.Value.Beatmap.Countdown == CountdownType.None)
                             ? GameplayState.Beatmap.HitObjects.FirstOrDefault()?.StartTime
                             : null,
                     },
@@ -622,9 +646,12 @@ namespace osu.Game.Screens.Play
             double leadIn = Math.Max(Math.Max(playable.AudioLeadIn, -(GameplayState.Storyboard.EarliestEventTime ?? 0)), preempt - first);
             double start = Math.Min(0, -leadIn);
 
-            // Stable's skip point: 8 beats before the first object (4 when slower than 120 BPM) from the beat at the start, else 2 seconds.
+            // Stable's skip point: 6 counts before the countdown's "go" (just before its "ready"); without one, 8 beats before the first object
+            // (4 when slower than 120 BPM) from the beat at the start, else 2 seconds.
             double beat = playable.ControlPointInfo.TimingPointAt(start).BeatLength;
-            double boundary = beat > 0 ? first - beat * (beat < 500 ? 8 : 4) : first - 2000;
+            double boundary = stableCountdown() is var (go, count)
+                ? go - 6 * count
+                : beat > 0 ? first - beat * (beat < 500 ? 8 : 4) : first - 2000;
 
             // Stable offers it only for an intro longer than 1.2 seconds and the approach time.
             if (boundary - start <= 1200 + preempt)

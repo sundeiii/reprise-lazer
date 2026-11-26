@@ -727,7 +727,7 @@ namespace osu.Game.Configuration
         /// <summary>Reprise: osu!stable's in-game mod icons, with a legacy skin.</summary>
         StableGameplayMods,
 
-        /// <summary>Reprise: the intro skip offered and landing as osu!stable's (osu! and catch).</summary>
+        /// <summary>Reprise: osu!stable's countdown, and the intro skip offered and landing as stable's (osu! and catch).</summary>
         StableIntroSkip,
 
         /// <summary>Reprise: whether <see cref="StableLayouts"/> and <see cref="StableSounds"/> have been split into the settings above (once, on updating).</summary>

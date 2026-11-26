@@ -33,14 +33,55 @@ namespace osu.Game.Tests.Visual.Gameplay
             beatmap.ControlPointInfo.Add(0, new TimingControlPoint { BeatLength = 400 });
             beatmap.Difficulty.ApproachRate = 5;
             beatmap.HitObjects.Add(new HitCircle { StartTime = firstObjectStartTime });
+            beatmap.Countdown = countdown;
             return beatmap;
         }
+
+        private CountdownType countdown;
 
         [SetUpSteps]
         public override void SetUpSteps()
         {
             base.SetUpSteps();
             AddStep("stable intro skip", () => LocalConfig.SetValue(OsuSetting.StableIntroSkip, true));
+            AddStep("no countdown", () => countdown = CountdownType.None);
+        }
+
+        [Test]
+        public void TestCountdownTimingAsStables()
+        {
+            // 120 BPM from 0, the first object at 10000: stable's "go" at 9495 (its 5ms early start, on a whole beat), counts of 500ms.
+            AddAssert("120 BPM", () => StableCountdownOverlay.Timing(map(500, 10000), CountdownType.Normal, 0, 0), () => Is.EqualTo(((double, double)?)(9495, 500)));
+            // At 150 BPM, 9595 by 400ms.
+            AddAssert("150 BPM", () => StableCountdownOverlay.Timing(map(400, 10000), CountdownType.Normal, 0, 0), () => Is.EqualTo(((double, double)?)(9595, 400)));
+            // Faster than 180 BPM counts twice as long; double speed halves it again.
+            AddAssert("200 BPM", () => StableCountdownOverlay.Timing(map(300, 10000), CountdownType.Normal, 0, 0)?.Beat, () => Is.EqualTo(600));
+            AddAssert("200 BPM double", () => StableCountdownOverlay.Timing(map(300, 10000), CountdownType.DoubleSpeed, 0, 0)?.Beat, () => Is.EqualTo(300));
+            // None in taiko, none without one, none without room for it.
+            AddAssert("taiko", () => StableCountdownOverlay.Timing(map(500, 10000), CountdownType.Normal, 0, 1), () => Is.Null);
+            AddAssert("map without", () => StableCountdownOverlay.Timing(map(500, 10000), CountdownType.None, 0, 0), () => Is.Null);
+            AddAssert("no room", () => StableCountdownOverlay.Timing(map(500, 2000), CountdownType.Normal, 0, 0), () => Is.Null);
+        }
+
+        private static IBeatmap map(double beatLength, double first)
+        {
+            var beatmap = new Beatmap();
+            beatmap.ControlPointInfo.Add(0, new TimingControlPoint { BeatLength = beatLength });
+            beatmap.HitObjects.Add(new HitCircle { StartTime = first });
+            return beatmap;
+        }
+
+        [Test]
+        public void TestCountdownAndItsSkip()
+        {
+            AddStep("countdown", () => countdown = CountdownType.Normal);
+            AddStep("first object at 10000", () => firstObjectStartTime = 10000);
+            CreateTest();
+
+            AddAssert("countdown shown", () => Player.ChildrenOfType<StableCountdownOverlay>().Count(), () => Is.EqualTo(1));
+            skip();
+            // 6 counts before "go" (9595 - 6 x 400), where "ready" comes in.
+            AddUntilStep("at 7195", () => Player.GameplayClockContainer.CurrentTime, () => Is.EqualTo(7195).Within(100));
         }
 
         [Test]

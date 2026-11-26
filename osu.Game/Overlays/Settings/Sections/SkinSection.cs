@@ -99,9 +99,10 @@ namespace osu.Game.Overlays.Settings.Sections
                 stablePart(config, OsuSetting.StableGameplayMods, "osu!stable in-game mod icons", "With a legacy skin, the mods during gameplay show as osu!stable's icons."),
                 new SettingsItemV2(new FormCheckBox
                 {
-                    Caption = "osu!stable intro skip",
-                    HintText = "In osu! and osu!catch, skipping a map's intro lands where osu!stable's does (4 beats before the first object, 8 on fast maps), "
-                               + "and is only offered when osu!stable offers it.",
+                    Caption = "osu!stable intro: countdown and skip",
+                    HintText = "osu!stable's \"ready, 3, 2, 1, go\" on maps with a countdown (not in osu!taiko, as stable), and in osu! and osu!catch "
+                               + "the intro skip landing where osu!stable's does (before the countdown, else 4 beats before the first object, 8 on fast maps) "
+                               + "and only offered when osu!stable offers it.",
                     Current = config.GetBindable<bool>(OsuSetting.StableIntroSkip),
                 }),
                 new SettingsItemV2(new FormCheckBox
