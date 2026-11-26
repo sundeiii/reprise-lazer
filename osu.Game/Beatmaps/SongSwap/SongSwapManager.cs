@@ -62,6 +62,11 @@ namespace osu.Game.Beatmaps.SongSwap
             return memory.ToArray();
         }
 
+        /// <summary>Whether <paramref name="song"/> is <paramref name="map"/>'s own song (its set's, the same file).</summary>
+        public static bool IsOwnSong(BeatmapInfo map, BeatmapInfo song) =>
+            map.BeatmapSet != null && song.BeatmapSet?.ID == map.BeatmapSet.ID
+                                   && string.Equals(song.Metadata.AudioFile, map.Metadata.AudioFile, StringComparison.OrdinalIgnoreCase);
+
         /// <summary>A song made to swap in (see <see cref="Prepare"/>), ready to put in place (see <see cref="Apply"/>).</summary>
         public record PreparedSwap(BeatmapSetInfo Set, string AudioFile, byte[] Song, byte[]? Original, string SongName);
 
@@ -107,6 +112,18 @@ namespace osu.Game.Beatmaps.SongSwap
             if (string.IsNullOrEmpty(audioFile) || storagePath(mapSet, audioFile) == null)
                 throw new InvalidOperationException("The map has no song of its own to swap.");
 
+            // The map's own song, its vocals out: just its instrumental (the same length and timing, so nothing to line up).
+            if (IsOwnSong(map, song))
+            {
+                if (!instrumental)
+                    throw new InvalidOperationException("That's the map's own song already.");
+
+                byte[] own = VocalRemoval.Instrumental(readOriginalSong(mapSet, audioFile), progress);
+                byte[]? ownOriginal = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
+
+                return new PreparedSwap(mapSet, audioFile, own, ownOriginal, $@"{song.Metadata.Artist} - {song.Metadata.Title} (instrumental)");
+            }
+
             var (mapBeatmap, songData, plan) = makePlan(map, song, loop, instrumental, progress);
             double mapEnd = SongSwapping.EndTime(mapBeatmap);
             var options = new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap));
@@ -136,6 +153,20 @@ namespace osu.Game.Beatmaps.SongSwap
         public Preview RenderPreview(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true, bool instrumental = false,
                                      Action<double>? progress = null)
         {
+            if (IsOwnSong(map, song))
+            {
+                // Its instrumental as it is, at the map's best part.
+                var ownMap = beatmaps.GetWorkingBeatmap(map).Beatmap;
+                var ownSet = map.BeatmapSet ?? throw new InvalidOperationException("The map has no set.");
+                byte[] own = instrumental ? VocalRemoval.Instrumental(readOriginalSong(ownSet, map.Metadata.AudioFile), progress) : readOriginalSong(ownSet, map.Metadata.AudioFile);
+                double start = Math.Max(0, SongSwapTiming.HighlightTime(ownMap) - 2000);
+                var same = new SongSwapTiming.Plan(new[] { new SongSwapTiming.Section(0, SongSwapping.LengthOf(own), 0, 1) });
+                var ownTicks = ownMap.HitObjects.Where(h => !SongSwapping.IsSpinner(h)).Select(h => h.StartTime).ToList();
+                var ownOptions = new SongSwapRenderOptions(keepPitch, SongSwapping.FirstObjectTime(ownMap), start, start + 20000) { Ticks = ownTicks };
+
+                return new Preview(SongSwapping.Render(own, same, SongSwapping.EndTime(ownMap), ownOptions), SongSwapTiming.Anchor.FirstNotes, 0, 0);
+            }
+
             var (mapBeatmap, songData, plan) = makePlan(map, song, loop, instrumental, progress);
             double mapEnd = SongSwapping.EndTime(mapBeatmap);
             double from = Math.Max(0, SongSwapTiming.HighlightTime(mapBeatmap) - 2000);

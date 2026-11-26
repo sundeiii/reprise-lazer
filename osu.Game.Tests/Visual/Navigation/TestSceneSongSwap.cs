@@ -15,6 +15,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.SongSwap;
+using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterfaceV2;
@@ -89,6 +90,40 @@ namespace osu.Game.Tests.Visual.Navigation
             AddStep("restore", () => overlay.Restore(fresh().Beatmaps.First()));
             AddAssert("its own song back", songHash, () => Is.EqualTo(originalSongHash));
             AddAssert("not swapped", () => swaps.IsSwapped(fresh()), () => Is.False);
+        }
+
+        [Test]
+        public void TestOwnSongOfferedAsInstrumental()
+        {
+            AddStep("import a map", () => map = beatmaps.Import(new ImportTask(TestResources.GetTestBeatmapStream(), "map.osz")).GetResultSafely()!.Value.Detach());
+            AddStep("instrumental off", () => Game.LocalConfig.SetValue(OsuSetting.SongSwapInstrumental, false));
+            AddStep("open it for the map", () => overlay.ShowFor(map.Beatmaps.First()));
+            AddUntilStep("screen shown", () => overlay.ChildrenOfType<ScreenSongSwap>().SingleOrDefault()?.IsLoaded == true);
+            AddAssert("its own song not listed", () => !ownRowShown());
+
+            AddStep("instrumental on", () => Game.LocalConfig.SetValue(OsuSetting.SongSwapInstrumental, true));
+            AddUntilStep("its own song listed", ownRowShown);
+            AddAssert("it's the own song", () => SongSwapManager.IsOwnSong(map.Beatmaps.First(), map.Beatmaps.First()));
+
+            // Without the vocal removal model here: its own song as it is renders on the map unchanged (the instrumental's path).
+            AddAssert("previews as it is", () => swaps.RenderPreview(map.Beatmaps.First(), map.Beatmaps.First()).Song.Length, () => Is.GreaterThan(0));
+            AddAssert("swapping it for itself refused", () =>
+            {
+                try
+                {
+                    swaps.Prepare(map.Beatmaps.First(), map.Beatmaps.First());
+                    return false;
+                }
+                catch (InvalidOperationException)
+                {
+                    return true;
+                }
+            });
+
+            AddStep("instrumental off", () => Game.LocalConfig.SetValue(OsuSetting.SongSwapInstrumental, false));
+            AddUntilStep("not listed again", () => !ownRowShown());
+
+            bool ownRowShown() => overlay.ChildrenOfType<TruncatingSpriteText>().Any(t => t.Text.ToString().Contains("(this map's song)", StringComparison.Ordinal));
         }
 
         private RoundedButton button(string text) => overlay.ChildrenOfType<RoundedButton>().First(b => b.Text.ToString() == text);

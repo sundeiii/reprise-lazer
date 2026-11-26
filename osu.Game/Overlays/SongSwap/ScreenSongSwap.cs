@@ -96,14 +96,18 @@ namespace osu.Game.Overlays.SongSwap
 
         /// <summary>A song, represented by the longest visible difficulty using that audio file.</summary>
         /// <param name="Loops">Whether it's shorter than the map (once stretched), so it'd be looped.</param>
-        public record Candidate(BeatmapInfo Song, double Factor, double Stretch, bool Loops = false)
+        /// <param name="Own">Whether it's the map's own song (offered with its vocals out).</param>
+        public record Candidate(BeatmapInfo Song, double Factor, double Stretch, bool Loops = false, bool Own = false)
         {
-            public string Title => $@"{Song.Metadata.Artist} - {Song.Metadata.Title}";
+            public string Title => $@"{Song.Metadata.Artist} - {Song.Metadata.Title}{(Own ? " (this map's song)" : string.Empty)}";
 
             public string Detail
             {
                 get
                 {
+                    if (Own)
+                        return "Its own song with the vocals taken out: nothing else changes";
+
                     string pulse = Factor switch
                     {
                         4 => "Quarter-time match",
@@ -302,10 +306,15 @@ namespace osu.Game.Overlays.SongSwap
                 updateSelectionText();
             });
 
+            // The map's own song is offered (or not) with it.
             instrumental.BindValueChanged(_ =>
             {
                 StopPreview();
-                updateSelectionText();
+
+                if (picked.Value?.Own == true)
+                    picked.Value = null;
+
+                Refresh();
             });
 
             // Short songs are offered (to loop) or not.
@@ -320,7 +329,9 @@ namespace osu.Game.Overlays.SongSwap
         {
             string pitch = (keepPitch.Value ? "pitch kept" : "pitch follows its speed") + (instrumental.Value ? ", vocals out" : string.Empty);
 
-            selectionText.Text = picked.Value is Candidate candidate
+            selectionText.Text = picked.Value is Candidate { Own: true } own
+                ? $"{own.Title}\n" + (status ?? "Its instrumental in its place: the same song, on the map exactly as before.")
+                : picked.Value is Candidate candidate
                 ? $"{candidate.Title}  ·  {candidate.Speed}{(keepPitch.Value ? string.Empty : $" ({candidate.Pitch})")}\n"
                   + (status ?? $"Its best part lands on the map's, every beat on the map's beats, {pitch}{(candidate.Loops ? ", looped to the end" : string.Empty)}.")
                 : $"Automatic beat sync  ·  {pitch}\nPick a song. Its tempo adapts to this map, including BPM changes.";
@@ -380,7 +391,10 @@ namespace osu.Game.Overlays.SongSwap
             };
 
             string feel = Math.Abs(preview.Shift) >= 1 ? $", {Math.Abs(preview.Shift):0}ms {(preview.Shift > 0 ? "later" : "earlier")} to feel like the map's own song" : string.Empty;
-            updateSelectionText($"Previewing: {by}{(preview.Loops > 0 ? $", looped {preview.Loops}x" : string.Empty)}{feel}. Ticks are the map's notes.");
+            if (picked.Value?.Own == true)
+                updateSelectionText("Previewing its instrumental at the map's best part. Ticks are the map's notes.");
+            else
+                updateSelectionText($"Previewing: {by}{(preview.Loops > 0 ? $", looped {preview.Loops}x" : string.Empty)}{feel}. Ticks are the map's notes.");
 
             // The song playing faded out under the preview, and back in after it.
             mutedTrack = music.CurrentTrack;
@@ -476,6 +490,11 @@ namespace osu.Game.Overlays.SongSwap
             swappedText.Text = swappedWith != null ? $"It plays to {swappedWith} at the moment." : string.Empty;
 
             candidates = ReadCandidates(realm, map, loop.Value);
+
+            // Reprise: the map's own song first, to play it to its instrumental.
+            if (instrumental.Value && !string.IsNullOrEmpty(map.Metadata.AudioFile))
+                candidates = candidates.Prepend(new Candidate(map.Detach(), 1, 1, Own: true)).ToList();
+
             filter();
         }
 
