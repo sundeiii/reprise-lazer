@@ -863,6 +863,7 @@ namespace osu.Game
             {
                 Logger.Log("Too many unhandled exceptions, crashing out.");
                 RulesetStore?.TryDisableCustomRulesetsCausing(ex);
+                OnCrashing(ex);
                 return false;
             }
 
@@ -871,6 +872,13 @@ namespace osu.Game
             Task.Delay(1000).ContinueWith(_ => Interlocked.Increment(ref allowableExceptions));
 
             return true;
+        }
+
+        /// <summary>
+        /// Reprise: the game is about to close on <paramref name="exception"/> (it stopped ignoring unhandled exceptions).
+        /// </summary>
+        protected virtual void OnCrashing(Exception exception)
+        {
         }
 
         protected override void Dispose(bool isDisposing)

@@ -223,6 +223,8 @@ namespace osu.Game
 
         private SentryLogger sentryLogger;
 
+        private GameErrorReporter gameErrorReporter;
+
         public virtual StableStorage GetStorageForStableInstall() => null;
 
         private float toolbarOffset => (Toolbar?.Position.Y ?? 0) + (Toolbar?.DrawHeight ?? 0);
@@ -403,6 +405,7 @@ namespace osu.Game
         {
             base.SetupLogging(gameStorage, cacheStorage);
             sentryLogger = new SentryLogger(this, cacheStorage);
+            gameErrorReporter = new GameErrorReporter(this, gameStorage);
         }
 
         public override void SetHost(GameHost host)
@@ -1139,6 +1142,12 @@ namespace osu.Game
                 action(instance);
         }
 
+        protected override void OnCrashing(Exception exception)
+        {
+            base.OnCrashing(exception);
+            gameErrorReporter?.ReportCrash(exception);
+        }
+
         protected override void Dispose(bool isDisposing)
         {
             // Without this, tests may deadlock due to cancellation token not becoming cancelled before disposal.
@@ -1148,6 +1157,7 @@ namespace osu.Game
             base.Dispose(isDisposing);
 
             sentryLogger.Dispose();
+            gameErrorReporter?.Dispose();
 
             if (Host?.Window != null)
                 Host.Window.DragDrop -= onWindowDragDrop;
@@ -1178,6 +1188,9 @@ namespace osu.Game
             // in the cursor being shown for a few frames during the intro.
             // This prevents the cursor from showing until we have a screen with CursorVisible = true
             GlobalCursorDisplay.ShowCursor = menuScreen?.CursorVisible ?? false;
+
+            // Reprise: crashes a previous launch couldn't send.
+            gameErrorReporter?.SendPendingCrashes();
 
             // todo: all archive managers should be able to be looped here.
             SkinManager.PostNotification = n => Notifications.Post(n);
@@ -1809,7 +1822,8 @@ namespace osu.Game
             {
                 LocalisableString message;
 
-                if (entry.Exception != null && IsDeployedBuild)
+                // Reprise: "reported" only when it was (GameErrorReporter; Sentry only on osu!'s own servers).
+                if (entry.Exception != null && (gameErrorReporter?.Enabled == true || sentryLogger?.Enabled == true))
                     message = LocalisableString.Interpolate($"{entry.Message.Truncate(256)}\n\n{NotificationsStrings.ErrorAutomaticallyReported}");
                 else
                     message = entry.Message.Truncate(256);
