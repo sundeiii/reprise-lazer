@@ -233,7 +233,8 @@ namespace osu.Game.Screens.Play.HUD
                 // Stable's: the place, blank for the player's own when it isn't known (past the end of the online scores).
                 entry.Place.Value = entry.Score.Tracked ? entry.Score.Position.Value : entry.Score.Position.Value ?? i + 1;
 
-                var target = new Vector2(0, (top + spacing * slot) * scale);
+                // Stable's multiplayer layout (ScoreboardEntryExtended): each entry 32.4 to the right, its avatar in the room that leaves.
+                var target = new Vector2(Entry.AVATAR_OFFSET, (top + spacing * slot)) * scale;
 
                 // Stable's: others fainter further down the list; the player's own and their personal best as they are.
                 float alpha = !shown ? 0 : entry.Kind is EntryKind.Own or EntryKind.PersonalBest ? 1 : 0.8f - (float)i / sorted.Count * 0.3f;
@@ -329,9 +330,11 @@ namespace osu.Game.Screens.Play.HUD
 
         private partial class Entry : CompositeDrawable
         {
-            // Not stable's: the avatar, small beside the name, so the score row keeps stable's width.
-            private const float avatar_size = 14;
-            private const float text_x = 2 + avatar_size;
+            // Stable's multiplayer entries (ScoreboardEntryExtended): 32.4 to the right, the avatar at most 51 pixels (of 1024x768) across,
+            // centred 15.6 left of the entry and 12.51 down (on the card's middle).
+            public const float AVATAR_OFFSET = 32.4f;
+            private const float avatar_size = 51;
+            private static readonly Vector2 avatar_centre = new Vector2(-15.6f, 12.51f);
 
             // Stable's menu button background is made for a 699x103 template (its origin, 470 by 20, is in it); the classic skin's is
             // half that, so each is drawn as the template's size.
@@ -395,13 +398,13 @@ namespace osu.Game.Screens.Play.HUD
                         Colour = new Color4(255, 255, 255, 80),
                         FixedWidth = true,
                     },
-                    // Not stable's: the player's avatar at the left (theirs on the server, else their osu! one by name), the rest after it.
+                    // Stable's multiplayer avatar, for every entry here (theirs on the server, else their osu! one by name).
                     new Container
                     {
-                        Position = new Vector2(1, 0) * scale,
-                        Size = new Vector2(avatar_size) * scale,
-                        Masking = true,
-                        CornerRadius = 2 * scale,
+                        Position = avatar_centre * scale,
+                        Origin = Anchor.Centre,
+                        Size = new Vector2(avatar_size),
+                        BypassAutoSizeAxes = Axes.Both,
                         Child = new DelayedLoadWrapper(() => new DrawableAvatar(score.User) { RelativeSizeAxes = Axes.Both }, 0)
                         {
                             RelativeSizeAxes = Axes.Both,
@@ -410,10 +413,10 @@ namespace osu.Game.Screens.Play.HUD
                     // Stable's: 14, cut to 90 wide with "...".
                     name = new TruncatingSpriteText
                     {
-                        Position = new Vector2(text_x, -2) * scale,
+                        Position = new Vector2(0, -2) * scale,
                         Font = StableFont.Get(14),
                         Text = score.User.Username,
-                        MaxWidth = (90 - text_x) * scale,
+                        MaxWidth = 90 * scale,
                     },
                     // Stable's: the score at the left and the combo (light blue) at 82, in the skin's digits, 18 down.
                     scoreText = new LegacySpriteText(LegacyFont.ScoreEntry)
