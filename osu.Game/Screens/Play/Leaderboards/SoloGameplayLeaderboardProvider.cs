@@ -38,8 +38,14 @@ namespace osu.Game.Screens.Play.Leaderboards
 
             if (globalScores != null)
             {
+                var watched = gameplayState?.Score.ScoreInfo;
+
                 foreach (var topScore in globalScores.AllScores.OrderByTotalScore())
                 {
+                    // Watching a replay of a score on the board: it's shown once, as the one being played (as stable does).
+                    if (watched != null && isSameScore(topScore, watched))
+                        continue;
+
                     newScores.Add(new GameplayLeaderboardScore(topScore, false, GameplayLeaderboardScore.ComboDisplayMode.Highest));
                 }
             }
@@ -60,6 +66,9 @@ namespace osu.Game.Screens.Play.Leaderboards
             sort();
             Scheduler.AddDelayed(sort, 1000, true);
         }
+
+        private static bool isSameScore(ScoreInfo a, ScoreInfo b)
+            => (a.OnlineID > 0 && a.OnlineID == b.OnlineID) || (a.LegacyOnlineID > 0 && a.LegacyOnlineID == b.LegacyOnlineID);
 
         // logic shared with PlaylistsGameplayLeaderboardProvider
         private void sort()

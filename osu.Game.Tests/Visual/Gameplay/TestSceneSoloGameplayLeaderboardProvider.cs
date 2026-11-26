@@ -67,6 +67,49 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestWatchedReplayShownOnce()
+        {
+            SoloGameplayLeaderboardProvider provider = null!;
+
+            var leaderboardManager = new LeaderboardManager();
+            LoadComponent(leaderboardManager);
+            // A replay of the board's #1 (online id 1).
+            var gameplayState = TestGameplayState.Create(new OsuRuleset(), score: new Score { ScoreInfo = new ScoreInfo { OnlineID = 1 } });
+
+            AddStep("fetch global", () => leaderboardManager.FetchWithCriteria(new LeaderboardCriteria(Beatmap.Value.BeatmapInfo, Ruleset.Value, BeatmapLeaderboardScope.Global, null)));
+            AddStep("set scores", () =>
+            {
+                ((Bindable<LeaderboardScores?>)leaderboardManager.Scores).Value = LeaderboardScores.Success(
+                    Enumerable.Range(1, 5).Select(i => new ScoreInfo
+                    {
+                        OnlineID = i,
+                        TotalScore = 100_000 * (10 - i),
+                        Position = i,
+                    }).ToArray(),
+                    scoresRequested: 50,
+                    totalScores: 5,
+                    null
+                );
+            });
+            AddStep("create content", () => Child = new DependencyProvidingContainer
+            {
+                RelativeSizeAxes = Axes.Both,
+                CachedDependencies =
+                [
+                    (typeof(LeaderboardManager), leaderboardManager),
+                    (typeof(GameplayState), gameplayState)
+                ],
+                Children = new Drawable[]
+                {
+                    leaderboardManager,
+                    provider = new SoloGameplayLeaderboardProvider()
+                }
+            });
+            AddUntilStep("4 others and the replay", () => provider.Scores.Count, () => Is.EqualTo(5));
+            AddAssert("its own board score left out", () => provider.Scores.Count(s => !s.Tracked), () => Is.EqualTo(4));
+        }
+
+        [Test]
         public void TestFullGlobalLeaderboard()
         {
             SoloGameplayLeaderboardProvider provider = null!;
