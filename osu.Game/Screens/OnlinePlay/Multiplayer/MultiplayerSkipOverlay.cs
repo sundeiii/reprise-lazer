@@ -42,6 +42,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         {
         }
 
+        // Reprise: its own button, made once (its count and colour are bound to it).
+        protected override bool RebuildsForStableButton => false;
+
         protected override OsuClickableContainer CreateButton(IBindable<bool> inSkipPeriod) => skipButton = new Button
         {
             Anchor = Anchor.Centre,

@@ -3,9 +3,11 @@
 
 #nullable disable
 
+using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Testing;
 using osu.Framework.Timing;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Screens.Play;
@@ -156,6 +158,19 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddAssert("ensure button didn't disappear", () => skip.FadingContent.Alpha > 0);
             AddStep("button up", () => InputManager.ReleaseButton(MouseButton.Left));
             checkRequestCount(0);
+        }
+
+        [Test]
+        public void TestStableButtonAfterSkinChange()
+        {
+            createTest();
+            AddUntilStep("game's button", () => skip.ChildrenOfType<SkipOverlay.LegacyButton>().Any() == false && skip.IsLoaded);
+            AddStep("a legacy skin now", () => skip.StableButton = true);
+            AddUntilStep("osu!stable's button", () => skip.ChildrenOfType<SkipOverlay.LegacyButton>().Count() == 1);
+            AddStep("skip with it", () => skip.ChildrenOfType<SkipOverlay.LegacyButton>().Single().TriggerClick());
+            checkRequestCount(1);
+            AddStep("back to the game's skin", () => skip.StableButton = false);
+            AddUntilStep("game's button again", () => !skip.ChildrenOfType<SkipOverlay.LegacyButton>().Any());
         }
 
         private void checkRequestCount(int expected)

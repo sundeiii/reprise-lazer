@@ -97,6 +97,21 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestSkinChangedMidMap()
+        {
+            LegacySpriteText[] before = null!;
+
+            AddUntilStep("own score shown", () => entryAlpha("player7") == 1);
+            AddStep("note the digits", () => before = this.ChildrenOfType<LegacySpriteText>().ToArray());
+            AddStep("another skin", () => skins.CurrentSkinInfo.SetDefault());
+            AddStep("the classic skin again", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
+            AddUntilStep("entries made again", () => this.ChildrenOfType<LegacySpriteText>().Any() && !this.ChildrenOfType<LegacySpriteText>().Intersect(before).Any());
+            AddAssert("same scores", () => this.ChildrenOfType<LegacySpriteText>().Any(t => t.Text.ToString() == "1,000,000"));
+            AddUntilStep("own score still shown", () => entryAlpha("player7") == 1);
+            AddAssert("the two after the #1 still hidden", () => entryAlpha("player1") == 0 && entryAlpha("player2") == 0);
+        }
+
+        [Test]
         public void TestPassingOneAtATime()
         {
             AddUntilStep("own score shown", () => entryAlpha("player7") == 1);

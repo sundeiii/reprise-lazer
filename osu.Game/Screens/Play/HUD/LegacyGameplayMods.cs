@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Configuration;
@@ -103,14 +104,10 @@ namespace osu.Game.Screens.Play.HUD
         private void show()
         {
             int index = 0;
-            bool replay = isReplay();
+            replay = isReplay();
 
             foreach (var icon in LegacyRankingMods.CreateIcons(ruleset, mods, skin))
             {
-                icon.Anchor = Anchor.Centre;
-                icon.Origin = Anchor.Centre;
-                icon.Alpha = 0;
-
                 // Each in a holder centred where stable centres it, the icon centred in it so it pops in from its middle as in stable.
                 icons.Add(new Container
                 {
@@ -118,17 +115,61 @@ namespace osu.Game.Screens.Play.HUD
                     Origin = Anchor.Centre,
                     Size = icon.Size * icon.Scale,
                     Position = first_position - new Vector2(spacing * index, 0),
-                    Child = icon,
                 });
 
-                var appear = icon.Delay(500 * index).ScaleTo(2).ScaleTo(1, 400, Easing.Out).FadeIn(400, Easing.Out);
+                appearTimes.Add(Time.Current + 500 * index);
+                place(index, icon);
+
+                index++;
+            }
+        }
+
+        private bool replay;
+        private readonly List<double> appearTimes = new List<double>();
+
+        private void place(int index, Drawable icon)
+        {
+            icon.Anchor = Anchor.Centre;
+            icon.Origin = Anchor.Centre;
+            icon.Alpha = 0;
+
+            ((Container)icons.Children[index]).Child = icon;
+
+            // Stable's: one after another, half a second apart.
+            using (icon.BeginAbsoluteSequence(appearTimes[index]))
+            {
+                var appear = icon.ScaleTo(2).ScaleTo(1, 400, Easing.Out).FadeIn(400, Easing.Out);
 
                 // Stable's fade out over 5 seconds from when each appears, except when watching.
                 if (!replay)
                     appear.Then().FadeOut(5000 - 400);
-
-                index++;
             }
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            skin.SourceChanged += onSkinSourceChanged;
+        }
+
+        private void onSkinSourceChanged() => Schedule(() =>
+        {
+            if (!shown)
+                return;
+
+            // Reprise: the new skin's icons where the old ones were, as far into their fades.
+            var fresh = LegacyRankingMods.CreateIcons(ruleset, mods, skin).ToArray();
+
+            for (int i = 0; i < Math.Min(fresh.Length, icons.Count); i++)
+                place(i, fresh[i]);
+        });
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinSourceChanged;
         }
     }
 }

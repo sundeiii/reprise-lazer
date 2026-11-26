@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -142,6 +143,8 @@ namespace osu.Game.Screens.Play.HUD
         {
             base.LoadComplete();
 
+            skin.SourceChanged += onSkinSourceChanged;
+
             if (leaderboardProvider != null)
             {
                 scores.BindTo(leaderboardProvider.Scores);
@@ -169,21 +172,58 @@ namespace osu.Game.Screens.Play.HUD
                 entries.Remove(removed);
             }
 
-            foreach (var score in scores.Where(s => !entries.ContainsKey(s)))
+            foreach (var score in scores.Where(s => !entries.ContainsKey(s)).ToArray())
             {
-                // Stable's own (from its osu!ui.dll) for skins without one; the classic skin has none.
-                var entry = new Entry(score, skin.GetTexture(@"menu-button-background") ?? textures.Get(@"Stable/menu-button-background"), kindOf(score));
-                entries[score] = entry;
-                flow.Add(entry);
+                addEntry(score);
 
-                score.TotalScore.BindValueChanged(_ => entry.UpdateText(scoringMode.Value));
-                score.Combo.BindValueChanged(_ => entry.UpdateText(scoringMode.Value));
+                // The entry the score has now (they're made again when the skin changes).
+                score.TotalScore.BindValueChanged(_ => entries.GetValueOrDefault(score)?.UpdateText(scoringMode.Value));
+                score.Combo.BindValueChanged(_ => entries.GetValueOrDefault(score)?.UpdateText(scoringMode.Value));
                 score.DisplayOrder.BindValueChanged(_ => Scheduler.AddOnce(layout));
-                score.HasQuit.BindValueChanged(q => entry.SetQuit(q.NewValue), true);
-                entry.UpdateText(scoringMode.Value);
+                score.HasQuit.BindValueChanged(q => entries.GetValueOrDefault(score)?.SetQuit(q.NewValue));
             }
 
             Scheduler.AddOnce(layout);
+        }
+
+        private Entry addEntry(GameplayLeaderboardScore score)
+        {
+            // Stable's own (from its osu!ui.dll) for skins without one; the classic skin has none.
+            var entry = new Entry(score, skin.GetTexture(@"menu-button-background") ?? textures.Get(@"Stable/menu-button-background"), kindOf(score));
+            entries[score] = entry;
+            flow.Add(entry);
+
+            entry.UpdateText(scoringMode.Value);
+            entry.SetQuit(score.HasQuit.Value);
+            return entry;
+        }
+
+        private void onSkinSourceChanged() => Schedule(reskin);
+
+        /// <summary>
+        /// Reprise: the entries again with the new skin's images and digits, where the old ones were, when the skin changes mid-map.
+        /// </summary>
+        private void reskin()
+        {
+            foreach (var (score, old) in entries.ToArray())
+            {
+                flow.Remove(old, true);
+
+                var entry = addEntry(score);
+                entry.Position = old.Position;
+                entry.Alpha = old.Alpha;
+                entry.Place.Value = old.Place.Value;
+            }
+
+            Scheduler.AddOnce(layout);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (skin.IsNotNull())
+                skin.SourceChanged -= onSkinSourceChanged;
         }
 
         private EntryKind kindOf(GameplayLeaderboardScore score)

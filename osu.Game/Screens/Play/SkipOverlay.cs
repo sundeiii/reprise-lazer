@@ -20,6 +20,7 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
+using osu.Game.Audio;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Backgrounds;
 using osu.Game.Graphics.Containers;
@@ -64,9 +65,30 @@ namespace osu.Game.Screens.Play
 
         /// <summary>
         /// Reprise: osu!stable's skip button (<see cref="Configuration.OsuSetting.StableSkipButton"/>): the skin's play-skip in the bottom right
-        /// at 60% (all of it when hovered), shown the whole time it can be used, without the time bar. Set before it loads.
+        /// at 60% (all of it when hovered), shown the whole time it can be used, without the time bar. Changing it once loaded (the skin
+        /// changed mid-map) builds the overlay again.
         /// </summary>
-        public bool StableButton { get; set; }
+        public bool StableButton
+        {
+            get => stableButton;
+            set
+            {
+                if (stableButton == value)
+                    return;
+
+                stableButton = value;
+
+                if (IsLoaded)
+                    Schedule(rebuild);
+            }
+        }
+
+        private bool stableButton;
+
+        /// <summary>
+        /// Whether <see cref="StableButton"/> changing once loaded builds the overlay again (not for overlays with their own button).
+        /// </summary>
+        protected virtual bool RebuildsForStableButton => true;
 
         internal bool IsButtonVisible => FadingContent.State == Visibility.Visible && buttonContainer.State.Value == Visibility.Visible;
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true;
@@ -88,8 +110,16 @@ namespace osu.Game.Screens.Play
             Origin = Anchor.Centre;
         }
 
+        [Resolved(canBeNull: true)]
+        private OsuColour colours { get; set; }
+
         [BackgroundDependencyLoader(true)]
-        private void load(OsuColour colours)
+        private void load()
+        {
+            buildLayout();
+        }
+
+        private void buildLayout()
         {
             if (StableButton)
             {
@@ -99,13 +129,23 @@ namespace osu.Game.Screens.Play
                 Size = Vector2.One;
                 Anchor = Origin = Anchor.TopLeft;
             }
+            else if (IsLoaded)
+            {
+                // Back from osu!stable's button: the constructor's placement.
+                RelativePositionAxes = Axes.Both;
+                RelativeSizeAxes = Axes.X;
+                Position = new Vector2(0.5f, 0.7f);
+                Size = new Vector2(1, 100);
+                Anchor = Anchor.TopLeft;
+                Origin = Anchor.Centre;
+            }
 
             RemainingTimeBox = new Circle
             {
                 Height = 5,
                 Anchor = Anchor.BottomCentre,
                 Origin = Anchor.BottomCentre,
-                Colour = colours.Orange3,
+                Colour = colours?.Orange3 ?? Colour4.Orange,
                 RelativeSizeAxes = Axes.X
             };
 
@@ -186,13 +226,29 @@ namespace osu.Game.Screens.Play
                 return;
             }
 
-            button.Action = () =>
-            {
-                SkipCount++;
-                RequestSkip?.Invoke();
-            };
-
+            bindButton();
             FadingContent.TriggerShow();
+        }
+
+        private void bindButton() => button.Action = () =>
+        {
+            SkipCount++;
+            RequestSkip?.Invoke();
+        };
+
+        /// <summary>
+        /// Reprise: the overlay again with the other button (osu!stable's, or the game's), when the skin changed mid-map.
+        /// </summary>
+        private void rebuild()
+        {
+            if (LifetimeEnd <= Time.Current || !RebuildsForStableButton)
+                return;
+
+            buildLayout();
+            bindButton();
+
+            if (inSkipPeriod.Value)
+                FadingContent.TriggerShow();
         }
 
         /// <summary>
@@ -364,7 +420,7 @@ namespace osu.Game.Screens.Play
             private SkinManager skinManager { get; set; }
 
             private Container content;
-            private Sample sampleHit;
+            private ISample sampleHit;
 
             public LegacyButton()
             {
@@ -376,23 +432,49 @@ namespace osu.Game.Screens.Play
             [BackgroundDependencyLoader]
             private void load(AudioManager audio, TextureStore textures)
             {
-                sampleHit = audio.Samples.Get(@"UI/menuhit");
-
-                // osu!stable's own, for skins without one (the classic skin has none).
-                var stableTexture = textures.Get(@"Stable/play-skip@2x");
+                // Reprise: the skin's menuhit, as stable plays (there was no "UI/menuhit" to play); the classic skin's when it has
+                // none; looked up again when the skin changes mid-map.
+                this.textures = textures;
 
                 Add(content = new Container
                 {
                     AutoSizeAxes = Axes.Both,
                     Alpha = 0.6f,
-                    Child = skin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
-                            ?? skinManager.DefaultClassicSkin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
-                            ?? (stableTexture == null
-                                ? Empty()
-                                : new Sprite { Texture = stableTexture, Size = new Vector2(stableTexture.Width / 2f, stableTexture.Height / 2f) }),
                 });
 
+                updateSkin();
+                skin.SourceChanged += onSourceChanged;
+
                 Action += () => sampleHit?.Play();
+            }
+
+            private TextureStore textures;
+
+            private void onSourceChanged() => Schedule(updateSkin);
+
+            /// <summary>
+            /// The skin's play-skip and menuhit, again when the skin changes mid-map.
+            /// </summary>
+            private void updateSkin()
+            {
+                sampleHit = skin.GetSample(new SampleInfo(@"menuhit")) ?? skinManager.DefaultClassicSkin.GetSample(new SampleInfo(@"menuhit"));
+
+                // osu!stable's own, for skins without one (the classic skin has none).
+                var stableTexture = textures.Get(@"Stable/play-skip@2x");
+
+                content.Child = skin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
+                                ?? skinManager.DefaultClassicSkin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
+                                ?? (stableTexture == null
+                                    ? Empty()
+                                    : new Sprite { Texture = stableTexture, Size = new Vector2(stableTexture.Width / 2f, stableTexture.Height / 2f) });
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                if (skin != null)
+                    skin.SourceChanged -= onSourceChanged;
             }
 
             protected override bool OnHover(HoverEvent e)

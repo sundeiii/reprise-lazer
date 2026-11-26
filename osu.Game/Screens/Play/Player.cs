@@ -225,6 +225,15 @@ namespace osu.Game.Screens.Play
 
             PrepareReplay();
 
+            // Reprise: osu!stable's skip button, or the game's, again when the skin changes mid-map.
+            skinForSkip = skinManagerForSkip.CurrentSkin.GetBoundCopy();
+            skinForSkip.BindValueChanged(_ =>
+            {
+                bool stable = stableSkipButton();
+                SkipIntroOverlay.StableButton = stable;
+                skipOutroOverlay.StableButton = stable;
+            });
+
             ScoreProcessor.NewJudgement += _ => ScoreProcessor.PopulateScore(Score.ScoreInfo);
             ScoreProcessor.OnResetFromReplayFrame += () => ScoreProcessor.PopulateScore(Score.ScoreInfo);
 
@@ -632,6 +641,8 @@ namespace osu.Game.Screens.Play
 
         [Resolved]
         private SkinManager skinManagerForSkip { get; set; } = null!;
+
+        private IBindable<Skin> skinForSkip = null!;
 
         [Resolved]
         private OsuConfigManager osuConfig { get; set; } = null!;
