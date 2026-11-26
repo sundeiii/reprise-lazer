@@ -97,6 +97,26 @@ namespace osu.Game.Tests.Visual.Gameplay
         }
 
         [Test]
+        public void TestPassingOneAtATime()
+        {
+            AddUntilStep("own score shown", () => entryAlpha("player7") == 1);
+
+            // The player's own score passing the one above it, again and again up to first (to watch the entries swap).
+            AddRepeatStep("pass the next one up", () =>
+            {
+                var own = provider.Scores.Last();
+                long place = own.DisplayOrder.Value;
+                if (place <= 0)
+                    return;
+
+                var above = provider.Scores.Single(s => s != own && s.DisplayOrder.Value == place - 1);
+                above.DisplayOrder.Value = place;
+                own.DisplayOrder.Value = place - 1;
+            }, 7);
+            AddUntilStep("own score first", () => provider.Scores.Last().DisplayOrder.Value == 0);
+        }
+
+        [Test]
         public void TestInBreaksUnlessToggledOn()
         {
             AddStep("toggled off, playing", () =>

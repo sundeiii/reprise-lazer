@@ -276,7 +276,8 @@ namespace osu.Game.Screens.Play.HUD
         {
             entry.Flash();
 
-            var at = entry.Position + new Vector2(0, 15 * scale);
+            // Reprise: from the avatar's left edge (each entry is 32.4 to the right of it), so the explosion runs over the avatar too.
+            var at = entry.Position + new Vector2(Entry.AVATAR_LEFT, 15 * scale);
 
             addExplosion(@"scoreboard-explosion-2", at, 400, e => e.ScaleTo(new Vector2(16, 1.2f), 200, Easing.Out));
             addExplosion(@"scoreboard-explosion-1", at, 700, e => e.ScaleTo(new Vector2(1, 1.3f), 700, Easing.Out));
@@ -339,6 +340,9 @@ namespace osu.Game.Screens.Play.HUD
             public const float AVATAR_OFFSET = 32.4f;
             private const float avatar_size = 51;
             private static readonly Vector2 avatar_centre = new Vector2(-15.6f, 12.51f);
+
+            /// <summary>Where the avatar starts, left of the entry (the passing explosion starts there).</summary>
+            public static float AVATAR_LEFT => avatar_centre.X * scale - avatar_size / 2;
 
             // Stable's menu button background is made for a 699x103 template (its origin, 470 by 20, is in it); the classic skin's is
             // half that, so each is drawn as the template's size.
