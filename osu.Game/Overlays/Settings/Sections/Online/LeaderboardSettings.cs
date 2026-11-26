@@ -26,7 +26,7 @@ namespace osu.Game.Overlays.Settings.Sections.Online
         [Resolved]
         private LeaderboardManager? leaderboardManager { get; set; }
 
-        private readonly Bindable<bool> banchoScores = new Bindable<bool>(true);
+        private readonly Bindable<bool> banchoScores = new Bindable<bool>(false);
         private readonly IBindable<APIState> apiState = new Bindable<APIState>();
 
         private FormCheckBox checkBox = null!;
@@ -41,7 +41,7 @@ namespace osu.Game.Overlays.Settings.Sections.Online
                 {
                     Caption = "Show osu!'s own (bancho) scores",
                     HintText = "osu.ppy.sh's top scores mixed into the global leaderboards (and the normal plays on the Relax and Autopilot ones), "
-                               + "with your place among them. Saved to your account: the same as the website's setting and BanchoBot's !bancho.",
+                               + "with your place among them. Off by default; saved to your account: the same as the website's setting and BanchoBot's !bancho.",
                     Current = banchoScores,
                 })
                 {
