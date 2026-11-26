@@ -244,6 +244,7 @@ namespace osu.Game.Skinning.Mixer
                 files[file.Key] = file.Value;
 
             var ini = baseSkin.Ini;
+            var retimed = new List<(SkinMixerFileOption file, SkinMixerSource from)>();
 
             foreach (var option in options.SelectMany(o => o.Leaves).Where(o => o.Choice.Type != SkinMixerChoice.Kind.Keep))
             {
@@ -262,6 +263,9 @@ namespace osu.Game.Skinning.Mixer
                         {
                             foreach (var f in from.Files.Where(f => file.Matches(f.Key)))
                                 files[f.Key] = f.Value;
+
+                            if (file.IsAnimatable && TIMED_BY_FRAMERATE.Contains(file.FileName.TrimEnd('*')))
+                                retimed.Add((file, from));
                         }
 
                         break;
@@ -299,6 +303,10 @@ namespace osu.Game.Skinning.Mixer
                 }
             }
 
+            // Animations the skin's frame rate times, from a skin timed otherwise: their frames again, so they play as in that skin.
+            foreach (var (file, from) in retimed)
+                retime(file.FileName.TrimEnd('*'), from, ini, files);
+
             ini.Set(@"General", @"Name", name);
 
             // A base without a skin.ini (the game's classic skin) is read as the latest version; a skin.ini without one would be read as 1.0.
@@ -308,6 +316,83 @@ namespace osu.Game.Skinning.Mixer
             var result = files.ToDictionary(f => f.Key, f => f.Value(), StringComparer.OrdinalIgnoreCase);
             result[@"skin.ini"] = Encoding.UTF8.GetBytes(ini.ToString());
             return result;
+        }
+
+        /// <summary>
+        /// Animations the game plays at the skin's AnimationFramerate (all their frames over a second when it has none).
+        /// </summary>
+        public static readonly HashSet<string> TIMED_BY_FRAMERATE = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            @"followpoint", @"sliderfollowcircle", @"scorebar-colour", @"play-skip", @"menu-back",
+        };
+
+        // A frame's length (ms) in a skin: 1000 / its AnimationFramerate, else a second over all of the animation's frames.
+        private static double frameLength(SkinIni ini, int frames) =>
+            int.TryParse(ini.Get(@"General", @"AnimationFramerate"), out int rate) && rate > 0 ? 1000.0 / rate : 1000.0 / Math.Max(frames, 1);
+
+        // The animation's frames ("name-0", "name-1"... and their @2x), from the skin it came from, as many as the new skin's frame rate
+        // needs to play them as long as they played there, each frame repeated (or skipped) to fit.
+        private static void retime(string name, SkinMixerSource from, SkinIni ini, Dictionary<string, Func<byte[]>> files)
+        {
+            var frames = new SortedDictionary<int, List<(string suffix, Func<byte[]> data)>>();
+
+            foreach (var (path, data) in from.Files)
+            {
+                if (path.Contains('/'))
+                    continue;
+
+                string stem = Path.GetFileNameWithoutExtension(path);
+                string extension = Path.GetExtension(path);
+                bool hd = stem.EndsWith(@"@2x", StringComparison.OrdinalIgnoreCase);
+                if (hd)
+                    stem = stem[..^3];
+
+                if (!stem.StartsWith(name + "-", StringComparison.OrdinalIgnoreCase) || !int.TryParse(stem[(name.Length + 1)..], out int index) || index < 0)
+                    continue;
+
+                if (!frames.TryGetValue(index, out var list))
+                    frames[index] = list = new List<(string, Func<byte[]>)>();
+                list.Add(((hd ? @"@2x" : string.Empty) + extension.ToLowerInvariant(), data));
+            }
+
+            // The game takes frames from 0 up to the first missing one.
+            int count = 0;
+            while (frames.ContainsKey(count))
+                count++;
+
+            if (count < 2 || !int.TryParse(ini.Get(@"General", @"AnimationFramerate"), out int rate) || rate <= 0)
+                return;
+
+            double sourceLength = frameLength(from.Ini, count);
+            double targetLength = 1000.0 / rate;
+
+            if (Math.Abs(sourceLength - targetLength) < 0.5)
+                return;
+
+            int newCount = Math.Max(1, (int)Math.Round(count * sourceLength / targetLength));
+
+            foreach (string path in files.Keys.Where(k => isFrame(k, name)).ToArray())
+                files.Remove(path);
+
+            for (int i = 0; i < newCount; i++)
+            {
+                int source = Math.Min(count - 1, (int)Math.Floor((i + 0.5) * targetLength / sourceLength));
+
+                foreach (var (suffix, data) in frames[source])
+                    files[$@"{name}-{i}{suffix}"] = data;
+            }
+        }
+
+        private static bool isFrame(string path, string name)
+        {
+            if (path.Contains('/'))
+                return false;
+
+            string stem = Path.GetFileNameWithoutExtension(path);
+            if (stem.EndsWith(@"@2x", StringComparison.OrdinalIgnoreCase))
+                stem = stem[..^3];
+
+            return stem.StartsWith(name + "-", StringComparison.OrdinalIgnoreCase) && int.TryParse(stem[(name.Length + 1)..], out _);
         }
 
         /// <summary>
