@@ -585,10 +585,12 @@ namespace osu.Game.Screens.Play
                     SkipIntroOverlay = CreateSkipOverlay(introSkipOverlayTime()).With(o =>
                     {
                         o.RequestSkip = RequestIntroSkip;
+                        o.StableButton = stableSkipButton();
                     }),
                     skipOutroOverlay = new SkipOverlay(GameplayState.Storyboard.LatestEventTime ?? 0)
                     {
                         RequestSkip = () => progressToResults(false),
+                        StableButton = stableSkipButton(),
                         Alpha = 0
                     },
                     (skipBreakOverlay = skipBreaksEnabled.Value && AllowBreakSkipping
@@ -624,6 +626,12 @@ namespace osu.Game.Screens.Play
         }
 
         protected virtual SkipOverlay CreateSkipOverlay(double startTime) => new SkipOverlay(startTime);
+
+        // Reprise: osu!stable's skip button with a legacy skin (OsuSetting.StableSkipButton).
+        private bool stableSkipButton() => osuConfig.Get<bool>(OsuSetting.StableSkipButton) && skinManagerForSkip.CurrentSkin.Value is LegacySkin;
+
+        [Resolved]
+        private SkinManager skinManagerForSkip { get; set; } = null!;
 
         [Resolved]
         private OsuConfigManager osuConfig { get; set; } = null!;

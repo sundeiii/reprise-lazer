@@ -230,6 +230,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.StableGameplayLeaderboard, false);
             SetDefault(OsuSetting.StableGameplayMods, false);
             SetDefault(OsuSetting.StableIntroSkip, false);
+            SetDefault(OsuSetting.StableSkipButton, false);
             SetDefault(OsuSetting.StableSettingsSplit, false);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
@@ -729,6 +730,9 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: osu!stable's countdown, and the intro skip offered and landing as stable's (osu! and catch).</summary>
         StableIntroSkip,
+
+        /// <summary>Reprise: osu!stable's skip button (the skin's play-skip in the bottom right, always shown) with a legacy skin.</summary>
+        StableSkipButton,
 
         /// <summary>Reprise: whether <see cref="StableLayouts"/> and <see cref="StableSounds"/> have been split into the settings above (once, on updating).</summary>
         StableSettingsSplit,

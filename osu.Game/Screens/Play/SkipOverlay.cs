@@ -16,6 +16,7 @@ using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
@@ -25,6 +26,7 @@ using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Input.Bindings;
 using osu.Game.Screens.Ranking;
+using osu.Game.Skinning;
 using osuTK;
 using osuTK.Graphics;
 
@@ -60,6 +62,12 @@ namespace osu.Game.Screens.Play
         [Resolved]
         private IGameplayClock gameplayClock { get; set; }
 
+        /// <summary>
+        /// Reprise: osu!stable's skip button (<see cref="Configuration.OsuSetting.StableSkipButton"/>): the skin's play-skip in the bottom right
+        /// at 60% (all of it when hovered), shown the whole time it can be used, without the time bar. Set before it loads.
+        /// </summary>
+        public bool StableButton { get; set; }
+
         internal bool IsButtonVisible => FadingContent.State == Visibility.Visible && buttonContainer.State.Value == Visibility.Visible;
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true;
 
@@ -83,6 +91,43 @@ namespace osu.Game.Screens.Play
         [BackgroundDependencyLoader(true)]
         private void load(OsuColour colours)
         {
+            if (StableButton)
+            {
+                RelativePositionAxes = Axes.None;
+                RelativeSizeAxes = Axes.Both;
+                Position = Vector2.Zero;
+                Size = Vector2.One;
+                Anchor = Origin = Anchor.TopLeft;
+            }
+
+            RemainingTimeBox = new Circle
+            {
+                Height = 5,
+                Anchor = Anchor.BottomCentre,
+                Origin = Anchor.BottomCentre,
+                Colour = colours.Orange3,
+                RelativeSizeAxes = Axes.X
+            };
+
+            if (StableButton)
+            {
+                // Only the button itself takes the mouse (the rest of the screen is gameplay's), and there's no time bar.
+                InternalChild = buttonContainer = new ButtonContainer
+                {
+                    Anchor = Anchor.BottomRight,
+                    Origin = Anchor.BottomRight,
+                    AutoSizeAxes = Axes.Both,
+                    Child = FadingContent = new FadeContainer
+                    {
+                        AutoSizeAxes = Axes.Both,
+                        StayShown = true,
+                        Child = button = CreateButton(inSkipPeriod),
+                    }
+                };
+
+                return;
+            }
+
             InternalChild = buttonContainer = new ButtonContainer
             {
                 RelativeSizeAxes = Axes.Both,
@@ -92,14 +137,7 @@ namespace osu.Game.Screens.Play
                     Children = new Drawable[]
                     {
                         button = CreateButton(inSkipPeriod),
-                        RemainingTimeBox = new Circle
-                        {
-                            Height = 5,
-                            Anchor = Anchor.BottomCentre,
-                            Origin = Anchor.BottomCentre,
-                            Colour = colours.Orange3,
-                            RelativeSizeAxes = Axes.X
-                        }
+                        RemainingTimeBox,
                     }
                 }
             };
@@ -109,7 +147,9 @@ namespace osu.Game.Screens.Play
         /// Creates a skip button.
         /// </summary>
         /// <param name="inSkipPeriod">Whether the gameplay clock is currently at the skippable period.</param>
-        protected virtual OsuClickableContainer CreateButton(IBindable<bool> inSkipPeriod) => new Button
+        protected virtual OsuClickableContainer CreateButton(IBindable<bool> inSkipPeriod) => StableButton
+            ? new LegacyButton { Enabled = { BindTarget = inSkipPeriod } }
+            : new Button
         {
             Anchor = Anchor.Centre,
             Origin = Anchor.Centre,
@@ -189,6 +229,10 @@ namespace osu.Game.Screens.Play
 
             double progress = Math.Max(0, 1 - (gameplayClock.CurrentTime - displayTime) / (fadeOutBeginTime - displayTime));
 
+            // osu!stable's button: skin elements are made for 1024x768.
+            if (StableButton)
+                button.Scale = new Vector2(DrawHeight / 768f);
+
             RemainingTimeBox.Width = (float)Interpolation.DampContinuously(RemainingTimeBox.Width, progress, 40, Math.Abs(Time.Elapsed));
 
             inSkipPeriod.Value = progress > 0;
@@ -235,11 +279,14 @@ namespace osu.Game.Screens.Play
 
             public override bool IsPresent => true;
 
+            /// <summary>Never hidden for want of the mouse moving (osu!stable's skip button).</summary>
+            public bool StayShown { get; set; }
+
             public void TriggerShow()
             {
                 Show();
 
-                if (!IsHovered && !IsDragged)
+                if (!StayShown && !IsHovered && !IsDragged)
                     nextHideTime = Time.Current + 1000;
                 else
                     nextHideTime = null;
@@ -302,6 +349,64 @@ namespace osu.Game.Screens.Play
             public override void Hide() => State = Visibility.Hidden;
 
             public override void Show() => State = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// osu!stable's skip button: the skin's play-skip (animated; osu!stable's own when it has none) in the bottom right of the screen at
+        /// its 1024x768 size, 60% shown and all of it over 300ms when hovered, with menuhit when used.
+        /// </summary>
+        internal partial class LegacyButton : OsuClickableContainer
+        {
+            [Resolved]
+            private ISkinSource skin { get; set; }
+
+            [Resolved]
+            private SkinManager skinManager { get; set; }
+
+            private Container content;
+            private Sample sampleHit;
+
+            public LegacyButton()
+            {
+                Anchor = Anchor.BottomRight;
+                Origin = Anchor.BottomRight;
+                AutoSizeAxes = Axes.Both;
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(AudioManager audio, TextureStore textures)
+            {
+                sampleHit = audio.Samples.Get(@"UI/menuhit");
+
+                // osu!stable's own, for skins without one (the classic skin has none).
+                var stableTexture = textures.Get(@"Stable/play-skip@2x");
+
+                Add(content = new Container
+                {
+                    AutoSizeAxes = Axes.Both,
+                    Alpha = 0.6f,
+                    Child = skin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
+                            ?? skinManager.DefaultClassicSkin.GetAnimation(@"play-skip", true, true, applyConfigFrameRate: true)
+                            ?? (stableTexture == null
+                                ? Empty()
+                                : new Sprite { Texture = stableTexture, Size = new Vector2(stableTexture.Width / 2f, stableTexture.Height / 2f) }),
+                });
+
+                Action += () => sampleHit?.Play();
+            }
+
+            protected override bool OnHover(HoverEvent e)
+            {
+                if (Enabled.Value)
+                    content.FadeTo(1, 300);
+                return base.OnHover(e);
+            }
+
+            protected override void OnHoverLost(HoverLostEvent e)
+            {
+                content.FadeTo(0.6f, 300);
+                base.OnHoverLost(e);
+            }
         }
 
         internal partial class ButtonContainer : VisibilityContainer

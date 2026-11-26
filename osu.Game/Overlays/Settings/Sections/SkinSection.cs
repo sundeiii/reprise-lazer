@@ -105,6 +105,8 @@ namespace osu.Game.Overlays.Settings.Sections
                                + "and only offered when osu!stable offers it.",
                     Current = config.GetBindable<bool>(OsuSetting.StableIntroSkip),
                 }),
+                stablePart(config, OsuSetting.StableSkipButton, "osu!stable skip button",
+                    "With a legacy skin, the skip button is the skin's own in the bottom right, shown the whole time it can be used, as osu!stable's."),
                 new SettingsItemV2(new FormCheckBox
                 {
                     Caption = "Use the new results screen",
