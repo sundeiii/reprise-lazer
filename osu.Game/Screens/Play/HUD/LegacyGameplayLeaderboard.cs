@@ -14,6 +14,9 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Input;
+using osu.Game.Input.Bindings;
+using osu.Game.Online.API;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Screens.Play.Leaderboards;
 using osu.Game.Skinning;
@@ -24,26 +27,45 @@ using osuTK.Graphics;
 namespace osu.Game.Screens.Play.HUD
 {
     /// <summary>
-    /// osu!stable's in-game leaderboard (with a legacy skin and <see cref="OsuSetting.StableGameplayLeaderboard"/>, instead of the game's): at
-    /// the left from 202 down in its 640x480, 36 apart, at most 6 around the player's own score; each a dark box with the name, the
-    /// score and combo ("-" before any score, as stable's), and the position large and faint; the player's own blue, flashing with the
-    /// skin's explosions when passing someone. From the 2015 client.
+    /// osu!stable's in-game leaderboard (with a legacy skin and <see cref="OsuSetting.StableGameplayLeaderboard"/>, instead of the game's), as
+    /// stable's own Scoreboard and ScoreboardEntry draw it: at the left, 36 apart in its 640x480 (from 205 down in osu!, 264 in taiko, 135 in
+    /// mania, 100 in catch); the #1 always at the top, then up to 5 more ending with the player's own; each the skin's menu button background
+    /// tinted (others blue, the player's own white, their personal best orange, friends pink), the name, the score and highest combo in the
+    /// skin's scoreentry digits, and the position large and faint. It shows in breaks (and before and after the objects), and all the time when
+    /// the in-game leaderboard is toggled on (Tab); never once the play has passed or failed. Passing someone flashes the player's own entry
+    /// with the skin's explosions.
     /// </summary>
     public partial class LegacyGameplayLeaderboard : CompositeDrawable
     {
         // Stable's 640x480 values, 1.6 times in the 1024x768 layout.
         private const float scale = 1.6f;
-        private const float top = 202;
         private const float spacing = 36;
         private const int max_shown = 6;
 
         private const double move_duration = 600;
+
+        // Stable's: 0.08 of the way a 60th of a second.
+        private const float fade_per_second = 0.08f * 60;
+
+        /// <summary>
+        /// Whether the play is in a break (or before or after its objects): stable's leaderboard shows then.
+        /// </summary>
+        public IBindable<bool>? IsBreakTime { get; init; }
 
         [Resolved]
         private IGameplayLeaderboardProvider? leaderboardProvider { get; set; }
 
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
+
+        [Resolved]
+        private GameplayState? gameplayState { get; set; }
+
+        [Resolved]
+        private IAPIProvider api { get; set; } = null!;
+
+        [Resolved]
+        private RealmKeyBindingStore? keyBindingStore { get; set; }
 
         private readonly IBindableList<GameplayLeaderboardScore> scores = new BindableList<GameplayLeaderboardScore>();
         private readonly Dictionary<GameplayLeaderboardScore, Entry> entries = new Dictionary<GameplayLeaderboardScore, Entry>();
@@ -53,8 +75,12 @@ namespace osu.Game.Screens.Play.HUD
         private Bindable<ScoringMode> scoringMode = null!;
         private Bindable<float> uiScale = null!;
 
+        private Container content = null!;
         private Container<Entry> flow = null!;
         private Container explosions = null!;
+        private OsuSpriteText status = null!;
+
+        private float top = 205;
 
         public LegacyGameplayLeaderboard()
         {
@@ -78,14 +104,36 @@ namespace osu.Game.Screens.Play.HUD
             scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
             uiScale = config.GetBindable<float>(OsuSetting.UIScale);
 
+            // Stable's per ruleset (Ruleset.ScoreboardPosition).
+            top = gameplayState?.Ruleset.RulesetInfo.OnlineID switch
+            {
+                1 => 264,
+                2 => 100,
+                3 => 135,
+                _ => 205,
+            };
+
             InternalChild = new DrawSizePreservingFillContainer
             {
                 TargetDrawSize = new Vector2(1024, 768),
                 Strategy = DrawSizePreservationStrategy.Minimum,
-                Children = new Drawable[]
+                Child = content = new Container
                 {
-                    flow = new Container<Entry> { RelativeSizeAxes = Axes.Both },
-                    explosions = new Container { RelativeSizeAxes = Axes.Both },
+                    RelativeSizeAxes = Axes.Both,
+                    Alpha = 0,
+                    Children = new Drawable[]
+                    {
+                        flow = new Container<Entry> { RelativeSizeAxes = Axes.Both },
+                        explosions = new Container { RelativeSizeAxes = Axes.Both },
+                        // Stable's "Hit <Tab> to toggle scoreboard!" over it at the start, when it's toggled on: bold, fading over 6 seconds.
+                        status = new OsuSpriteText
+                        {
+                            Origin = Anchor.BottomLeft,
+                            Position = new Vector2(0, (top - 5) * scale),
+                            Font = StableFont.Get(12, bold: true),
+                            Alpha = 0,
+                        },
+                    },
                 },
             };
         }
@@ -105,6 +153,12 @@ namespace osu.Game.Screens.Play.HUD
                 foreach (var entry in entries.Values)
                     entry.UpdateText(scoringMode.Value);
             });
+
+            if (leaderboardVisible.Value && keyBindingStore != null)
+            {
+                status.Text = $"Hit <{keyBindingStore.GetBindingsStringFor(GlobalAction.ToggleInGameLeaderboard)}> to toggle scoreboard!";
+                status.FadeIn().FadeOut(6000);
+            }
         }
 
         private void rebuild()
@@ -118,17 +172,34 @@ namespace osu.Game.Screens.Play.HUD
             foreach (var score in scores.Where(s => !entries.ContainsKey(s)))
             {
                 // Stable's own (from its osu!ui.dll) for skins without one; the classic skin has none.
-                var entry = new Entry(score, skin.GetTexture(@"menu-button-background") ?? textures.Get(@"Stable/menu-button-background"));
+                var entry = new Entry(score, skin.GetTexture(@"menu-button-background") ?? textures.Get(@"Stable/menu-button-background"), kindOf(score));
                 entries[score] = entry;
                 flow.Add(entry);
 
                 score.TotalScore.BindValueChanged(_ => entry.UpdateText(scoringMode.Value));
                 score.Combo.BindValueChanged(_ => entry.UpdateText(scoringMode.Value));
                 score.DisplayOrder.BindValueChanged(_ => Scheduler.AddOnce(layout));
+                score.HasQuit.BindValueChanged(q => entry.SetQuit(q.NewValue), true);
                 entry.UpdateText(scoringMode.Value);
             }
 
             Scheduler.AddOnce(layout);
+        }
+
+        private EntryKind kindOf(GameplayLeaderboardScore score)
+        {
+            if (score.Tracked)
+                return EntryKind.Own;
+
+            int userId = score.User.OnlineID;
+
+            if (userId > 0 && userId == api.LocalUser.Value.OnlineID)
+                return EntryKind.PersonalBest;
+
+            if (userId > 0 && api.LocalUserState.Friends.Any(f => f.TargetID == userId))
+                return EntryKind.Friend;
+
+            return EntryKind.Other;
         }
 
         private bool laidOut;
@@ -143,22 +214,29 @@ namespace osu.Game.Screens.Play.HUD
         [Resolved]
         private TextureStore textures { get; set; } = null!;
 
-        // Stable's: sorted, at most 6 shown from the one that keeps the player's own the last of them.
+        // Stable's (Scoreboard.Reposition): the #1 always first; then, from the one that keeps the player's own the last of 6, as many as fit.
         private void layout()
         {
             var sorted = entries.Values.OrderBy(e => e.Score.DisplayOrder.Value).ToList();
             int own = sorted.FindIndex(e => e.Score.Tracked);
             int first = own > max_shown - 1 ? own - (max_shown - 1) : 0;
+            if (first > 0)
+                first++;
+
+            int slot = 0;
 
             for (int i = 0; i < sorted.Count; i++)
             {
                 var entry = sorted[i];
-                bool shown = i >= first && i - first < max_shown;
+                bool shown = (i >= first && slot < max_shown) || i == 0;
 
-                entry.Place.Value = entry.Score.Position.Value ?? i + 1;
+                // Stable's: the place, blank for the player's own when it isn't known (past the end of the online scores).
+                entry.Place.Value = entry.Score.Tracked ? entry.Score.Position.Value : entry.Score.Position.Value ?? i + 1;
 
-                var target = new Vector2(0, (top + spacing * (i - first)) * scale);
-                float alpha = !shown ? 0 : entry.Score.Tracked ? 1 : 0.8f - (float)i / sorted.Count * 0.3f;
+                var target = new Vector2(0, (top + spacing * slot) * scale);
+
+                // Stable's: others fainter further down the list; the player's own and their personal best as they are.
+                float alpha = !shown ? 0 : entry.Kind is EntryKind.Own or EntryKind.PersonalBest ? 1 : 0.8f - (float)i / sorted.Count * 0.3f;
 
                 if (!laidOut)
                 {
@@ -167,15 +245,16 @@ namespace osu.Game.Screens.Play.HUD
                 }
                 else
                 {
-                    entry.MoveTo(target, move_duration, Easing.OutQuint);
-                    entry.FadeTo(alpha, move_duration, Easing.OutQuint);
+                    entry.MoveTo(target, move_duration, Easing.Out);
+                    entry.FadeTo(alpha, move_duration, Easing.Out);
                 }
+
+                if (shown)
+                    slot++;
             }
 
             if (own >= 0)
             {
-                sorted[own].SetOwnColour(own == 0);
-
                 // Stable's: passing someone flashes the player's own entry (back to its colour) and its explosions.
                 if (laidOut && lastOwnIndex >= 0 && own < lastOwnIndex)
                     explode(sorted[own]);
@@ -221,58 +300,105 @@ namespace osu.Game.Screens.Play.HUD
             explosion.FadeOut(fade).Expire();
         }
 
+        /// <summary>Whether stable would show it now (breaks, or toggled on; never after the play passed or failed).</summary>
+        public bool ShouldShow =>
+            gameplayState?.HasPassed != true && gameplayState?.HasFailed != true
+                                             && (leaderboardVisible.Value || IsBreakTime?.Value != false);
+
         protected override void Update()
         {
             base.Update();
 
-            Alpha = stableLayouts.Value && skinManager.CurrentSkin.Value is LegacySkin && leaderboardVisible.Value ? 1 : 0;
+            Alpha = stableLayouts.Value && skinManager.CurrentSkin.Value is LegacySkin ? 1 : 0;
+
+            // Stable's: in and out at the same pace, not eased.
+            float step = (float)(Time.Elapsed / 1000) * fade_per_second;
+            content.Alpha = Math.Clamp(content.Alpha + (ShouldShow ? step : -step), 0, 1);
 
             // With the HUD, in stable's 16:9 area (the skin's leaderboard panel is there).
             StableHudArea.Apply(this, true, uiScale.Value);
         }
 
+        private enum EntryKind
+        {
+            Other,
+            Own,
+            PersonalBest,
+            Friend,
+        }
+
         private partial class Entry : CompositeDrawable
         {
-            private const float avatar_size = 25;
-            private const float text_x = 4 + avatar_size;
+            // Not stable's: the avatar, small beside the name, so the score row keeps stable's width.
+            private const float avatar_size = 14;
+            private const float text_x = 2 + avatar_size;
+
+            // Stable's menu button background is made for a 699x103 template (its origin, 470 by 20, is in it); the classic skin's is
+            // half that, so each is drawn as the template's size.
+            private static readonly Vector2 template_size = new Vector2(699, 103);
+
+            // Stable's ScoreboardEntry: the right end of the name, score and combo, and of the position.
+            private const float right = 82;
 
             public readonly GameplayLeaderboardScore Score;
-            public readonly Bindable<int> Place = new Bindable<int>();
+            public readonly EntryKind Kind;
+            public readonly Bindable<int?> Place = new Bindable<int?>();
 
             private readonly TruncatingSpriteText name;
-            private readonly OsuSpriteText details;
-            private readonly OsuSpriteText rank;
+            private readonly LegacySpriteText scoreText;
+            private readonly LegacySpriteText comboText;
+            private readonly LegacySpriteText rank;
 
             private readonly Drawable background;
+            private readonly Color4 colour;
 
-            public Entry(GameplayLeaderboardScore score, Texture? buttonBackground)
+            public Entry(GameplayLeaderboardScore score, Texture? buttonBackground, EntryKind kind)
             {
                 Score = score;
+                Kind = kind;
                 AutoSizeAxes = Axes.Both;
+
+                // Stable's colours (Scoreboard.Add, SetTrackingEntry, Player.InitializeOnlineData).
+                colour = kind switch
+                {
+                    EntryKind.Own => new Color4(250, 250, 250, 100),
+                    EntryKind.PersonalBest => new Color4(255, 69, 0, 150),
+                    EntryKind.Friend => new Color4(255, 97, 175, 180),
+                    _ => new Color4(31, 115, 153, 150),
+                };
 
                 InternalChildren = new Drawable[]
                 {
-                    // Stable's: the skin's menu button background at 0.6, from 460 across and 20 down in it (its right end, the
-                    // width of the name), darkened (black, 100 of 255); the player's own blue.
+                    // Stable's: the skin's menu button background at 0.62, from 470 across and 20 down in it (its right end, the width of
+                    // the name), tinted.
                     background = buttonBackground != null
                         ? new Sprite
                         {
                             Texture = buttonBackground,
-                            Size = buttonBackground.DisplaySize,
-                            OriginPosition = new Vector2(460, 20),
-                            Scale = new Vector2(0.6f),
-                            Colour = new Color4(0, 0, 0, 100),
+                            Size = new Vector2(template_size.X, template_size.X * buttonBackground.DisplayHeight / buttonBackground.DisplayWidth),
+                            OriginPosition = new Vector2(470, 20 * template_size.X * buttonBackground.DisplayHeight / buttonBackground.DisplayWidth / template_size.Y),
+                            Scale = new Vector2(0.62f),
+                            Colour = colour,
                             BypassAutoSizeAxes = Axes.Both,
                         }
                         : new Box
                         {
                             Size = new Vector2(84, 29) * scale,
-                            Colour = new Color4(0, 0, 0, 100),
+                            Colour = colour,
                         },
+                    // Stable's at 82 (right-aligned), in the skin's digits, 2.2 times and faint, behind the text.
+                    rank = new LegacySpriteText(LegacyFont.ScoreEntry)
+                    {
+                        Position = new Vector2(right, -2) * scale,
+                        Origin = Anchor.TopRight,
+                        Scale = new Vector2(2.2f),
+                        Colour = new Color4(255, 255, 255, 80),
+                        FixedWidth = true,
+                    },
                     // Not stable's: the player's avatar at the left (theirs on the server, else their osu! one by name), the rest after it.
                     new Container
                     {
-                        Position = new Vector2(2, 2) * scale,
+                        Position = new Vector2(1, 0) * scale,
                         Size = new Vector2(avatar_size) * scale,
                         Masking = true,
                         CornerRadius = 2 * scale,
@@ -281,41 +407,54 @@ namespace osu.Game.Screens.Play.HUD
                             RelativeSizeAxes = Axes.Both,
                         },
                     },
-                    // Stable's: cut to 90 wide with "...".
+                    // Stable's: 14, cut to 90 wide with "...".
                     name = new TruncatingSpriteText
                     {
-                        Position = new Vector2(text_x, 1) * scale,
+                        Position = new Vector2(text_x, -2) * scale,
                         Font = StableFont.Get(14),
                         Text = score.User.Username,
                         MaxWidth = (90 - text_x) * scale,
                     },
-                    details = new OsuSpriteText
+                    // Stable's: the score at the left and the combo (light blue) at 82, in the skin's digits, 18 down.
+                    scoreText = new LegacySpriteText(LegacyFont.ScoreEntry)
                     {
-                        Position = new Vector2(text_x, 15) * scale,
-                        Font = StableFont.Get(10),
+                        Position = new Vector2(2, 18) * scale,
+                        FixedWidth = true,
                     },
-                    // Stable's at 90, whose text ends about 84.5 in (inside skins' panels): the glyph's end there.
-                    rank = new OsuSpriteText
+                    comboText = new LegacySpriteText(LegacyFont.ScoreEntry)
                     {
-                        Position = new Vector2(84.5f, 0) * scale,
+                        Position = new Vector2(right, 18) * scale,
                         Origin = Anchor.TopRight,
-                        Font = StableFont.Get(30),
-                        Colour = new Color4(255, 255, 255, 120),
+                        Colour = new Color4(153, 251, 255, 255),
+                        FixedWidth = true,
                     },
                 };
 
-                Place.BindValueChanged(p => rank.Text = p.NewValue > 0 ? p.NewValue.ToString(CultureInfo.InvariantCulture) : "--", true);
+                Place.BindValueChanged(p => rank.Text = p.NewValue > 0 ? p.NewValue.Value.ToString(CultureInfo.InvariantCulture) : string.Empty, true);
             }
 
-            public void SetOwnColour(bool first) =>
-                background.Colour = first ? new Color4(97, 190, 255, 150) : new Color4(31, 115, 153, 150);
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                // Stable's overlaps: 2.5 between the score's and combo's digits, 3 between the position's.
+                scoreText.Spacing = comboText.Spacing = new Vector2(-2.5f, 0);
+                rank.Spacing = new Vector2(-3, 0);
+            }
 
             public void Flash() => background.FlashColour(Color4.White, 200);
+
+            // Stable's: a player who isn't passing (in multiplayer: one who quit) has their name in red.
+            public void SetQuit(bool quit) => name.FadeColour(quit ? new Color4(236, 39, 81, 255) : Color4.White, 150);
 
             public void UpdateText(ScoringMode mode)
             {
                 long total = Score.GetDisplayScore(mode);
-                details.Text = string.Create(CultureInfo.InvariantCulture, $"{(total > 0 ? total.ToString("0,0", CultureInfo.InvariantCulture) : "-")} ({Score.Combo.Value}x)");
+                int combo = Score.Combo.Value;
+
+                // Stable's: "-" before any score, and the combo as "1,234x" (nothing at 0).
+                scoreText.Text = total > 0 ? total.ToString("#,#", CultureInfo.InvariantCulture) : "-";
+                comboText.Text = combo > 0 ? combo.ToString("#,#", CultureInfo.InvariantCulture) + "x" : string.Empty;
             }
         }
     }

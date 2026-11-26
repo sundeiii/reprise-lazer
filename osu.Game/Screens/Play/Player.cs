@@ -538,7 +538,7 @@ namespace osu.Game.Screens.Play
                         ProcessCustomClock = false,
                         BreakTracker = breakTracker,
                     }),
-                    new LegacyGameplayLeaderboard(),
+                    new LegacyGameplayLeaderboard { IsBreakTime = breakTracker.IsBreakTime },
                     new LegacyGameplayMods(Ruleset.Value, GameplayState.Mods, () => DrawableRuleset.HasReplayLoaded.Value),
                     new SectionPassFailOverlay(Beatmap.Value.Beatmap.Breaks, HealthProcessor)
                     {

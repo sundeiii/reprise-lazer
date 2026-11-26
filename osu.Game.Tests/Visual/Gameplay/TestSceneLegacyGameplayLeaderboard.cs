@@ -7,6 +7,7 @@ using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
@@ -19,7 +20,7 @@ using osu.Game.Skinning;
 namespace osu.Game.Tests.Visual.Gameplay
 {
     /// <summary>
-    /// osu!stable's in-game leaderboard: 8 scores, the player's own last, so the 6 ending with it are shown.
+    /// osu!stable's in-game leaderboard: 8 scores, the player's own last, so the #1 and the 5 ending with it are shown.
     /// </summary>
     public partial class TestSceneLegacyGameplayLeaderboard : OsuTestScene
     {
@@ -59,15 +60,19 @@ namespace osu.Game.Tests.Visual.Gameplay
                 {
                     RelativeSizeAxes = Axes.Both,
                     CachedDependencies = new (Type, object)[] { (typeof(IGameplayLeaderboardProvider), provider) },
-                    Child = new LegacyGameplayLeaderboard(),
+                    Child = new LegacyGameplayLeaderboard { IsBreakTime = breakTime },
                 };
             });
         }
+
+        private readonly BindableBool breakTime = new BindableBool(true);
 
         [TearDownSteps]
         public void TearDownSteps() => AddStep("reset", () =>
         {
             config.SetValue(OsuSetting.StableGameplayLeaderboard, false);
+            config.SetValue(OsuSetting.GameplayLeaderboard, true);
+            breakTime.Value = true;
             skins.CurrentSkinInfo.SetDefault();
         });
 
@@ -75,19 +80,44 @@ namespace osu.Game.Tests.Visual.Gameplay
         public void TestSixAroundTheOwnScore()
         {
             AddUntilStep("own score shown", () => entryAlpha("player7") == 1);
-            AddAssert("the first two hidden", () => entryAlpha("player0") == 0 && entryAlpha("player1") == 0);
-            AddAssert("the others fainter", () => entryAlpha("player2") > 0 && entryAlpha("player2") < 1);
+            AddAssert("the #1 kept at the top", () => entryAlpha("player0") > 0);
+            AddAssert("the two after it hidden", () => entryAlpha("player1") == 0 && entryAlpha("player2") == 0);
+            AddAssert("the others fainter", () => entryAlpha("player3") > 0 && entryAlpha("player3") < 1);
             AddUntilStep("an avatar each shown", () => this.ChildrenOfType<osu.Game.Users.Drawables.DrawableAvatar>().Count() >= 6);
-            AddAssert("its place written", () => this.ChildrenOfType<OsuSpriteText>().Any(t => t.Text.ToString() == "8"));
-            AddAssert("score and combo", () => this.ChildrenOfType<OsuSpriteText>().Any(t => t.Text.ToString() == "1,000,000 (500x)"));
+            AddAssert("the #1's place written", () => this.ChildrenOfType<LegacySpriteText>().Any(t => t.Text.ToString() == "1"));
+            AddAssert("score and combo", () => this.ChildrenOfType<LegacySpriteText>().Any(t => t.Text.ToString() == "1,000,000")
+                                               && this.ChildrenOfType<LegacySpriteText>().Any(t => t.Text.ToString() == "500x"));
 
             AddStep("own score first", () => provider.Scores.Last().DisplayOrder.Value = -1);
             AddUntilStep("the first ones shown again", () => entryAlpha("player0") > 0);
             // Counted, not looked for: they're gone within 0.7s, which a slow CI runner's next step can come after.
             AddUntilStep("passing explodes", () => this.ChildrenOfType<LegacyGameplayLeaderboard>().Single().ExplosionsShown, () => Is.EqualTo(2));
-            AddUntilStep("own entry light blue when first", () => this.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == "player7").Parent!
-                                                                   .ChildrenOfType<osu.Framework.Graphics.Sprites.Sprite>().First().Colour.TopLeft.Linear.B > 0.5f);
+            AddUntilStep("own entry white, as stable's", () => this.ChildrenOfType<OsuSpriteText>().Single(t => t.Text.ToString() == "player7").Parent!
+                                                                  .ChildrenOfType<osu.Framework.Graphics.Sprites.Sprite>().First().Colour.TopLeft.Linear.R > 0.9f);
         }
+
+        [Test]
+        public void TestInBreaksUnlessToggledOn()
+        {
+            AddStep("toggled off, playing", () =>
+            {
+                config.SetValue(OsuSetting.GameplayLeaderboard, false);
+                breakTime.Value = false;
+            });
+            AddUntilStep("faded out", () => contentAlpha, () => Is.EqualTo(0));
+            AddStep("a break", () => breakTime.Value = true);
+            AddUntilStep("shown in it", () => contentAlpha, () => Is.EqualTo(1));
+            AddStep("playing, toggled on", () =>
+            {
+                breakTime.Value = false;
+                config.SetValue(OsuSetting.GameplayLeaderboard, true);
+            });
+            AddWaitStep("a while", 5);
+            AddAssert("still shown", () => contentAlpha, () => Is.EqualTo(1));
+        }
+
+        private float contentAlpha => this.ChildrenOfType<LegacyGameplayLeaderboard>().Single().ChildrenOfType<Container>()
+                                          .First(c => c.Children.Count == 3).Alpha;
 
         [Test]
         public void TestOnlyWithStableLayouts()
