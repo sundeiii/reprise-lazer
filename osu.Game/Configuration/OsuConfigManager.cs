@@ -229,6 +229,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.StablePauseMenu, false);
             SetDefault(OsuSetting.StableGameplayLeaderboard, false);
             SetDefault(OsuSetting.StableGameplayMods, false);
+            SetDefault(OsuSetting.StableIntroSkip, false);
             SetDefault(OsuSetting.StableSettingsSplit, false);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
@@ -725,6 +726,9 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: osu!stable's in-game mod icons, with a legacy skin.</summary>
         StableGameplayMods,
+
+        /// <summary>Reprise: the intro skip offered and landing as osu!stable's (osu! and catch).</summary>
+        StableIntroSkip,
 
         /// <summary>Reprise: whether <see cref="StableLayouts"/> and <see cref="StableSounds"/> have been split into the settings above (once, on updating).</summary>
         StableSettingsSplit,

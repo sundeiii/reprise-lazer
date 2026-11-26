@@ -99,6 +99,13 @@ namespace osu.Game.Overlays.Settings.Sections
                 stablePart(config, OsuSetting.StableGameplayMods, "osu!stable in-game mod icons", "With a legacy skin, the mods during gameplay show as osu!stable's icons."),
                 new SettingsItemV2(new FormCheckBox
                 {
+                    Caption = "osu!stable intro skip",
+                    HintText = "In osu! and osu!catch, skipping a map's intro lands where osu!stable's does (4 beats before the first object, 8 on fast maps), "
+                               + "and is only offered when osu!stable offers it.",
+                    Current = config.GetBindable<bool>(OsuSetting.StableIntroSkip),
+                }),
+                new SettingsItemV2(new FormCheckBox
+                {
                     Caption = "Use the new results screen",
                     HintText = "The redesigned results screen (osu!'s design team's exploration). osu!stable's layout comes first when that's on with a legacy skin.",
                     Current = config.GetBindable<bool>(OsuSetting.NewResultsScreen),

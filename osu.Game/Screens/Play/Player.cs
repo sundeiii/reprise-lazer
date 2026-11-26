@@ -558,7 +558,7 @@ namespace osu.Game.Screens.Play
                     },
                     // display the cursor above some HUD elements.
                     DrawableRuleset.Cursor?.CreateProxy() ?? new Container(),
-                    SkipIntroOverlay = CreateSkipOverlay(DrawableRuleset.GameplayStartTime).With(o =>
+                    SkipIntroOverlay = CreateSkipOverlay(introSkipOverlayTime()).With(o =>
                     {
                         o.RequestSkip = RequestIntroSkip;
                     }),
@@ -600,6 +600,42 @@ namespace osu.Game.Screens.Play
         }
 
         protected virtual SkipOverlay CreateSkipOverlay(double startTime) => new SkipOverlay(startTime);
+
+        [Resolved]
+        private OsuConfigManager osuConfig { get; set; } = null!;
+
+        /// <summary>
+        /// Reprise: the time the intro skip overlay counts to, which is osu!stable's skip point (plus the overlay's lead) when its intro
+        /// skip is on (<see cref="OsuSetting.StableIntroSkip"/>, osu! and catch), and sets where the skip lands.
+        /// </summary>
+        private double introSkipOverlayTime()
+        {
+            if (!Configuration.AllowSkipping || !osuConfig.Get<bool>(OsuSetting.StableIntroSkip) || Ruleset.Value.OnlineID is not (0 or 2)
+                || GameplayClockContainer is not MasterGameplayClockContainer master || GameplayState.Beatmap.HitObjects.Count == 0)
+                return DrawableRuleset.GameplayStartTime;
+
+            var playable = GameplayState.Beatmap;
+            double first = playable.HitObjects.First().StartTime;
+            double preempt = IBeatmapDifficultyInfo.DifficultyRange(playable.Difficulty.ApproachRate, 1800, 1200, 450);
+
+            // Stable's lead-in: the map's, the storyboard's earliest event, or enough for the first object to come in.
+            double leadIn = Math.Max(Math.Max(playable.AudioLeadIn, -(GameplayState.Storyboard.EarliestEventTime ?? 0)), preempt - first);
+            double start = Math.Min(0, -leadIn);
+
+            // Stable's skip point: 8 beats before the first object (4 when slower than 120 BPM) from the beat at the start, else 2 seconds.
+            double beat = playable.ControlPointInfo.TimingPointAt(start).BeatLength;
+            double boundary = beat > 0 ? first - beat * (beat < 500 ? 8 : 4) : first - 2000;
+
+            // Stable offers it only for an intro longer than 1.2 seconds and the approach time.
+            if (boundary - start <= 1200 + preempt)
+            {
+                master.SkipTarget = double.NegativeInfinity;
+                return master.StartTime;
+            }
+
+            master.SkipTarget = boundary;
+            return boundary + MasterGameplayClockContainer.MINIMUM_SKIP_TIME;
+        }
 
         private void onBreakTimeChanged(ValueChangedEvent<bool> isBreakTime)
         {
