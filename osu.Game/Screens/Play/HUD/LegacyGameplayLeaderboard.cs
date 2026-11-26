@@ -414,13 +414,14 @@ namespace osu.Game.Screens.Play.HUD
                             RelativeSizeAxes = Axes.Both,
                         },
                     },
-                    // Stable's: 14, cut to 90 wide with "...".
+                    // Stable's: 14, cut to 90 wide with "...". Reprise: from 2 across, as the score below it, so the avatar (its right edge
+                    // just past 0) leaves the same gap before both (at 0 the name touched it).
                     name = new TruncatingSpriteText
                     {
-                        Position = new Vector2(0, -2) * scale,
+                        Position = new Vector2(2, -2) * scale,
                         Font = StableFont.Get(14),
                         Text = score.User.Username,
-                        MaxWidth = 90 * scale,
+                        MaxWidth = 88 * scale,
                     },
                     // Stable's: the score at the left and the combo (light blue) at 82, in the skin's digits, 18 down.
                     scoreText = new LegacySpriteText(LegacyFont.ScoreEntry)
