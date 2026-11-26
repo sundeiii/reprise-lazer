@@ -109,7 +109,13 @@ namespace osu.Game.Overlays.SongSwap
                 try
                 {
                     // Made in the background; put in place here (it writes to the database).
-                    var prepared = swaps.Prepare(map, song, config.Get<bool>(OsuSetting.SongSwapLoop), config.Get<bool>(OsuSetting.SongSwapKeepPitch));
+                    bool instrumental = config.Get<bool>(OsuSetting.SongSwapInstrumental);
+                    var prepared = swaps.Prepare(map, song, config.Get<bool>(OsuSetting.SongSwapLoop), config.Get<bool>(OsuSetting.SongSwapKeepPitch),
+                        instrumental, p => Schedule(() =>
+                        {
+                            progress.Text = $"Taking the vocals out of {song.Metadata.Title} ({p:0%})...";
+                            progress.Progress = (float)(p * 0.9);
+                        }));
 
                     Schedule(() =>
                     {

@@ -179,6 +179,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.BeatmapSetCoverExpanded, false);
             SetDefault(OsuSetting.SongSwapLoop, true);
             SetDefault(OsuSetting.SongSwapKeepPitch, true);
+            SetDefault(OsuSetting.SongSwapInstrumental, false);
 
             SetDefault(OsuSetting.ShowOnlineExplicitContent, false);
 
@@ -703,6 +704,7 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: song swap keeps a stretched song's pitch (else it's sped up or slowed down like a record).</summary>
         SongSwapKeepPitch,
+        SongSwapInstrumental,
 
         /// <summary>Reprise: osu!stable's chat highlight, private message and multiplayer room sounds (<see cref="StableSounds"/> is typing).</summary>
         StableChatSounds,

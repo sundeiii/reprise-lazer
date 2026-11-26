@@ -71,6 +71,7 @@ namespace osu.Game.Overlays.SongSwap
         private readonly Bindable<Candidate?> picked = new Bindable<Candidate?>();
         private Bindable<bool> loop = null!;
         private Bindable<bool> keepPitch = null!;
+        private Bindable<bool> instrumental = null!;
 
         private RoundedButton previewButton = null!;
         private ITrackStore? previewStore;
@@ -131,6 +132,7 @@ namespace osu.Game.Overlays.SongSwap
         {
             loop = config.GetBindable<bool>(OsuSetting.SongSwapLoop);
             keepPitch = config.GetBindable<bool>(OsuSetting.SongSwapKeepPitch);
+            instrumental = config.GetBindable<bool>(OsuSetting.SongSwapInstrumental);
 
             Content.Children = new Drawable[]
             {
@@ -199,6 +201,12 @@ namespace osu.Game.Overlays.SongSwap
                     Caption = "Keep the song's pitch",
                     HintText = "Off: a sped up song sounds higher and a slowed down one lower, like nightcore or a record. Speed changes under 1% are never stretched (that would soften the drums): their pitch moves too little to hear.",
                     Current = keepPitch,
+                },
+                new FormCheckBox
+                {
+                    Caption = "Instrumental (take the vocals out)",
+                    HintText = "The song's vocals are taken out by an AI model (UVR's MDX-Net, on your computer). It runs on your CPU: the first time takes about as long as the song itself (and fetches the 67 MB model once); after that the instrumental is kept.",
+                    Current = instrumental,
                 },
                 search = new BasicSearchTextBox
                 {
@@ -294,6 +302,12 @@ namespace osu.Game.Overlays.SongSwap
                 updateSelectionText();
             });
 
+            instrumental.BindValueChanged(_ =>
+            {
+                StopPreview();
+                updateSelectionText();
+            });
+
             // Short songs are offered (to loop) or not.
             loop.BindValueChanged(_ =>
             {
@@ -304,7 +318,7 @@ namespace osu.Game.Overlays.SongSwap
 
         private void updateSelectionText(string? status = null)
         {
-            string pitch = keepPitch.Value ? "pitch kept" : "pitch follows its speed";
+            string pitch = (keepPitch.Value ? "pitch kept" : "pitch follows its speed") + (instrumental.Value ? ", vocals out" : string.Empty);
 
             selectionText.Text = picked.Value is Candidate candidate
                 ? $"{candidate.Title}  ·  {candidate.Speed}{(keepPitch.Value ? string.Empty : $" ({candidate.Pitch})")}\n"
@@ -330,11 +344,16 @@ namespace osu.Game.Overlays.SongSwap
             int token = ++previewToken;
             bool loops = loop.Value;
             bool pitch = keepPitch.Value;
+            bool vocalsOut = instrumental.Value;
 
             previewButton.Text = "Stop";
             updateSelectionText("Making a preview of the map's best part...");
 
-            Task.Run(() => swaps.RenderPreview(map, candidate.Song, loops, pitch)).ContinueWith(t => Schedule(() =>
+            Task.Run(() => swaps.RenderPreview(map, candidate.Song, loops, pitch, vocalsOut, p => Schedule(() =>
+            {
+                if (token == previewToken)
+                    updateSelectionText($"Taking the vocals out of the song ({p:0%}; the first time only)...");
+            }))).ContinueWith(t => Schedule(() =>
             {
                 if (token != previewToken)
                     return;

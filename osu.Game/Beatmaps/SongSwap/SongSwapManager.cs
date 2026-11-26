@@ -25,7 +25,11 @@ namespace osu.Game.Beatmaps.SongSwap
             this.beatmaps = beatmaps;
             files = storage.GetStorageForDirectory(@"files");
             backups = storage.GetStorageForDirectory(@"song-swaps");
+            VocalRemoval = new SongSwapVocalRemoval(backups);
         }
+
+        /// <summary>Reprise: takes the vocals out of songs swapped in as instrumentals.</summary>
+        public SongSwapVocalRemoval VocalRemoval { get; }
 
         private static string backupPath(BeatmapSetInfo set, string audioFile) => $@"{set.ID}/{audioFile.Replace('/', '_').Replace('\\', '_')}";
 
@@ -65,7 +69,8 @@ namespace osu.Game.Beatmaps.SongSwap
         /// Swaps <paramref name="map"/>'s song for <paramref name="song"/>'s: <see cref="Prepare"/> then <see cref="Apply"/>, both here (on the
         /// update thread; slow).
         /// </summary>
-        public void Swap(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true) => Apply(Prepare(map, song, loop, keepPitch));
+        public void Swap(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true, bool instrumental = false) =>
+            Apply(Prepare(map, song, loop, keepPitch, instrumental));
 
         /// <summary>
         /// Puts a prepared song in place of the set's own, keeping its own to put back. On the update thread (it writes to the database).
@@ -91,7 +96,10 @@ namespace osu.Game.Beatmaps.SongSwap
         /// </summary>
         /// <param name="loop">Whether a song too short for the map's looped (else it's refused).</param>
         /// <param name="keepPitch">Whether a stretched song keeps its pitch (else it changes with its speed, like a record).</param>
-        public PreparedSwap Prepare(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true)
+        /// <param name="instrumental">Whether the song's vocals are taken out (see <see cref="SongSwapVocalRemoval"/>).</param>
+        /// <param name="progress">How far taking the vocals out is (0 to 1), when it has to be done.</param>
+        public PreparedSwap Prepare(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true, bool instrumental = false,
+                                    Action<double>? progress = null)
         {
             var mapSet = map.BeatmapSet ?? throw new InvalidOperationException("The map has no set.");
             string audioFile = map.Metadata.AudioFile;
@@ -99,7 +107,7 @@ namespace osu.Game.Beatmaps.SongSwap
             if (string.IsNullOrEmpty(audioFile) || storagePath(mapSet, audioFile) == null)
                 throw new InvalidOperationException("The map has no song of its own to swap.");
 
-            var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
+            var (mapBeatmap, songData, plan) = makePlan(map, song, loop, instrumental, progress);
             double mapEnd = SongSwapping.EndTime(mapBeatmap);
             var options = new SongSwapRenderOptions(keepPitch, FirstNote: SongSwapping.FirstObjectTime(mapBeatmap));
             var joined = plan.Joined();
@@ -113,7 +121,8 @@ namespace osu.Game.Beatmaps.SongSwap
             // The set's own song, to keep (unless it's swapped already: that one's kept already).
             byte[]? original = IsSwapped(mapSet) ? null : ReadFile(mapSet, audioFile);
 
-            return new PreparedSwap(mapSet, audioFile, rendered, original, $@"{song.Metadata.Artist} - {song.Metadata.Title}");
+            return new PreparedSwap(mapSet, audioFile, rendered, original,
+                $@"{song.Metadata.Artist} - {song.Metadata.Title}{(instrumental ? " (instrumental)" : string.Empty)}");
         }
 
         /// <summary>A short preview of a swap (as a wave file): the map's best part, with a tick on each of its notes.</summary>
@@ -124,9 +133,10 @@ namespace osu.Game.Beatmaps.SongSwap
         /// About 20 seconds of <paramref name="map"/> played to <paramref name="song"/>, from just before its kiai (else its preview point, else
         /// its first note), with its notes ticked over it to hear how it lines up. Much quicker than <see cref="Prepare"/>: in the background.
         /// </summary>
-        public Preview RenderPreview(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true)
+        public Preview RenderPreview(BeatmapInfo map, BeatmapInfo song, bool loop = true, bool keepPitch = true, bool instrumental = false,
+                                     Action<double>? progress = null)
         {
-            var (mapBeatmap, songData, plan) = makePlan(map, song, loop);
+            var (mapBeatmap, songData, plan) = makePlan(map, song, loop, instrumental, progress);
             double mapEnd = SongSwapping.EndTime(mapBeatmap);
             double from = Math.Max(0, SongSwapTiming.HighlightTime(mapBeatmap) - 2000);
             var ticks = mapBeatmap.HitObjects.Where(h => !SongSwapping.IsSpinner(h)).Select(h => h.StartTime).ToList();
@@ -147,7 +157,8 @@ namespace osu.Game.Beatmaps.SongSwap
                                                      out double overall) =>
             SongSwapAnalysis.MatchFeel(plan, mapBeatmap, SongSwapAnalysis.OnsetStrength(mapAudio), SongSwapAnalysis.OnsetStrength(rendered), renderedFrom, out overall);
 
-        private (IBeatmap map, byte[] songData, SongSwapTiming.Plan plan) makePlan(BeatmapInfo map, BeatmapInfo song, bool loop)
+        private (IBeatmap map, byte[] songData, SongSwapTiming.Plan plan) makePlan(BeatmapInfo map, BeatmapInfo song, bool loop, bool instrumental,
+                                                                                   Action<double>? progress)
         {
             var songSet = song.BeatmapSet ?? throw new InvalidOperationException("The song's map has no set.");
             var mapBeatmap = beatmaps.GetWorkingBeatmap(map).Beatmap;
@@ -155,6 +166,10 @@ namespace osu.Game.Beatmaps.SongSwap
 
             // A previously swapped set still has its original timing data. Use its original audio as the source as well.
             byte[] songData = readOriginalSong(songSet, song.Metadata.AudioFile);
+
+            // Its instrumental instead (the same length, so its timing is the same).
+            if (instrumental)
+                songData = VocalRemoval.Instrumental(songData, progress);
 
             return (mapBeatmap, songData, SongSwapTiming.Create(mapBeatmap, songBeatmap, SongSwapping.LengthOf(songData), loop));
         }

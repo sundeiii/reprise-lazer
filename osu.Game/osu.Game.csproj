@@ -50,6 +50,7 @@ Modified by GooGuTeam</PackageReleaseNotes>
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.13"/>
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13"/>
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2"/>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.0"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
     <PackageReference Include="ppy.LocalisationAnalyser" Version="2026.611.0">
       <PrivateAssets>all</PrivateAssets>
