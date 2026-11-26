@@ -111,9 +111,13 @@ namespace osu.Game.Screens.Play.Leaderboards
             GetDisplayScore = scoreProcessor.GetDisplayScore;
         }
 
+        /// <summary>Reprise: one of osu!'s own (bancho's) scores (its player id is osu!'s, not ours).</summary>
+        public bool IsBancho { get; }
+
         public GameplayLeaderboardScore(ScoreInfo scoreInfo, bool tracked, ComboDisplayMode comboMode)
         {
             User = scoreInfo.User;
+            IsBancho = scoreInfo.IsBancho;
             Tracked = tracked;
             TotalScore.Value = scoreInfo.TotalScore;
             Accuracy.Value = scoreInfo.Accuracy;

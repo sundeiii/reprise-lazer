@@ -116,6 +116,10 @@ namespace osu.Game.Scoring
         [Ignored]
         public bool HasOnlineReplay { get; set; }
 
+        /// <summary>Reprise: one of osu!'s own (bancho's) scores on an online leaderboard (its score and player ids are osu!'s, not ours).</summary>
+        [Ignored]
+        public bool IsBancho { get; set; }
+
         public DateTimeOffset Date { get; set; }
 
         public double? PP { get; set; }

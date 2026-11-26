@@ -121,6 +121,10 @@ namespace osu.Game.Online.API.Requests.Responses
         [JsonProperty("has_replay")]
         public bool HasReplay { get; set; }
 
+        /// <summary>Reprise: one of osu!'s own (bancho's) scores mixed into the leaderboard (its score and player ids are osu!'s).</summary>
+        [JsonProperty("tomyum_bancho")]
+        public bool IsBancho { get; set; }
+
         [JsonProperty("ranked")]
         public bool Ranked { get; set; }
 
@@ -239,6 +243,7 @@ namespace osu.Game.Online.API.Requests.Responses
                 MaximumStatistics = MaximumStatistics,
                 Date = EndedAt,
                 HasOnlineReplay = HasReplay,
+                IsBancho = IsBancho,
                 Mods = mods,
                 PP = PP,
                 Ranked = Ranked,

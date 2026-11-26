@@ -302,7 +302,8 @@ namespace osu.Game.Screens.Select
                                                     {
                                                         RelativeSizeAxes = Axes.X,
                                                         Shear = sheared ? -OsuGame.SHEAR : Vector2.Zero,
-                                                        Text = Score.User.Username,
+                                                        // Reprise: osu!'s own (bancho's) scores marked.
+                                                        Text = Score.IsBancho ? $@"{Score.User.Username} (osu!)" : Score.User.Username,
                                                         Font = OsuFont.Style.Heading2,
                                                     }
                                                 }
@@ -624,7 +625,10 @@ namespace osu.Game.Screens.Select
                     items.Add(new OsuMenuItem(SongSelectStrings.UseTheseMods, MenuItemType.Highlighted, () => SelectedMods.Value = copyableMods));
 
                 if (Score.OnlineID > 0)
-                    items.Add(new OsuMenuItem(CommonStrings.CopyLink, MenuItemType.Standard, () => game?.CopyToClipboard($@"{api.Endpoints.WebsiteUrl}/scores/{Score.OnlineID}")));
+                {
+                    string link = Score.IsBancho ? $@"https://osu.ppy.sh/scores/{Score.OnlineID}" : $@"{api.Endpoints.WebsiteUrl}/scores/{Score.OnlineID}";
+                    items.Add(new OsuMenuItem(CommonStrings.CopyLink, MenuItemType.Standard, () => game?.CopyToClipboard(link)));
+                }
 
                 if (Score.Files.Count <= 0) return items.ToArray();
 

@@ -191,6 +191,10 @@ namespace osu.Game.Screens.Play.HUD
             if (score.Tracked)
                 return EntryKind.Own;
 
+            // osu!'s own: its player id is osu!'s, not one of ours.
+            if (score.IsBancho)
+                return EntryKind.Other;
+
             int userId = score.User.OnlineID;
 
             if (userId > 0 && userId == api.LocalUser.Value.OnlineID)

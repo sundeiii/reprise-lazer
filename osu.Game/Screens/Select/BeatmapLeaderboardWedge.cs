@@ -53,6 +53,9 @@ namespace osu.Game.Screens.Select
         private LeaderboardManager leaderboardManager { get; set; } = null!;
 
         [Resolved]
+        private OsuGame? game { get; set; }
+
+        [Resolved]
         private IBindable<WorkingBeatmap> beatmap { get; set; } = null!;
 
         [Resolved]
@@ -317,7 +320,11 @@ namespace osu.Game.Screens.Select
             {
                 BeatmapLeaderboardScore.HighlightType? highlightType = null;
 
-                if (s.OnlineID == userScore?.OnlineID)
+                if (s.IsBancho)
+                {
+                    // Reprise: osu!'s own (bancho's), opened on osu.ppy.sh (its score and player ids are osu!'s, not ours).
+                }
+                else if (s.OnlineID == userScore?.OnlineID)
                     highlightType = BeatmapLeaderboardScore.HighlightType.Own;
                 else if (api.LocalUserState.Friends.Any(r => r.TargetID == s.UserID) && Scope.Value != BeatmapLeaderboardScope.Friend)
                     highlightType = BeatmapLeaderboardScore.HighlightType.Friend;
@@ -327,10 +334,12 @@ namespace osu.Game.Screens.Select
                     Rank = i + 1,
                     Highlight = highlightType,
                     SelectedMods = { BindTarget = mods },
-                    Action = songSelect?.CanPresentScore == true
-                        ? () => songSelect.PresentScore(s)
-                        : null,
-                    ShowReplay = songSelect?.CanPresentScore == true
+                    Action = s.IsBancho
+                        ? () => game?.OpenUrlExternally($@"https://osu.ppy.sh/scores/{s.OnlineID}")
+                        : songSelect?.CanPresentScore == true
+                            ? () => songSelect.PresentScore(s)
+                            : null,
+                    ShowReplay = songSelect?.CanPresentScore == true && !s.IsBancho
                         ? info => songSelect.PresentScore(info, ScorePresentType.Gameplay)
                         : null
                 };
