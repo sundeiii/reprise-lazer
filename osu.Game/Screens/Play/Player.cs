@@ -547,6 +547,14 @@ namespace osu.Game.Screens.Play
                         ReplacedBreakDisplay = breakOverlayContainer,
                         Rank = ScoreProcessor.Rank,
                         FindProgressPie = () => HUDOverlay?.ChildrenOfType<LegacySongProgress>().FirstOrDefault(),
+                        // Stable's warning arrows: osu! and catch only, timed by the approach time (its AR, with the play's mods).
+                        WarningArrowsPreempt = Ruleset.Value.OnlineID is 0 or 2
+                            ? IBeatmapDifficultyInfo.DifficultyRange(GameplayState.Beatmap.Difficulty.ApproachRate, 1800, 1200, 450)
+                            : null,
+                        // Before the first object too, when stable would show no countdown there.
+                        IntroArrowsBefore = Beatmap.Value.Beatmap.Countdown == CountdownType.None
+                            ? GameplayState.Beatmap.HitObjects.FirstOrDefault()?.StartTime
+                            : null,
                     },
                     // display the cursor above some HUD elements.
                     DrawableRuleset.Cursor?.CreateProxy() ?? new Container(),

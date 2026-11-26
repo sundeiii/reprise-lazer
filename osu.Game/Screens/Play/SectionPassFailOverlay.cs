@@ -55,8 +55,14 @@ namespace osu.Game.Screens.Play
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
 
+        [Resolved]
+        private ISamplePlaybackDisabler? samplePlaybackDisabler { get; set; }
+
         private BreakPeriod? currentBreak;
         private double? soundTime;
+
+        /// <summary>How many times the pass or fail sound has played (for tests).</summary>
+        public int SoundsPlayed { get; private set; }
         private bool passed;
 
         /// <summary>
@@ -84,6 +90,27 @@ namespace osu.Game.Screens.Play
         private Sprite grade = null!;
         private Sprite gradeGlow = null!;
 
+        /// <summary>
+        /// The map's approach time (ms, with the play's mods) for osu!stable's warning arrows; null: no arrows (stable has none in taiko
+        /// and mania).
+        /// </summary>
+        public double? WarningArrowsPreempt { get; init; }
+
+        /// <summary>
+        /// The first object's time, for stable's arrows before it when the map has a long intro and no countdown; null: none.
+        /// </summary>
+        public double? IntroArrowsBefore { get; init; }
+
+        // Stable's warning arrows: one 80 across and 100 down from each corner (its 640x480), the right ones flipped; on for 100ms,
+        // off for 100ms, at most 5 times before a break ends and up to 2 more after it (as long as the approach time allows).
+        private const double arrow_period = 200;
+        private const double arrow_on = 100;
+        private const int arrow_loops = 5;
+        private static readonly Vector2 arrow_inset = new Vector2(80, 100) * 1.6f;
+
+        private readonly List<(double Start, int Count)> arrowWindows = new List<(double, int)>();
+        private Container arrows = null!;
+
         public SectionPassFailOverlay(IReadOnlyList<BreakPeriod> breaks, HealthProcessor healthProcessor)
         {
             this.breaks = breaks;
@@ -109,8 +136,58 @@ namespace osu.Game.Screens.Play
                     fail = new Sprite { Anchor = Anchor.Centre, Origin = Anchor.Centre, Alpha = 0 },
                     gradeGlow = new Sprite { Origin = Anchor.Centre, Alpha = 0, Blending = BlendingParameters.Additive },
                     grade = new Sprite { Origin = Anchor.Centre, Alpha = 0 },
+                    arrows = new Container
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Alpha = 0,
+                        Children = new Drawable[]
+                        {
+                            createArrow(Anchor.TopLeft, false),
+                            createArrow(Anchor.BottomLeft, false),
+                            createArrow(Anchor.TopRight, true),
+                            createArrow(Anchor.BottomRight, true),
+                        },
+                    },
                 }
             };
+
+            if (WarningArrowsPreempt is double preempt)
+                planArrows(preempt);
+        }
+
+        private static Sprite createArrow(Anchor corner, bool right) => new Sprite
+        {
+            Anchor = corner,
+            Origin = Anchor.Centre,
+            Position = new Vector2(right ? -arrow_inset.X : arrow_inset.X, (corner & Anchor.y2) > 0 ? -arrow_inset.Y : arrow_inset.Y),
+            Scale = new Vector2(right ? -1 : 1, 1),
+        };
+
+        // Stable's timings: per break, as many 200ms blinks as fit (at most 5) ending at its end, plus up to 2 more after it while the
+        // next objects come in; and, when the first object is over 6 seconds in with no countdown, 5 (+2) from 900ms before it appears.
+        private void planArrows(double preempt)
+        {
+            int extra = Math.Min(2, (int)(preempt / arrow_period));
+
+            foreach (var b in breaks)
+            {
+                int count = Math.Min(arrow_loops, (int)((b.Duration + 200) / arrow_period)) + extra;
+                arrowWindows.Add((b.EndTime - arrow_period * (count - extra), count));
+            }
+
+            if (IntroArrowsBefore is double first && first > 6000)
+                arrowWindows.Add((first - preempt - 900, arrow_loops + extra));
+        }
+
+        private bool arrowsOn(double time)
+        {
+            foreach (var (start, count) in arrowWindows)
+            {
+                if (time >= start && time < start + count * arrow_period)
+                    return (time - start) % arrow_period < arrow_on;
+            }
+
+            return false;
         }
 
         protected override void LoadComplete()
@@ -138,6 +215,25 @@ namespace osu.Game.Screens.Play
             setTexture(fail, skin.GetTexture(@"section-fail") ?? classic.GetTexture(@"section-fail"));
             passSample = skin.GetSample(new SampleInfo(@"sectionpass")) ?? classic.GetSample(new SampleInfo(@"sectionpass"));
             failSample = skin.GetSample(new SampleInfo(@"sectionfail")) ?? classic.GetSample(new SampleInfo(@"sectionfail"));
+
+            // Stable's: arrow-warning, else play-warningarrow (the skin's, else the default's); play-warningarrow red with the new
+            // layout (skins of version 2 and up, and the default), white otherwise.
+            var arrow = skin.GetTexture(@"arrow-warning") ?? classic.GetTexture(@"arrow-warning");
+            bool red = false;
+
+            if (arrow == null)
+            {
+                var skinArrow = skin.GetTexture(@"play-warningarrow");
+                arrow = skinArrow ?? classic.GetTexture(@"play-warningarrow");
+                decimal version = skinArrow == null ? 2 : skin.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value ?? 1;
+                red = version > 1;
+            }
+
+            foreach (var sprite in arrows.Children.OfType<Sprite>())
+            {
+                setTexture(sprite, arrow);
+                sprite.Colour = red ? Colour4.Red : Colour4.White;
+            }
         }
 
         /// <summary>
@@ -158,6 +254,9 @@ namespace osu.Game.Screens.Play
             StableHudArea.Apply(this, true, uiScale.Value);
 
             double time = Time.Current;
+
+            arrows.Alpha = enabled.Value && arrowsOn(time) ? 1 : 0;
+
             var breakNow = breaks.FirstOrDefault(b => b.HasEffect && time >= b.StartTime && time < b.EndTime);
 
             if (breakNow != currentBreak)
@@ -173,11 +272,17 @@ namespace osu.Game.Screens.Play
                     hide();
             }
 
-            if (soundTime is double at && time >= at)
+            // Not while the game's sounds are held (paused, or catching up after a seek): it waits for the clock to reach it again.
+            bool soundsHeld = samplePlaybackDisabler?.SamplePlaybackDisabled.Value == true || Time.Elapsed <= 0;
+
+            if (soundTime is double at && time >= at && (!soundsHeld || time - at >= 200))
             {
                 // Not when seeking far past it (a replay).
                 if (time - at < 200)
+                {
                     (passed ? passSample : failSample)?.Play();
+                    SoundsPlayed++;
+                }
 
                 soundTime = null;
             }

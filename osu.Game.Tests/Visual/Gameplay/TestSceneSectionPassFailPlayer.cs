@@ -5,6 +5,8 @@ using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Testing;
 using osu.Framework.Timing;
@@ -62,6 +64,43 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddUntilStep("pass shown", () => this.ChildrenOfType<SectionPassFailOverlay>().Single().ChildrenOfType<Sprite>().First().Alpha > 0);
             AddAssert("the game's break display hidden", () => this.ChildrenOfType<BreakOverlay>().Single().Parent!.Alpha == 0);
         }
+
+        [Test]
+        public void TestPausingInABreakPlaysNoSound()
+        {
+            addSeekStep(3000);
+            AddStep("pause", () => Player.Pause());
+            AddWaitStep("paused a while", 10);
+            AddAssert("no sound while paused", () => overlay.SoundsPlayed, () => Is.EqualTo(0));
+            AddStep("resume", () => Player.Resume());
+            addSeekStep(6400);
+            AddUntilStep("its sound once", () => overlay.SoundsPlayed, () => Is.EqualTo(1));
+            AddStep("pause", () => Player.Pause());
+            AddWaitStep("paused a while", 10);
+            AddStep("resume", () => Player.Resume());
+            AddWaitStep("resumed a while", 10);
+            AddAssert("still once", () => overlay.SoundsPlayed, () => Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TestWarningArrowsBeforeTheBreakEnds()
+        {
+            // AR 5 (1200ms): 5 blinks of 200ms ending at the break's end (11000), 2 more after it.
+            addSeekStep(9000);
+            AddAssert("no arrows yet", () => arrows.Alpha, () => Is.EqualTo(0));
+            addSeekStep(10050);
+            AddUntilStep("arrows on", () => arrows.Alpha, () => Is.EqualTo(1));
+            addSeekStep(10150);
+            AddUntilStep("arrows off between blinks", () => arrows.Alpha, () => Is.EqualTo(0));
+            addSeekStep(11250);
+            AddUntilStep("still blinking after the break", () => arrows.Alpha, () => Is.EqualTo(1));
+            addSeekStep(11450);
+            AddUntilStep("done", () => arrows.Alpha, () => Is.EqualTo(0));
+        }
+
+        private Drawable arrows => overlay.ChildrenOfType<Container>().Single(c => c.Children.Count == 4 && c.Children.All(s => s is Sprite));
+
+        private SectionPassFailOverlay overlay => this.ChildrenOfType<SectionPassFailOverlay>().Single();
 
         [Test]
         public void TestOffKeepsTheGamesBreakDisplay()
