@@ -26,7 +26,8 @@ namespace osu.Game.Scoring.Legacy
                     case ScoringMode.ScoreV1:
                         if (info.StableScoreV1 is long v1)
                             return v1;
-                        if (info.LegacyTotalScore is long legacy && !info.Mods.Any(m => m is ModScoreV2))
+                        // osu!'s API sends lazer plays with a stable score of 0: only a real one counts.
+                        if (info.LegacyTotalScore is long legacy and > 0 && !info.Mods.Any(m => m is ModScoreV2))
                             return legacy;
 
                         break;

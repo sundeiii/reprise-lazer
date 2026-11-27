@@ -106,6 +106,25 @@ namespace osu.Game.Rulesets.Osu.Tests
         }
 
         [Test]
+        public void ALazerPlayWithAStableScoreOfZero_IsEstimated()
+        {
+            var (processor, _, _) = play();
+            var score = new ScoreInfo { Ruleset = new OsuRuleset().RulesetInfo, LegacyTotalScore = 0 };
+            processor.PopulateScore(score);
+            score.StableScoreV1 = null;
+
+            Assert.That(score.GetDisplayScore(ScoringMode.ScoreV1), Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void AStablePlay_ShowsItsOwnStableScore()
+        {
+            var score = new ScoreInfo { Ruleset = new OsuRuleset().RulesetInfo, LegacyTotalScore = 31_925_794, TotalScore = 900_000 };
+
+            Assert.That(score.GetDisplayScore(ScoringMode.ScoreV1), Is.EqualTo(31_925_794));
+        }
+
+        [Test]
         public void ScoreV2Mods_AreStables()
         {
             Assert.That(OsuStableScoring.ModMultiplier(new Mod[] { new osu.Game.Rulesets.Osu.Mods.OsuModHardRock(), new osu.Game.Rulesets.Osu.Mods.OsuModDoubleTime() }, true), Is.EqualTo(1.32).Within(1e-9));
