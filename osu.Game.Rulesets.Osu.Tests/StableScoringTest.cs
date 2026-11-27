@@ -125,6 +125,21 @@ namespace osu.Game.Rulesets.Osu.Tests
         }
 
         [Test]
+        public void AStablePlay_IsEstimatedLikeALazerOne()
+        {
+            // Suyung_'s stable play in the screenshot: 99.45%, 1,131x on a map of 932 objects and 1,240 combo.
+            var stable = new Dictionary<HitResult, int> { [HitResult.Great] = 924, [HitResult.Ok] = 8 };
+            var stableMaximum = new Dictionary<HitResult, int> { [HitResult.Great] = 932, [HitResult.LegacyComboIncrease] = 308 };
+            long estimate = OsuStableScoring.EstimateScoreV2(stable, stableMaximum, 1131, Array.Empty<Mod>());
+
+            var lazer = new Dictionary<HitResult, int> { [HitResult.Great] = 924, [HitResult.Ok] = 8, [HitResult.SliderTailHit] = 305, [HitResult.LargeTickHit] = 3 };
+            var lazerMaximum = new Dictionary<HitResult, int> { [HitResult.Great] = 932, [HitResult.SliderTailHit] = 305, [HitResult.LargeTickHit] = 3 };
+
+            Assert.That(estimate, Is.GreaterThan(850_000));
+            Assert.That(estimate, Is.EqualTo(OsuStableScoring.EstimateScoreV2(lazer, lazerMaximum, 1131, Array.Empty<Mod>())).Within(1000));
+        }
+
+        [Test]
         public void ScoreV2Mods_AreStables()
         {
             Assert.That(OsuStableScoring.ModMultiplier(new Mod[] { new osu.Game.Rulesets.Osu.Mods.OsuModHardRock(), new osu.Game.Rulesets.Osu.Mods.OsuModDoubleTime() }, true), Is.EqualTo(1.32).Within(1e-9));

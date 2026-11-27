@@ -275,9 +275,12 @@ namespace osu.Game.Rulesets.Osu.Scoring
 
             double accuracy = (300.0 * great + 100 * ok + 50 * meh) / (300.0 * judged);
 
-            int comboHits = statistics.Where(s => s.Key.IncreasesCombo()).Sum(s => s.Value);
+            // The map's combo (a stable play's maximum counts its slider ticks as legacy_combo_increase, which its own counts
+            // leave out): the play is taken to have all of it but what its misses broke, its longest combo once.
             int maximumCombo = Math.Max(1, maximumStatistics.Where(s => s.Key.IncreasesCombo()).Sum(s => s.Value));
-            int longest = Math.Clamp(maxCombo, 0, comboHits);
+            int comboHits = Math.Clamp((int)Math.Round(maximumCombo * (1 - (double)miss / all)), 0, maximumCombo);
+            int longest = Math.Clamp(maxCombo, 0, maximumCombo);
+            comboHits = Math.Max(comboHits, longest);
             int rest = comboHits - longest;
 
             double streaks = streak(longest);
