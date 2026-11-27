@@ -175,6 +175,7 @@ namespace osu.Game.Screens.Select
         private readonly RealmPopulatingOnlineLookupSource onlineLookupSource = new RealmPopulatingOnlineLookupSource();
 
         private Bindable<bool> configBackgroundBlur = null!;
+        private Bindable<bool> configStoryboard = null!;
         private Bindable<bool> showConvertedBeatmaps = null!;
 
         private IDisposable? modSelectOverlayRegistration;
@@ -390,6 +391,12 @@ namespace osu.Game.Screens.Select
             LoadComponent(modSelectOverlay = CreateModSelectOverlay());
 
             configBackgroundBlur = config.GetBindable<bool>(OsuSetting.SongSelectBackgroundBlur);
+            configStoryboard = config.GetBindable<bool>(OsuSetting.SongSelectStoryboard);
+            configStoryboard.BindValueChanged(_ =>
+            {
+                if (this.IsCurrentScreen())
+                    updateBackgroundDim();
+            });
             configBackgroundBlur.BindValueChanged(_ =>
             {
                 if (!this.IsCurrentScreen())
@@ -933,8 +940,12 @@ namespace osu.Game.Screens.Select
             }
         }
 
+        // Reprise: the map's storyboard and video behind song select (OsuSetting.SongSelectStoryboard).
+        protected override BackgroundScreen CreateBackground() => new Backgrounds.BackgroundScreenBeatmap(Beatmap.Value) { WithStoryboard = configStoryboard.Value };
+
         private void updateBackgroundDim() => ApplyToBackground(backgroundModeBeatmap =>
         {
+            backgroundModeBeatmap.WithStoryboard = configStoryboard.Value;
             backgroundModeBeatmap.Beatmap = Beatmap.Value;
             backgroundModeBeatmap.IgnoreUserSettings.Value = true;
 

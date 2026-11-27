@@ -8,6 +8,9 @@ using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
+using osu.Framework.Platform;
+using osu.Framework.Screens;
+using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Backgrounds;
@@ -70,12 +73,72 @@ namespace osu.Game.Screens.Backgrounds
             dimmable.DimWhenUserSettingsIgnored.BindTo(DimWhenUserSettingsIgnored);
         }
 
+        /// <summary>
+        /// Reprise: the map's storyboard (and video) over its background, as the main menu can show it (song select's, with
+        /// <see cref="OsuSetting.SongSelectStoryboard"/>). Gameplay draws its own: a background with it is never the same as one without,
+        /// so the screens after song select get their own background.
+        /// </summary>
+        public bool WithStoryboard
+        {
+            get => withStoryboard;
+            set
+            {
+                if (withStoryboard == value)
+                    return;
+
+                withStoryboard = value;
+
+                if (IsLoaded)
+                {
+                    Schedule(() =>
+                    {
+                        cancellationSource?.Cancel();
+                        LoadComponentAsync(createBackground(beatmap), switchBackground, (cancellationSource = new CancellationTokenSource()).Token);
+                    });
+                }
+            }
+        }
+
+        private bool withStoryboard;
+
+        [Resolved]
+        private GameHost gameHost { get; set; }
+
+        private BeatmapBackground createBackground(WorkingBeatmap b) =>
+            withStoryboard && b != null ? new BeatmapBackgroundWithStoryboard(b) : new BeatmapBackground(b);
+
         [BackgroundDependencyLoader]
         private void load()
         {
-            var background = new BeatmapBackground(beatmap);
+            var background = createBackground(beatmap);
             LoadComponent(background);
             switchBackground(background);
+        }
+
+        private ScheduledDelegate storyboardUnloadDelegate;
+
+        // As the main menu's: no storyboard playing under the screens on top (gameplay), back when they're gone.
+        public override void OnSuspending(ScreenTransitionEvent e)
+        {
+            if (Background is BeatmapBackgroundWithStoryboard storyboardBackground)
+                storyboardUnloadDelegate = gameHost.UpdateThread.Scheduler.AddDelayed(storyboardBackground.UnloadStoryboard, TRANSITION_LENGTH);
+
+            base.OnSuspending(e);
+        }
+
+        public override void OnResuming(ScreenTransitionEvent e)
+        {
+            if (Background is BeatmapBackgroundWithStoryboard storyboardBackground)
+            {
+                if (storyboardUnloadDelegate?.Completed == false)
+                    storyboardUnloadDelegate.Cancel();
+                else
+                    storyboardBackground.LoadStoryboard();
+
+                storyboardUnloadDelegate = null;
+            }
+
+            base.OnResuming(e);
         }
 
         private CancellationTokenSource cancellationSource;
@@ -92,11 +155,15 @@ namespace osu.Game.Screens.Backgrounds
 
                 Schedule(() =>
                 {
-                    if ((Background as BeatmapBackground)?.Beatmap.BeatmapInfo.BackgroundEquals(beatmap?.BeatmapInfo) ?? false)
+                    // The same image is enough, except with the storyboard (each map has its own).
+                    if (!withStoryboard && ((Background as BeatmapBackground)?.Beatmap.BeatmapInfo.BackgroundEquals(beatmap?.BeatmapInfo) ?? false))
+                        return;
+
+                    if (withStoryboard && (Background as BeatmapBackground)?.Beatmap == beatmap)
                         return;
 
                     cancellationSource?.Cancel();
-                    LoadComponentAsync(new BeatmapBackground(beatmap), switchBackground, (cancellationSource = new CancellationTokenSource()).Token);
+                    LoadComponentAsync(createBackground(beatmap), switchBackground, (cancellationSource = new CancellationTokenSource()).Token);
                 });
             }
         }
@@ -121,7 +188,7 @@ namespace osu.Game.Screens.Backgrounds
         {
             if (!(other is BackgroundScreenBeatmap otherBeatmapBackground)) return false;
 
-            return base.Equals(other) && beatmap == otherBeatmapBackground.Beatmap;
+            return base.Equals(other) && beatmap == otherBeatmapBackground.Beatmap && WithStoryboard == otherBeatmapBackground.WithStoryboard;
         }
 
         public partial class DimmableBackground : UserDimContainer

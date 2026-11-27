@@ -130,6 +130,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.ToolbarClockDisplayMode, ToolbarClockDisplayMode.Full);
 
             SetDefault(OsuSetting.SongSelectBackgroundBlur, false);
+            SetDefault(OsuSetting.SongSelectStoryboard, true);
 
 
             SetDefault(OsuSetting.CustomUIHueEnabled, false);
@@ -542,6 +543,7 @@ namespace osu.Game.Configuration
         BeatmapListingView,
         ToolbarClockDisplayMode,
         SongSelectBackgroundBlur,
+        SongSelectStoryboard,
         Version,
         ShowFirstRunSetup,
         ShowConvertedBeatmaps,

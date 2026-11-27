@@ -300,6 +300,32 @@ namespace osu.Game.Tests.Visual.Background
         private WorkingBeatmap createTestWorkingBeatmapWithUniqueBackground() => new UniqueBackgroundTestWorkingBeatmap(renderer, Audio);
         private WorkingBeatmap createTestWorkingBeatmapWithStoryboard() => new TestWorkingBeatmapWithStoryboard(Audio);
 
+        /// <summary>Reprise: song select's background with the map's storyboard (OsuSetting.SongSelectStoryboard).</summary>
+        [Test]
+        public void TestSongSelectBackgroundWithStoryboard()
+        {
+            BackgroundScreenBeatmap songSelect = null;
+
+            AddStep("change beatmap", () => Beatmap.Value = createTestWorkingBeatmapWithStoryboard());
+            AddStep("push song select's background", () => stack.Push(songSelect = new BackgroundScreenBeatmap(Beatmap.Value) { WithStoryboard = true }));
+            AddUntilStep("its storyboard shown", () => songSelect.ChildrenOfType<DrawableStoryboard>().Any());
+            AddAssert("on the storyboard background", () => songSelect.ChildrenOfType<BeatmapBackgroundWithStoryboard>().Any());
+            AddAssert("not the same as gameplay's (it gets its own)", () => !songSelect.Equals(new BackgroundScreenBeatmap(Beatmap.Value)));
+
+            AddStep("start music", () => MusicController.Play());
+            AddUntilStep("storyboard clock running", () => songSelect.ChildrenOfType<DrawableStoryboard>().SingleOrDefault()?.Clock.IsRunning == true);
+
+            AddStep("turned off", () => songSelect.WithStoryboard = false);
+            AddUntilStep("plain background again", () => songSelect.ChildrenOfType<BeatmapBackgroundWithStoryboard>().All(b => !b.IsAlive || b.LifetimeEnd < double.MaxValue)
+                                                          && songSelect.ChildrenOfType<BeatmapBackground>().Any(b => b is not BeatmapBackgroundWithStoryboard));
+            AddStep("turned on", () => songSelect.WithStoryboard = true);
+            AddUntilStep("storyboard back", () => songSelect.ChildrenOfType<DrawableStoryboard>().Any(s => s.IsAlive));
+
+            AddStep("another map", () => songSelect.Beatmap = Beatmap.Value = createTestWorkingBeatmapWithStoryboard());
+            AddUntilStep("its own storyboard", () => songSelect.ChildrenOfType<BeatmapBackgroundWithStoryboard>().Any(b => b.Beatmap == Beatmap.Value));
+            AddStep("stop music", () => MusicController.Stop());
+        }
+
         private partial class TestBackgroundScreenDefault : BackgroundScreenDefault
         {
             private bool? lastLoadTriggerCausedChange;

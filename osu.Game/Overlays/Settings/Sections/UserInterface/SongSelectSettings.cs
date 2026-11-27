@@ -65,6 +65,13 @@ namespace osu.Game.Overlays.Settings.Sections.UserInterface
                     Caption = GameplaySettingsStrings.BackgroundBlur,
                     Current = config.GetBindable<bool>(OsuSetting.SongSelectBackgroundBlur),
                 }),
+                // Reprise: the map's storyboard and video behind song select, as the main menu can show them.
+                new SettingsItemV2(new FormCheckBox
+                {
+                    Caption = "Storyboard and video in the background",
+                    HintText = "The selected map's storyboard or video plays behind song select (muted, in time with its song), as the main menu can show it.",
+                    Current = config.GetBindable<bool>(OsuSetting.SongSelectStoryboard),
+                }),
             };
         }
     }
