@@ -58,7 +58,12 @@ namespace osu.Game.Screens.Play.Leaderboards
             if (gameplayState != null)
             {
                 var localScore = new GameplayLeaderboardScore(gameplayState, tracked: true, GameplayLeaderboardScore.ComboDisplayMode.Highest);
-                localScore.TotalScore.BindValueChanged(_ => sorting.Invalidate());
+                localScore.TotalScore.BindValueChanged(_ =>
+                {
+                    sorting.Invalidate();
+                    // Reprise: at once, as osu!stable's scoreboard does (the once-a-second sort left a pass up to a second late).
+                    Scheduler.AddOnce(sort);
+                });
                 scoresToShow.Add(localScore);
             }
 

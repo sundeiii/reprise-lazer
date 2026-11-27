@@ -102,7 +102,12 @@ namespace osu.Game.Screens.Play.Leaderboards
                                            HasQuit = { BindTarget = trackedUser.UserQuit },
                                            TeamColour = UserScores[user.OnlineID].Team is int team ? getTeamColour(team) : null,
                                        };
-                                       leaderboardScore.TotalScore.BindValueChanged(_ => sorting.Invalidate());
+                                       leaderboardScore.TotalScore.BindValueChanged(_ =>
+                                       {
+                                           sorting.Invalidate();
+                                           // Reprise: at once, as osu!stable's scoreboard does.
+                                           Scheduler.AddOnce(sort);
+                                       });
                                        leaderboardScore.DisplayOrder.BindValueChanged(_ => sorting.Invalidate(), true);
                                        scores.Add(leaderboardScore);
                                    }

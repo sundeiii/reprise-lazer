@@ -57,7 +57,12 @@ namespace osu.Game.Screens.Play.Leaderboards
                     // Local score should always show lower than any existing scores in cases of ties.
                     TotalScoreTiebreaker = long.MaxValue
                 };
-                localScore.TotalScore.BindValueChanged(_ => sorting.Invalidate());
+                localScore.TotalScore.BindValueChanged(_ =>
+                {
+                    sorting.Invalidate();
+                    // Reprise: at once, as osu!stable's scoreboard does (the once-a-second sort left a pass up to a second late).
+                    Scheduler.AddOnce(sort);
+                });
                 newScores.Add(localScore);
             }
 
