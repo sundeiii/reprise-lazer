@@ -233,6 +233,8 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.StableGameplayMods, false);
             SetDefault(OsuSetting.StableIntroSkip, false);
             SetDefault(OsuSetting.StableSkipButton, false);
+            SetDefault(OsuSetting.RelaxTapping, string.Empty);
+            SetDefault(OsuSetting.RelaxCopyTiming, false);
             SetDefault(OsuSetting.StableSettingsSplit, false);
             SetDefault(OsuSetting.Disclaimer2023, true);
             SetDefault(OsuSetting.Interface2023, false);
@@ -737,6 +739,12 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: osu!stable's skip button (the skin's play-skip in the bottom right, always shown) with a legacy skin.</summary>
         StableSkipButton,
+
+        /// <summary>Reprise: the player Relax taps like in osu! (a RelaxTappingProfile's name; empty for Relax's own perfect tapping).</summary>
+        RelaxTapping,
+
+        /// <summary>Reprise: Relax hits with that player's timing too (their accuracy and UR), not only their keys and holds.</summary>
+        RelaxCopyTiming,
 
         /// <summary>Reprise: whether <see cref="StableLayouts"/> and <see cref="StableSounds"/> have been split into the settings above (once, on updating).</summary>
         StableSettingsSplit,

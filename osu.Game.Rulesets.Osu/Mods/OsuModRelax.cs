@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Localisation;
+using osu.Game.Configuration;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
@@ -18,7 +20,7 @@ using static osu.Game.Input.Handlers.ReplayInputHandler;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
-    public class OsuModRelax : ModRelax, IUpdatableByPlayfield, IApplicableToDrawableRuleset<OsuHitObject>, IApplicableToPlayer, IHasNoTimedInputs
+    public class OsuModRelax : ModRelax, IUpdatableByPlayfield, IApplicableToDrawableRuleset<OsuHitObject>, IApplicableToPlayer, IHasNoTimedInputs, IReadFromConfig
     {
         public override LocalisableString Description => @"You don't need to click. Give your clicking/tapping fingers a break from the heat of things.";
 
@@ -50,6 +52,179 @@ namespace osu.Game.Rulesets.Osu.Mods
 
             // grab the input manager for future use.
             osuInputManager = ruleset.KeyBindingInputManager;
+
+            rate = drawableRuleset.Mods.OfType<IApplicableToRate>().Aggregate(1.0, (r, m) => m.ApplyToRate(0, r));
+        }
+
+        // ---- Reprise: tapping like a real player (OsuSetting.RelaxTapping, RelaxTappingProfile) ----
+
+        private RelaxTappingProfile? profile;
+        private bool copyTiming;
+        private double rate = 1;
+        private readonly Random random = new Random();
+
+        private readonly Dictionary<OsuHitObject, NotePlan> plans = new Dictionary<OsuHitObject, NotePlan>();
+        private double? lastPlannedStart;
+        private OsuAction? lastPlannedKey;
+
+        private readonly HashSet<OsuAction> held = new HashSet<OsuAction>();
+        private readonly Dictionary<OsuAction, double> releaseAt = new Dictionary<OsuAction, double>();
+        private OsuAction lastPressed = OsuAction.LeftButton;
+
+        private record NotePlan(OsuAction Key, double Offset, double Hold);
+
+        public void ReadFromConfig(OsuConfigManager config)
+        {
+            profile = TestProfile ?? RelaxTappingProfile.Load(config.Get<string>(OsuSetting.RelaxTapping));
+            copyTiming = profile != null && (TestCopyTiming ?? config.Get<bool>(OsuSetting.RelaxCopyTiming));
+        }
+
+        /// <summary>
+        /// For tests: a profile (and timing choice) instead of the settings', also used with a replay that only moves the cursor.
+        /// Static, as the mod played is a copy of the one selected.
+        /// </summary>
+        public static RelaxTappingProfile? TestProfile { get; set; }
+
+        /// <inheritdoc cref="TestProfile"/>
+        public static bool? TestCopyTiming { get; set; }
+
+        /// <summary>The key, timing and hold of a note, drawn from the player's measures for the gap before it (in the order notes come).</summary>
+        private NotePlan plan(OsuHitObject note)
+        {
+            if (plans.TryGetValue(note, out var existing))
+                return existing;
+
+            double gap = lastPlannedStart is double previous ? (note.StartTime - previous) / rate : double.PositiveInfinity;
+            var measures = profile!.For(gap);
+
+            OsuAction key;
+            if (lastPlannedKey is not OsuAction last || gap >= RelaxTappingProfile.BREAK_GAP)
+                key = random.NextDouble() < profile.FirstKeyLeft ? OsuAction.LeftButton : OsuAction.RightButton;
+            else if (random.NextDouble() < measures.Alternate)
+                key = last == OsuAction.LeftButton ? OsuAction.RightButton : OsuAction.LeftButton;
+            else
+                key = last;
+
+            double offset = 0;
+
+            if (copyTiming)
+            {
+                // Their timing, in the map's time; never so far off the note that it isn't hit at all.
+                double meh = note.HitWindows.WindowFor(HitResult.Meh);
+                offset = Math.Clamp(RelaxTappingProfile.Sample(measures.Offset, random, 0) * rate, -meh + 1, meh - 1);
+            }
+
+            double hold = Math.Max(10, RelaxTappingProfile.Sample(measures.Hold, random, AutoGenerator.KEY_UP_DELAY) * rate);
+
+            lastPlannedStart = note.StartTime;
+            lastPlannedKey = key;
+            return plans[note] = new NotePlan(key, offset, hold);
+        }
+
+        private void updateLikePlayer(Playfield playfield)
+        {
+            double time = playfield.Clock.CurrentTime;
+            bool requiresHold = false;
+            bool pressed = false;
+            double lookahead = Math.Max(RELAX_LENIENCY, copyTiming ? 200 : 0);
+
+            foreach (var h in playfield.HitObjectContainer.AliveObjects.OfType<DrawableOsuHitObject>())
+            {
+                if (time < h.HitObject.StartTime - lookahead)
+                    break;
+
+                if (h.IsHit || (h.HitObject is IHasDuration hasEnd && time > hasEnd.EndTime))
+                    continue;
+
+                switch (h)
+                {
+                    case DrawableHitCircle circle:
+                        tryHit(circle, null);
+                        break;
+
+                    case DrawableSlider slider:
+                        if (!slider.HeadCircle.IsHit)
+                            tryHit(slider.HeadCircle, slider);
+
+                        requiresHold |= slider.SliderInputManager.IsMouseInFollowArea(slider.Tracking.Value);
+                        break;
+
+                    case DrawableSpinner spinner:
+                        requiresHold |= spinner.HitObject.SpinsRequired > 0;
+                        break;
+                }
+            }
+
+            // A slider or spinner being held keeps its key down (the one pressed last).
+            if (requiresHold)
+            {
+                if (!held.Contains(lastPressed))
+                    press(lastPressed, time);
+                releaseAt[lastPressed] = Math.Max(releaseAt.GetValueOrDefault(lastPressed), time + 1);
+            }
+
+            foreach (var key in held.ToArray())
+            {
+                if (time >= releaseAt.GetValueOrDefault(key))
+                    release(key);
+            }
+
+            void tryHit(DrawableHitCircle circle, DrawableSlider? slider)
+            {
+                if (pressed)
+                    return;
+
+                var note = plan(circle.HitObject);
+                double pressAt = circle.HitObject.StartTime + (copyTiming ? note.Offset : -RELAX_LENIENCY);
+
+                if (time < pressAt || !circle.HitArea.IsHovered)
+                    return;
+
+                Debug.Assert(circle.HitObject.HitWindows != null);
+                if (!circle.HitObject.HitWindows.CanBeHit(time - circle.HitObject.StartTime))
+                    return;
+
+                // The same key held from before: let go first, as a finger would.
+                if (held.Contains(note.Key))
+                    release(note.Key);
+
+                press(note.Key, time);
+                pressed = true;
+
+                releaseAt[note.Key] = slider != null
+                    ? slider.HitObject.EndTime + Math.Max(0, RelaxTappingProfile.Sample(profile!.SliderRelease, random, AutoGenerator.KEY_UP_DELAY) * rate)
+                    : time + note.Hold;
+            }
+        }
+
+        private void press(OsuAction key, double time)
+        {
+            held.Add(key);
+            lastPressed = key;
+            releaseAt[key] = time + AutoGenerator.KEY_UP_DELAY;
+
+            // With a replay moving the cursor, its input state wins: the keys are triggered themselves (as for old replays).
+            if (hasReplay)
+                osuInputManager.KeyBindingContainer.TriggerPressed(key);
+            else
+                applyHeld();
+        }
+
+        private void release(OsuAction key)
+        {
+            if (!held.Remove(key))
+                return;
+
+            if (hasReplay)
+                osuInputManager.KeyBindingContainer.TriggerReleased(key);
+            else
+                applyHeld();
+        }
+
+        private void applyHeld()
+        {
+            state = new ReplayState<OsuAction> { PressedActions = held.ToList() };
+            state.Apply(osuInputManager.CurrentState, osuInputManager);
         }
 
         public void ApplyToPlayer(Player player)
@@ -74,6 +249,13 @@ namespace osu.Game.Rulesets.Osu.Mods
         {
             if (hasReplay && !legacyReplay)
                 return;
+
+            // Reprise: tapping like a real player, when one is picked (not for an old replay: its presses are Relax's own).
+            if (profile != null && (!hasReplay || TestProfile != null))
+            {
+                updateLikePlayer(playfield);
+                return;
+            }
 
             bool requiresHold = false;
             bool requiresHit = false;
