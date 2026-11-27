@@ -12,9 +12,11 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Audio.Track;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Difficulty;
@@ -37,6 +39,10 @@ namespace osu.Game.Screens.Play.HUD
         [Resolved]
         private GameplayState gameplayState { get; set; }
 
+        [Resolved(CanBeNull = true)]
+        [CanBeNull]
+        private IBindable<WorkingBeatmap> workingBeatmap { get; set; }
+
         [CanBeNull]
         private List<TimedDifficultyAttributes> timedAttributes;
 
@@ -58,7 +64,10 @@ namespace osu.Game.Screens.Play.HUD
 
                 scoreInfo = new ScoreInfo(gameplayState.Score.ScoreInfo.BeatmapInfo, gameplayState.Score.ScoreInfo.Ruleset) { Mods = clonedMods };
 
-                var gameplayWorkingBeatmap = new GameplayWorkingBeatmap(gameplayState.Beatmap);
+                // Reprise: with the approach rate override on, the map being played isn't the one the pp is worked out from.
+                IWorkingBeatmap gameplayWorkingBeatmap = GameplayOverrides.ApproachRateEnabled && workingBeatmap?.Value != null
+                    ? workingBeatmap.Value
+                    : new GameplayWorkingBeatmap(gameplayState.Beatmap);
                 difficultyCache.GetTimedDifficultyAttributesAsync(gameplayWorkingBeatmap, gameplayState.Ruleset, clonedMods, loadCancellationSource.Token)
                                .ContinueWith(task => Schedule(() =>
                                {

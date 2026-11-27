@@ -15,6 +15,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Timing;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Judgements;
@@ -91,7 +92,11 @@ namespace osu.Game.Screens.Play.HUD.Counters
             scoreInfo = new ScoreInfo(gameplayState.Score.ScoreInfo.BeatmapInfo, gameplayState.Score.ScoreInfo.Ruleset) { Mods = mods };
             (firstHitTime, lastHitTime) = BeatmapExtensions.CalculatePlayableBounds(gameplayState.Beatmap.HitObjects);
 
-            difficultyCache.GetTimedDifficultyAttributesAsync(new GameplayWorkingBeatmap(gameplayState.Beatmap), gameplayState.Ruleset, mods, loadCancellation.Token)
+            // Reprise: with the approach rate override on, the map being played isn't the one the pp is worked out from.
+            IWorkingBeatmap forPerformance = GameplayOverrides.ApproachRateEnabled && working?.Value != null
+                ? working.Value
+                : new GameplayWorkingBeatmap(gameplayState.Beatmap);
+            difficultyCache.GetTimedDifficultyAttributesAsync(forPerformance, gameplayState.Ruleset, mods, loadCancellation.Token)
                            .ContinueWith(task => Schedule(() =>
                            {
                                timedAttributes = task.GetResultSafely();

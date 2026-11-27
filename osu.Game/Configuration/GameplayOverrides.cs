@@ -50,6 +50,23 @@ namespace osu.Game.Configuration
 
         public static bool ApproachRateEnabled { get; set; }
 
+        private static readonly System.Threading.AsyncLocal<bool> building_for_gameplay = new System.Threading.AsyncLocal<bool>();
+
+        /// <summary>
+        /// Whether the approach rate override applies to the map being built now: only the one being played
+        /// (<see cref="BuildingForGameplay"/>). Stars and pp everywhere else (song select, the results screen, the pp counter)
+        /// are worked out from the map's own approach rate, as the server works the play's pp out.
+        /// </summary>
+        public static bool ApproachRateAppliesHere => ApproachRateEnabled && building_for_gameplay.Value;
+
+        /// <summary>Until disposed, maps built on this flow are the one being played (the approach rate override applies).</summary>
+        public static System.IDisposable BuildingForGameplay()
+        {
+            bool previous = building_for_gameplay.Value;
+            building_for_gameplay.Value = true;
+            return new osu.Framework.Allocation.InvokeOnDisposal(() => building_for_gameplay.Value = previous);
+        }
+
         public static double ApproachRate { get; set; } = 9.0;
 
         public static bool AimAssist { get; set; }

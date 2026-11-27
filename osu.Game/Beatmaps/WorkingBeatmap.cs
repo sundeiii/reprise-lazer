@@ -315,8 +315,8 @@ namespace osu.Game.Beatmaps
                 }
             }
 
-            // Approach rate override.
-            if (GameplayOverrides.ApproachRateEnabled)
+            // Approach rate override: the map being played only, not its stars and pp (see GameplayOverrides.ApproachRateAppliesHere).
+            if (GameplayOverrides.ApproachRateAppliesHere)
             {
                 converted.Difficulty.ApproachRate =
                     (float)GameplayOverrides.ApproachRate;
