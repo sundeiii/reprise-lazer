@@ -43,8 +43,13 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
         [Resolved]
         private IAPIProvider? api { get; set; }
 
-        /// <summary>Reprise: how many more times to ask the server while it's still working the play's pp out.</summary>
-        private int serverAttemptsLeft = 3;
+        /// <summary>
+        /// Reprise: how long to keep asking the server while it's still working the play's pp out (a lazer play waits
+        /// for the score processor, which can take minutes): every few seconds at first, then less often.
+        /// </summary>
+        private static readonly TimeSpan server_wait = TimeSpan.FromMinutes(5);
+
+        private DateTimeOffset? serverAskedSince;
 
         /// <summary>Reprise: the server's pp came in (Reprise's own rules); the local estimate no longer shows.</summary>
         private bool fromServer;
@@ -57,6 +62,13 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
             if (score.PP.HasValue)
             {
                 setPerformanceValue(score, score.PP.Value);
+            }
+            else if (localEstimateIsWrong(score) && api != null && score.OnlineID > 0)
+            {
+                // Reprise: Relax and Autopilot have pp by Reprise's own rules, which the local calculator doesn't know: its
+                // number (osu!'s formula) would be wrong, so nothing shows until the server's comes in.
+                Alpha = 0.5f;
+                TooltipText = "Waiting for the server's pp (Relax and Autopilot are worked out there)";
             }
             else
             {
@@ -82,16 +94,27 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
         /// </summary>
         private void fetchFromServer()
         {
-            if (api == null || score.OnlineID <= 0 || serverAttemptsLeft-- <= 0)
+            if (api == null || score.OnlineID <= 0)
                 return;
+
+            var now = DateTimeOffset.UtcNow;
+            serverAskedSince ??= now;
+            var waited = now - serverAskedSince.Value;
+
+            if (waited > server_wait)
+            {
+                if (!fromServer && localEstimateIsWrong(score))
+                    TooltipText = "The server hasn't worked this play's pp out yet: see it on the website later";
+                return;
+            }
 
             var request = new GetReprisePerformanceRequest(score.OnlineID);
             request.Success += result => Schedule(() =>
             {
                 if (result.PP is not double pp)
                 {
-                    // Still being worked out: ask again in a few seconds.
-                    Scheduler.AddDelayed(fetchFromServer, 3000);
+                    // Still being worked out: ask again in a few seconds (less often after the first half minute).
+                    Scheduler.AddDelayed(fetchFromServer, waited < TimeSpan.FromSeconds(30) ? 3000 : 10000);
                     return;
                 }
 
@@ -144,6 +167,10 @@ namespace osu.Game.Screens.Ranking.Expanded.Statistics
                 }
             }
         }
+
+        /// <summary>Reprise: plays whose pp the server works out by its own rules (Relax, Autopilot), not osu!'s formula.</summary>
+        private static bool localEstimateIsWrong(ScoreInfo scoreInfo) =>
+            scoreInfo.Mods.Any(m => m.Acronym is "RX" or "AP");
 
         private static bool hasUnrankedMods(ScoreInfo scoreInfo)
         {
