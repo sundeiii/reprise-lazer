@@ -56,6 +56,10 @@ namespace osu.Game.Rulesets.Osu
 
         public override ScoreProcessor CreateScoreProcessor() => new OsuScoreProcessor();
 
+        // Reprise: a stored play's osu!stable ScoreV2, estimated from its counts and max combo (ScoringMode.ScoreV2).
+        public override long? GetStableScoreV2Estimate(ScoreInfo score) =>
+            OsuStableScoring.EstimateScoreV2(score.Statistics, score.MaximumStatistics, score.MaxCombo, score.Mods);
+
         public override HealthProcessor CreateHealthProcessor(double drainStartTime) => new OsuHealthProcessor(drainStartTime);
 
         public override IBeatmapConverter CreateBeatmapConverter(IBeatmap beatmap) => new OsuBeatmapConverter(beatmap, this);

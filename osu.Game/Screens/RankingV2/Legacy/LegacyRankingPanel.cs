@@ -371,7 +371,7 @@ namespace osu.Game.Screens.RankingV2.Legacy
         {
             // https://github.com/peppy/osu-stable-reference/blob/6b3838c41c4b8005cadf7db0b503ae967776d9f9/osu!/GameModes/Ranking/Ranking.cs#L190-L202
             long totalScore = score.Value.GetDisplayScore(scoringMode.Value);
-            string template = new string(Enumerable.Repeat('0', scoringMode.Value == ScoringMode.Standardised ? 7 : 8).ToArray());
+            string template = new string(Enumerable.Repeat('0', scoringMode.Value is ScoringMode.Standardised or ScoringMode.ScoreV2 ? 7 : 8).ToArray());
             string totalScoreString = totalScore.ToString(template);
 
             double digitsVisible = (Time.Current - (scoreRevealStartTime ?? double.NegativeInfinity)) / 500;

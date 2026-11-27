@@ -38,7 +38,12 @@ namespace osu.Game.Screens.Play.HUD
                         break;
 
                     case ScoringMode.Classic:
+                    case ScoringMode.ScoreV1:
                         RequiredDisplayDigits.Value = 8;
+                        break;
+
+                    case ScoringMode.ScoreV2:
+                        RequiredDisplayDigits.Value = 7;
                         break;
 
                     default:

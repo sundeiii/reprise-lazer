@@ -495,6 +495,8 @@ namespace osu.Game.Screens.Select
                         break;
 
                     case ScoringMode.Classic:
+                    case ScoringMode.ScoreV1:
+                    case ScoringMode.ScoreV2:
                         rightContent.Width = expanded_right_content_width;
                         break;
                 }

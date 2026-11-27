@@ -424,6 +424,12 @@ namespace osu.Game.Rulesets.Scoring
             scoreMultiplier = calculator.CalculateFor(Mods.Value);
         }
 
+        /// <summary>
+        /// Reprise: the play's osu!stable score (<see cref="ScoringMode.ScoreV1"/> or <see cref="ScoringMode.ScoreV2"/>), worked out hit
+        /// by hit; null where the ruleset doesn't keep it.
+        /// </summary>
+        public virtual long? GetStableScore(ScoringMode mode) => null;
+
         protected virtual double ComputeTotalScore(double comboProgress, double accuracyProgress, double bonusPortion)
         {
             return 500000 * Accuracy.Value * comboProgress +
@@ -620,7 +626,15 @@ namespace osu.Game.Rulesets.Scoring
         Standardised,
 
         [LocalisableDescription(typeof(GameplaySettingsStrings), nameof(GameplaySettingsStrings.ClassicScoreDisplay))]
-        Classic
+        Classic,
+
+        /// <summary>Reprise: osu!stable's own scoring (osu! only; Classic elsewhere).</summary>
+        [System.ComponentModel.Description("ScoreV1 (stable)")]
+        ScoreV1,
+
+        /// <summary>Reprise: osu!stable's ScoreV2 (osu! only; Standardised elsewhere).</summary>
+        [System.ComponentModel.Description("ScoreV2 (stable)")]
+        ScoreV2,
     }
 
     [Serializable]

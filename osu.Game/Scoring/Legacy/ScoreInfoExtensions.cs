@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Game.Online.Rooms;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 
 namespace osu.Game.Scoring.Legacy
@@ -12,10 +13,34 @@ namespace osu.Game.Scoring.Legacy
     public static class ScoreInfoExtensions
     {
         public static long GetDisplayScore(this ScoreProcessor scoreProcessor, ScoringMode mode)
-            => getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
+            => scoreProcessor.GetStableScore(mode)
+               ?? getDisplayScore(scoreProcessor.Ruleset.RulesetInfo.OnlineID, scoreProcessor.TotalScore.Value, mode, scoreProcessor.MaximumStatistics);
 
         public static long GetDisplayScore(this IScoreInfo scoreInfo, ScoringMode mode)
-            => getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        {
+            // Reprise: osu!stable's own scores: as worked out while it was played, a stable play's own, or estimated.
+            if (scoreInfo is ScoreInfo info && info.Ruleset.OnlineID == 0)
+            {
+                switch (mode)
+                {
+                    case ScoringMode.ScoreV1:
+                        if (info.StableScoreV1 is long v1)
+                            return v1;
+                        if (info.LegacyTotalScore is long legacy && !info.Mods.Any(m => m is ModScoreV2))
+                            return legacy;
+
+                        break;
+
+                    case ScoringMode.ScoreV2:
+                        if (info.StableScoreV2 is long v2)
+                            return v2;
+
+                        return info.Ruleset.CreateInstance().GetStableScoreV2Estimate(info) ?? info.TotalScore;
+                }
+            }
+
+            return getDisplayScore(scoreInfo.Ruleset.OnlineID, scoreInfo.TotalScore, mode, scoreInfo.MaximumStatistics);
+        }
 
         // TODO: implement `IScoreInfo` on `MultiplayerScore` and remove this overload
         public static long GetDisplayScore(this MultiplayerScore multiplayerScore, ScoringMode mode)
@@ -23,7 +48,7 @@ namespace osu.Game.Scoring.Legacy
 
         private static long getDisplayScore(int rulesetId, long score, ScoringMode mode, IReadOnlyDictionary<HitResult, int> maximumStatistics)
         {
-            if (mode == ScoringMode.Standardised)
+            if (mode is ScoringMode.Standardised or ScoringMode.ScoreV2)
                 return score;
 
             int maxBasicJudgements = maximumStatistics

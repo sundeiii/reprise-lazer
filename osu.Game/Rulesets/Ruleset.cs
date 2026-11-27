@@ -256,6 +256,9 @@ namespace osu.Game.Rulesets
         /// <returns>The score processor.</returns>
         public virtual ScoreProcessor CreateScoreProcessor() => new ScoreProcessor(this);
 
+        /// <summary>Reprise: a stored play's osu!stable ScoreV2, estimated from its counts; null where the ruleset can't.</summary>
+        public virtual long? GetStableScoreV2Estimate(osu.Game.Scoring.ScoreInfo score) => null;
+
         /// <summary>
         /// Creates a <see cref="HealthProcessor"/> for this <see cref="Ruleset"/>.
         /// </summary>

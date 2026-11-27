@@ -120,6 +120,14 @@ namespace osu.Game.Scoring
         [Ignored]
         public bool IsBancho { get; set; }
 
+        /// <summary>Reprise: the play's osu!stable ScoreV1, as worked out while it was played (not kept; estimated afterwards).</summary>
+        [Ignored]
+        public long? StableScoreV1 { get; set; }
+
+        /// <summary>Reprise: the play's osu!stable ScoreV2, as worked out while it was played (not kept; estimated afterwards).</summary>
+        [Ignored]
+        public long? StableScoreV2 { get; set; }
+
         public DateTimeOffset Date { get; set; }
 
         public double? PP { get; set; }
