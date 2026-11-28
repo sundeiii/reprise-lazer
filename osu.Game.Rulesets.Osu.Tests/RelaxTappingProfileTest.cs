@@ -15,7 +15,11 @@ namespace osu.Game.Rulesets.Osu.Tests
         [Test]
         public void TestBundledProfilesLoad()
         {
-            Assert.That(RelaxTappingProfile.Available, Is.SupersetOf(new[] { "mrekk", "Ivaxa", "Akolibed", "NINERIK", "milosz", "lifeline", "xootynator" }));
+            Assert.That(RelaxTappingProfile.Available, Is.SupersetOf(new[]
+            {
+                "mrekk", "Ivaxa", "Akolibed", "NINERIK", "milosz", "lifeline", "xootynator",
+                "FlyingTuna", "BTMC", "chocomint", "WhiteCat", "Zylice", "ASecretBox", "Abyssal", "cedru",
+            }));
 
             foreach (string name in RelaxTappingProfile.Available)
             {
@@ -24,10 +28,32 @@ namespace osu.Game.Rulesets.Osu.Tests
                 Assert.That(profile!.Buckets.Last().MaxGap, Is.Null, name);
                 Assert.That(profile.For(60).Hold, Is.Not.Null, name);
                 Assert.That(profile.For(5000).Offset, Is.Not.Null, name);
+
+                // Which key comes next, by the key before: what keeps a player's favoured key (e.g. lifeline single-taps with K2).
+                Assert.That(profile.For(60).SwitchFromLeft, Is.Not.Null, name);
+                Assert.That(profile.For(60).SwitchFromRight, Is.Not.Null, name);
             }
 
             Assert.That(RelaxTappingProfile.Load(string.Empty), Is.Null);
             Assert.That(RelaxTappingProfile.Load("nobody"), Is.Null);
+        }
+
+        // Their timing drawn as the game draws it (each gap as often as in their plays) spreads as theirs did: the profiles once
+        // kept only 11 points, the worst hit at each end, and came out twice as spread (lots of 100s).
+        [Test]
+        public void TestDrawnTimingSpreadsAsTheirs()
+        {
+            var random = new Random(1);
+
+            foreach (string name in RelaxTappingProfile.Available)
+            {
+                var profile = RelaxTappingProfile.Load(name)!;
+                var offsets = profile.Buckets.SelectMany(b => Enumerable.Range(0, Math.Max(1, b.Notes / 10)).Select(_ => RelaxTappingProfile.Sample(b.Offset, random, 0))).ToArray();
+                double mean = offsets.Average();
+                double ur = 10 * Math.Sqrt(offsets.Average(o => (o - mean) * (o - mean)));
+
+                Assert.That(ur, Is.EqualTo(profile.Summary!.UnstableRate).Within(25).Percent, name);
+            }
         }
 
         [Test]

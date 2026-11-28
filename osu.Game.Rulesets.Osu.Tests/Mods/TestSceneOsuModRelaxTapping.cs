@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -12,6 +13,7 @@ using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.Replays;
 using osu.Game.Rulesets.Osu.Scoring;
 using osu.Game.Rulesets.Replays;
+using osu.Game.Rulesets.Scoring;
 using osu.Game.Tests.Visual;
 using osuTK;
 
@@ -55,11 +57,40 @@ namespace osu.Game.Rulesets.Osu.Tests.Mods
             }).ToList(),
         };
 
-        private static List<ReplayFrame> cursorOnNotes() => new List<ReplayFrame>
+        // A frame every millisecond, as the game updates about that often (each of a replay's frames is played).
+        private static List<ReplayFrame> cursorOnNotes() => Enumerable.Range(0, (int)(1000 + notes * spacing + 500))
+                                                                      .Select(t => (ReplayFrame)new OsuReplayFrame(t, new Vector2(256, 192)))
+                                                                      .ToList();
+
+        // Jumps: notes 100ms apart, 300px to and fro, the cursor on each only at its time (moving straight on, as autoplay's does).
+        private static Beatmap jumps() => new Beatmap
         {
-            new OsuReplayFrame(0, new Vector2(256, 192)),
-            new OsuReplayFrame(1000 + notes * spacing + 500, new Vector2(256, 192)),
+            StackLeniency = 0,
+            Difficulty = { OverallDifficulty = 5 },
+            HitObjects = Enumerable.Range(0, notes).Select(i => (HitObject)new HitCircle
+            {
+                StartTime = 1000 + i * spacing,
+                Position = jumpPosition(i),
+                HitWindows = new OsuHitWindows(),
+            }).ToList(),
         };
+
+        private static Vector2 jumpPosition(int i) => new Vector2(i % 2 == 0 ? 106 : 406, 192);
+
+        // A frame every millisecond, as the game updates about that often (each of a replay's frames is played); or as far apart as
+        // a slow computer's updates.
+        private static List<ReplayFrame> cursorThroughJumps(double step = 1)
+        {
+            var frames = new List<ReplayFrame> { new OsuReplayFrame(0, jumpPosition(0)) };
+
+            for (double t = 900; t <= 1000 + notes * spacing; t += step)
+            {
+                int i = Math.Clamp((int)((t - 1000) / spacing), 0, notes - 1);
+                frames.Add(new OsuReplayFrame(t, i + 1 < notes ? Vector2.Lerp(jumpPosition(i), jumpPosition(i + 1), (float)Math.Max(0, (t - 1000 - i * spacing) / spacing)) : jumpPosition(i)));
+            }
+
+            return frames;
+        }
 
         private List<OsuAction> pressesInOrder()
         {
@@ -111,6 +142,43 @@ namespace osu.Game.Rulesets.Osu.Tests.Mods
             PassCondition = () => Player.ScoreProcessor.Combo.Value == notes
                                   && pressesInOrder().Count == notes
                                   && pressesInOrder().Distinct().Count() == 1,
+        });
+
+        // Their late hits wait only while the cursor is surely still on the note: on jumps it's gone straight after, so they come sooner
+        // (never a miss), but on the last note, where it stays, as late as theirs. Hits early are as theirs.
+        [Test]
+        public void TestCopiedLateTimingOnJumps() => CreateModTest(new ModTestData
+        {
+            Mod = relax(profile(alternate: 1, offset: 20), copyTiming: true),
+            Autoplay = false,
+            CreateBeatmap = jumps,
+            ReplayFrames = cursorThroughJumps(),
+            PassCondition = () => Player.ScoreProcessor.Combo.Value == notes
+                                  && Player.ScoreProcessor.HitEvents.All(e => e.Result == HitResult.Great)
+                                  && Player.ScoreProcessor.HitEvents.All(e => e.HitObject.StartTime == 1000 + (notes - 1) * spacing ? e.TimeOffset >= 19 : e.TimeOffset < 10),
+        });
+
+        // A slow computer (60 updates a second): a hit a little late, the cursor gone by the update after, is made in the one before.
+        [TestCase(3)]
+        [TestCase(20)]
+        public void TestCopiedLateTimingOnJumpsWithSlowUpdates(double offset) => CreateModTest(new ModTestData
+        {
+            Mod = relax(profile(alternate: 1, offset: offset), copyTiming: true),
+            Autoplay = false,
+            CreateBeatmap = jumps,
+            ReplayFrames = cursorThroughJumps(1000 / 60.0),
+            PassCondition = () => Player.ScoreProcessor.Combo.Value == notes && Player.ScoreProcessor.HitEvents.All(e => e.Result == HitResult.Great),
+        });
+
+        [Test]
+        public void TestCopiedEarlyTimingOnJumps() => CreateModTest(new ModTestData
+        {
+            Mod = relax(profile(alternate: 1, offset: -8), copyTiming: true),
+            Autoplay = false,
+            CreateBeatmap = jumps,
+            ReplayFrames = cursorThroughJumps(),
+            PassCondition = () => Player.ScoreProcessor.Combo.Value == notes
+                                  && Player.ScoreProcessor.HitEvents.All(e => e.Result == HitResult.Great && e.TimeOffset <= -8 && e.TimeOffset > -20),
         });
 
         [Test]

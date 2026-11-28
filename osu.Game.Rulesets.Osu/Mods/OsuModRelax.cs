@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.UI;
 using osu.Game.Screens.Play;
+using osuTK;
 using static osu.Game.Input.Handlers.ReplayInputHandler;
 
 namespace osu.Game.Rulesets.Osu.Mods
@@ -54,6 +55,10 @@ namespace osu.Game.Rulesets.Osu.Mods
             osuInputManager = ruleset.KeyBindingInputManager;
 
             rate = drawableRuleset.Mods.OfType<IApplicableToRate>().Aggregate(1.0, (r, m) => m.ApplyToRate(0, r));
+
+            var objects = drawableRuleset.Beatmap.HitObjects;
+            for (int i = 0; i + 1 < objects.Count; i++)
+                nextObject[objects[i]] = objects[i + 1];
         }
 
         // ---- Reprise: tapping like a real player (OsuSetting.RelaxTapping, RelaxTappingProfile) ----
@@ -70,6 +75,37 @@ namespace osu.Game.Rulesets.Osu.Mods
         private readonly HashSet<OsuAction> held = new HashSet<OsuAction>();
         private readonly Dictionary<OsuAction, double> releaseAt = new Dictionary<OsuAction, double>();
         private OsuAction lastPressed = OsuAction.LeftButton;
+
+        private Vector2? lastMouse;
+        private double lastUpdateTime;
+
+        // How long updates have lately been apart (the longest, slowly forgotten): a hit waiting to come late is made in the update
+        // before the cursor could be gone, not the one after.
+        private double frameInterval = 1000 / 60.0;
+
+        private readonly Dictionary<OsuHitObject, OsuHitObject> nextObject = new Dictionary<OsuHitObject, OsuHitObject>();
+
+        /// <summary>
+        /// The latest a late hit on <paramref name="note"/> can safely wait for, the cursor still on it: a cursor going on to the next
+        /// note leaves it as early as autoplay's does (eased out: at twice its average speed straight away), with a fifth to spare;
+        /// on a slider's head, as early as its ball leaves. Never, for a cursor that needn't leave (the next note on top of it).
+        /// </summary>
+        private double cursorLeaves(OsuHitObject note, DrawableSlider? slider)
+        {
+            double radius = note.Radius;
+
+            if (slider != null)
+                return slider.HitObject.Velocity > 0 && slider.HitObject.Path.Distance > radius ? note.StartTime + 0.8 * radius / slider.HitObject.Velocity : double.PositiveInfinity;
+
+            if (!nextObject.TryGetValue(note, out var next) || next is Spinner)
+                return double.PositiveInfinity;
+
+            double distance = Vector2.Distance(note.StackedPosition, next.StackedPosition);
+            if (distance <= radius)
+                return double.PositiveInfinity;
+
+            return note.StartTime + 0.8 * 0.5 * (next.StartTime - note.StartTime) * radius / distance;
+        }
 
         private record NotePlan(OsuAction Key, double Offset, double Hold);
 
@@ -88,6 +124,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         /// <inheritdoc cref="TestProfile"/>
         public static bool? TestCopyTiming { get; set; }
 
+        /// <summary>For tests: each decision, written out.</summary>
+        public static Action<string>? TestLog { get; set; }
+
         /// <summary>The key, timing and hold of a note, drawn from the player's measures for the gap before it (in the order notes come).</summary>
         private NotePlan plan(OsuHitObject note)
         {
@@ -100,7 +139,7 @@ namespace osu.Game.Rulesets.Osu.Mods
             OsuAction key;
             if (lastPlannedKey is not OsuAction last || gap >= RelaxTappingProfile.BREAK_GAP)
                 key = random.NextDouble() < profile.FirstKeyLeft ? OsuAction.LeftButton : OsuAction.RightButton;
-            else if (random.NextDouble() < measures.Alternate)
+            else if (random.NextDouble() < measures.SwitchFrom(last == OsuAction.LeftButton))
                 key = last == OsuAction.LeftButton ? OsuAction.RightButton : OsuAction.LeftButton;
             else
                 key = last;
@@ -116,6 +155,8 @@ namespace osu.Game.Rulesets.Osu.Mods
 
             double hold = Math.Max(10, RelaxTappingProfile.Sample(measures.Hold, random, AutoGenerator.KEY_UP_DELAY) * rate);
 
+            TestLog?.Invoke(FormattableString.Invariant($"PLAN {offset / rate:0.00}"));
+
             lastPlannedStart = note.StartTime;
             lastPlannedKey = key;
             return plans[note] = new NotePlan(key, offset, hold);
@@ -127,6 +168,14 @@ namespace osu.Game.Rulesets.Osu.Mods
             bool requiresHold = false;
             bool pressed = false;
             double lookahead = Math.Max(RELAX_LENIENCY, copyTiming ? 200 : 0);
+
+            // Where the cursor is and how it's moving (per millisecond), for "is it about to leave the note".
+            var mouse = osuInputManager.CurrentState.Mouse.Position;
+            if (time > lastUpdateTime)
+                frameInterval = Math.Clamp(Math.Max(time - lastUpdateTime, frameInterval * 0.95), 1, 50);
+            var mouseVelocity = lastMouse is Vector2 previous && time > lastUpdateTime ? (mouse - previous) / (float)(time - lastUpdateTime) : Vector2.Zero;
+            lastMouse = mouse;
+            lastUpdateTime = time;
 
             foreach (var h in playfield.HitObjectContainer.AliveObjects.OfType<DrawableOsuHitObject>())
             {
@@ -146,11 +195,13 @@ namespace osu.Game.Rulesets.Osu.Mods
                         if (!slider.HeadCircle.IsHit)
                             tryHit(slider.HeadCircle, slider);
 
-                        requiresHold |= slider.SliderInputManager.IsMouseInFollowArea(slider.Tracking.Value);
+                        // Only once its head is judged (hit with its own key, or missed): holding a key down sooner would hit the head with
+                        // the key held, early (copied timing looks further ahead) or not with the key planned for it.
+                        requiresHold |= slider.HeadCircle.Judged && slider.SliderInputManager.IsMouseInFollowArea(slider.Tracking.Value);
                         break;
 
                     case DrawableSpinner spinner:
-                        requiresHold |= spinner.HitObject.SpinsRequired > 0;
+                        requiresHold |= time >= spinner.HitObject.StartTime && spinner.HitObject.SpinsRequired > 0;
                         break;
                 }
             }
@@ -177,8 +228,34 @@ namespace osu.Game.Rulesets.Osu.Mods
                 var note = plan(circle.HitObject);
                 double pressAt = circle.HitObject.StartTime + (copyTiming ? note.Offset : -RELAX_LENIENCY);
 
-                if (time < pressAt || !circle.HitArea.IsHovered)
+                if (!circle.HitArea.IsHovered)
                     return;
+
+                double start = circle.HitObject.StartTime;
+
+                if (!copyTiming)
+                {
+                    if (time < start - RELAX_LENIENCY)
+                        return;
+                }
+                else if (time < pressAt)
+                {
+                    // Waiting to hit late, as they would, while the cursor surely stays on the note. Hit now instead when the next
+                    // update could come after the cursor has gone (on to the next note, or with its slider's ball), or when it's
+                    // already moving off it: going as it goes, off it by the next update or so.
+                    double leaves = cursorLeaves(circle.HitObject, slider);
+                    bool lastChance = time + frameInterval > leaves;
+
+                    // With updates far apart, the one nearest their timing (not always the one after it).
+                    bool nearest = time + frameInterval / 2 > pressAt;
+                    bool leaving = Vector2.Dot(mouseVelocity, circle.HitArea.ScreenSpaceDrawQuad.Centre - mouse) < 0
+                                   && !circle.HitArea.ReceivePositionalInputAt(mouse + mouseVelocity * (float)(frameInterval * 1.5));
+
+                    TestLog?.Invoke($"t {time:0.0} note {start:0} pressAt {pressAt:0.0} leaves {leaves:0.0} interval {frameInterval:0.0} last {lastChance} leaving {leaving} nearest {nearest}");
+
+                    if (time < start - Math.Max(RELAX_LENIENCY, frameInterval) || (!lastChance && !leaving && !nearest))
+                        return;
+                }
 
                 Debug.Assert(circle.HitObject.HitWindows != null);
                 if (!circle.HitObject.HitWindows.CanBeHit(time - circle.HitObject.StartTime))
@@ -190,6 +267,7 @@ namespace osu.Game.Rulesets.Osu.Mods
 
                 press(note.Key, time);
                 pressed = true;
+                TestLog?.Invoke($"PRESS t {time:0.0} note {circle.HitObject.StartTime:0} key {note.Key}");
 
                 releaseAt[note.Key] = slider != null
                     ? slider.HitObject.EndTime + Math.Max(0, RelaxTappingProfile.Sample(profile!.SliderRelease, random, AutoGenerator.KEY_UP_DELAY) * rate)

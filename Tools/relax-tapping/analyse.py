@@ -5,7 +5,7 @@ Reads osu!standard replays (.osr) with their maps (.osu) and measures how the pl
 divided by 1.5): for each note (circle or slider head), the gap since the note before, which key hit it, whether that's the
 other key than the press before (alternating), how long the key was held (circles), how early or late it was hit, and how long
 after a slider's end the key was let go. Grouped by the gap before the note (streams to slow jumps), each measure is kept as
-its 11 deciles, which the game samples from (osu.Game.Rulesets.Osu/Mods/RelaxTapping.cs).
+its percentiles (101 points), which the game samples from (osu.Game.Rulesets.Osu/Mods/RelaxTapping.cs).
 
 Usage: python analyse.py <replays dir with one folder per player and manifest.json> <output dir>
 """
@@ -191,6 +191,7 @@ def analyse(replay, notes, od):
             'gap': gap,
             'offset': (t - start) / rate,
             'switch': None if last_press is None or gap >= BREAK_GAP else key != last_press,
+            'previous': None if last_press is None or gap >= BREAK_GAP else last_press,
             'key': key,
             'hold': (release - t) / rate if release is not None and kind == 'circle' else None,
             'slider_release': (release - end) / rate if release is not None and kind == 'slider' else None,
@@ -200,16 +201,22 @@ def analyse(replay, notes, od):
     return rows
 
 
+def percentile(values, q):
+    x = (len(values) - 1) * q
+    lo, hi = math.floor(x), math.ceil(x)
+    return values[lo] + (values[hi] - values[lo]) * (x - lo)
+
+
 def deciles(values):
+    """
+    101 points evenly through the values (every percentile), the ends at the 0.5th and 99.5th: the game draws evenly between
+    neighbouring points, so with few points (or the very worst value at an end) one rare outlier would stand for a whole slice.
+    """
     values = sorted(values)
     if not values:
         return None
-    out = []
-    for i in range(11):
-        x = (len(values) - 1) * i / 10
-        lo, hi = math.floor(x), math.ceil(x)
-        out.append(round(values[lo] + (values[hi] - values[lo]) * (x - lo), 2))
-    return out
+    qs = [0.005] + [i / 100 for i in range(1, 100)] + [0.995]
+    return [round(percentile(values, q), 2) for q in qs]
 
 
 def profile(name, rows, replays):
@@ -220,10 +227,15 @@ def profile(name, rows, replays):
         switches = [r['switch'] for r in inside if r['switch'] is not None]
         holds = [r['hold'] for r in inside if r['hold'] is not None and 0 < r['hold'] < 1000]
         offsets = [r['offset'] for r in inside]
+        from_left = [r['switch'] for r in inside if r['previous'] == 'L']
+        from_right = [r['switch'] for r in inside if r['previous'] == 'R']
         buckets.append({
             'maxGap': None if edge == math.inf else edge,
             'notes': len(inside),
             'alternate': round(sum(switches) / len(switches), 3) if switches else 0.5,
+            # By the key before: how often the other one comes next (a player favouring one key leaves it less often).
+            'switchFromLeft': round(sum(from_left) / len(from_left), 3) if len(from_left) >= 10 else None,
+            'switchFromRight': round(sum(from_right) / len(from_right), 3) if len(from_right) >= 10 else None,
             'hold': deciles(holds),
             'offset': deciles(offsets),
         })
@@ -235,7 +247,7 @@ def profile(name, rows, replays):
         near = sorted((j for j in range(len(buckets)) if buckets[j]['notes'] >= 30), key=lambda j: abs(j - i))
         if near:
             src = buckets[near[0]]
-            for k in ('alternate', 'hold', 'offset'):
+            for k in ('alternate', 'switchFromLeft', 'switchFromRight', 'hold', 'offset'):
                 if b['notes'] < 10 or b[k] is None:
                     b[k] = src[k]
     after_break = [r['key'] for r in rows if r['gap'] >= BREAK_GAP]
@@ -252,6 +264,7 @@ def profile(name, rows, replays):
         'sliderRelease': deciles(slider_releases),
         'summary': {
             'alternate': round(sum(1 for r in rows if r['switch']) / max(1, sum(1 for r in rows if r['switch'] is not None)), 3),
+            'leftShare': round(sum(1 for r in rows if r['key'] == 'L') / len(rows), 3),
             'meanOffset': round(mean, 2),
             'unstableRate': round(ur, 1),
         },
@@ -291,8 +304,8 @@ def main():
         s = p['summary']
         print(f"{name}: {used} replays, {p['notes']} notes, alternates {s['alternate']:.0%}, mean offset {s['meanOffset']} ms, UR {s['unstableRate']}")
         for b in p['buckets']:
-            hold = b['hold'][5] if b['hold'] else '-'
-            off = b['offset'][5] if b['offset'] else '-'
+            hold = b['hold'][50] if b['hold'] else '-'
+            off = b['offset'][50] if b['offset'] else '-'
             print(f"   gap <{b['maxGap'] or 'inf':>4}: {b['notes']:5} notes, alternate {b['alternate']:.0%}, hold median {hold} ms, offset median {off} ms")
 
 

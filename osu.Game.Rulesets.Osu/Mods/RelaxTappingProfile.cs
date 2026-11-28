@@ -12,7 +12,7 @@ namespace osu.Game.Rulesets.Osu.Mods
     /// <summary>
     /// Reprise: how a real player taps, measured from their replays (Tools/relax-tapping/analyse.py), for <see cref="OsuModRelax"/>
     /// to press keys the way they do: which key a note gets (alternating or not, by the gap before it), how long it's held, how early
-    /// or late it's hit, and how long after a slider's end the key is let go. Every measure is in real milliseconds, by its deciles.
+    /// or late it's hit, and how long after a slider's end the key is let go. Every measure is in real milliseconds, by its percentiles (the ends trimmed to the 0.5th and 99.5th).
     /// </summary>
     public class RelaxTappingProfile
     {
@@ -36,6 +36,15 @@ namespace osu.Game.Rulesets.Osu.Mods
         [JsonProperty("buckets")]
         public Bucket[] Buckets { get; set; } = Array.Empty<Bucket>();
 
+        [JsonProperty("summary")]
+        public ProfileSummary? Summary { get; set; }
+
+        public class ProfileSummary
+        {
+            [JsonProperty("unstableRate")]
+            public double UnstableRate { get; set; }
+        }
+
         [JsonProperty("sliderRelease")]
         public double[]? SliderRelease { get; set; }
 
@@ -45,9 +54,27 @@ namespace osu.Game.Rulesets.Osu.Mods
             [JsonProperty("maxGap")]
             public double? MaxGap { get; set; }
 
+            /// <summary>How many of their notes it's measured from.</summary>
+            [JsonProperty("notes")]
+            public int Notes { get; set; }
+
             /// <summary>How often a note is hit with the other key than the note before.</summary>
             [JsonProperty("alternate")]
             public double Alternate { get; set; } = 0.5;
+
+            /// <summary>
+            /// How often a note is hit with the other key, by the key before (left / right): a player favouring one key leaves it less
+            /// often than the other. Null where not measured, when <see cref="Alternate"/> stands for both.
+            /// </summary>
+            [JsonProperty("switchFromLeft")]
+            public double? SwitchFromLeft { get; set; }
+
+            /// <inheritdoc cref="SwitchFromLeft"/>
+            [JsonProperty("switchFromRight")]
+            public double? SwitchFromRight { get; set; }
+
+            /// <summary>How often the note after one hit with <paramref name="leftBefore"/>'s key is hit with the other.</summary>
+            public double SwitchFrom(bool leftBefore) => (leftBefore ? SwitchFromLeft : SwitchFromRight) ?? Alternate;
 
             [JsonProperty("hold")]
             public double[]? Hold { get; set; }
@@ -59,7 +86,7 @@ namespace osu.Game.Rulesets.Osu.Mods
         /// <summary>The measures for a note <paramref name="gap"/> real milliseconds after the one before.</summary>
         public Bucket For(double gap) => Buckets.FirstOrDefault(b => b.MaxGap == null || gap < b.MaxGap) ?? Buckets.Last();
 
-        /// <summary>A value drawn from <paramref name="deciles"/> (evenly between them), or <paramref name="fallback"/> without any.</summary>
+        /// <summary>A value drawn from <paramref name="deciles"/> (points evenly through the values; evenly between neighbours), or <paramref name="fallback"/> without any.</summary>
         public static double Sample(double[]? deciles, Random random, double fallback)
         {
             if (deciles == null || deciles.Length < 2)
