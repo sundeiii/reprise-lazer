@@ -171,14 +171,14 @@ namespace osu.Game.Skinning.Select
                 selectedModsText = new OsuSpriteText
                 {
                     Position = new Vector2(60, 397) * 1.6f,
-                    Font = OsuFont.GetFont(size: 48, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 48, weight: FontWeight.Bold)),
                     Colour = new Color4(255, 255, 255, 128),
                 },
                 // Not stable's: the mods' score multiplier under them (stable shows it only in its mod selection).
                 scoreMultiplierText = new OsuSpriteText
                 {
                     Position = new Vector2(60, 397) * 1.6f + new Vector2(2, 56),
-                    Font = OsuFont.GetFont(size: 22, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 22, weight: FontWeight.Bold)),
                     Colour = new Color4(255, 255, 255, 128),
                 },
                 // Stable's: from 92 down (its 640x480), 290 by 267. Measured against stable: the rows start 5 in.
@@ -379,7 +379,7 @@ namespace osu.Game.Skinning.Select
                 // Measured against stable (its code from 2015 has these 10-20 lower).
                 Position = new Vector2(120 * 1.6f, 570),
                 Text = "Personal Best",
-                Font = OsuFont.GetFont(size: 21, weight: FontWeight.Bold),
+                Font = StableFont.Like(OsuFont.GetFont(size: 21, weight: FontWeight.Bold)),
             });
 
             var userScore = result.UserScore;
@@ -390,7 +390,7 @@ namespace osu.Game.Skinning.Select
                 {
                     Position = new Vector2((58 + 3) * 1.6f, 591 + 6 * 1.6f),
                     Text = "No personal record set",
-                    Font = OsuFont.GetFont(size: 24),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 24)),
                 });
                 return;
             }
@@ -452,7 +452,7 @@ namespace osu.Game.Skinning.Select
                     Origin = Anchor.Centre,
                     X = 16,
                     Text = "No records set!",
-                    Font = OsuFont.GetFont(size: 28, weight: FontWeight.Light),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 28, weight: FontWeight.Light)),
                     Colour = new Color4(90, 190, 255, 255),
                 },
             }
@@ -470,7 +470,7 @@ namespace osu.Game.Skinning.Select
                 _ => string.Empty,
             };
 
-            message.Add(new OsuTextFlowContainer(t => t.Font = OsuFont.GetFont(size: 22, weight: FontWeight.Bold))
+            message.Add(new OsuTextFlowContainer(t => t.Font = StableFont.Like(OsuFont.GetFont(size: 22, weight: FontWeight.Bold)))
             {
                 Position = new Vector2(118, 170) * 1.6f,
                 Origin = Anchor.Centre,
@@ -590,7 +590,7 @@ namespace osu.Game.Skinning.Select
                         Origin = Anchor.Centre,
                         Position = new Vector2(18 * 1.6f, centre_y),
                         Text = rank > 0 ? rank.ToString(CultureInfo.InvariantCulture) : string.Empty,
-                        Font = OsuFont.GetFont(size: 28, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 28, weight: FontWeight.Bold)),
                         Alpha = 0,
                     },
                     new Sprite
@@ -603,13 +603,13 @@ namespace osu.Game.Skinning.Select
                     {
                         X = 58 * 1.6f,
                         Text = name,
-                        Font = OsuFont.GetFont(size: 24),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 24)),
                     },
                     new OsuSpriteText
                     {
                         Position = new Vector2(58, 15) * 1.6f,
                         Text = string.Create(CultureInfo.InvariantCulture, $"Score: {displayScore:#,0} ({score.MaxCombo:#,0}x)"),
-                        Font = OsuFont.GetFont(size: 18),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 18)),
                     },
                     // Mods, accuracy, and how far ahead of the next score.
                     new FillFlowContainer
@@ -645,7 +645,7 @@ namespace osu.Game.Skinning.Select
                         Origin = Anchor.CentreLeft,
                         Position = new Vector2(258, 15) * 1.6f,
                         Text = timeAgo(hours),
-                        Font = OsuFont.GetFont(size: 15),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 15)),
                     });
                 }
             }
@@ -662,7 +662,7 @@ namespace osu.Game.Skinning.Select
                     Anchor = Anchor.CentreRight,
                     Origin = Anchor.CentreRight,
                     Text = text,
-                    Font = OsuFont.GetFont(size: 15),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 15)),
                 },
             };
 

@@ -296,7 +296,7 @@ namespace osu.Game.Skinning.Ranking
         {
             Y = -6,
             Text = text,
-            Font = OsuFont.GetFont(size: 58, weight: FontWeight.Light),
+            Font = StableFont.Like(OsuFont.GetFont(size: 58, weight: FontWeight.Light)),
             Colour = new Color4(255, 255, 255, 60),
         };
 
@@ -327,7 +327,7 @@ namespace osu.Game.Skinning.Ranking
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         Text = "▼ Online Ranking ▼",
-                        Font = OsuFont.GetFont(size: 28),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 28)),
                     },
                 };
             }

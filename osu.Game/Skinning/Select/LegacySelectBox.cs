@@ -140,7 +140,7 @@ namespace osu.Game.Skinning.Select
                             Anchor = Anchor.CentreLeft,
                             Origin = Anchor.CentreLeft,
                             X = 3,
-                            Font = OsuFont.GetFont(size: 19),
+                            Font = StableFont.Like(OsuFont.GetFont(size: 19)),
                             Colour = TextColour,
                         },
                     }
@@ -207,7 +207,7 @@ namespace osu.Game.Skinning.Select
                             Origin = Anchor.CentreLeft,
                             X = 3,
                             Text = text,
-                            Font = OsuFont.GetFont(size: 17),
+                            Font = StableFont.Like(OsuFont.GetFont(size: 17)),
                         },
                 };
             }

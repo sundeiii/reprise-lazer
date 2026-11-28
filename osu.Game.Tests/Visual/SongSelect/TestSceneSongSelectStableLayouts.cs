@@ -679,6 +679,47 @@ namespace osu.Game.Tests.Visual.SongSelect
         private LegacyModSelect.Slot slot(string acronym) => SongSelect.ChildrenOfType<LegacyModSelect.Slot>().First(s => s.Mods.Any(m => m.Acronym == acronym));
 
         [Test]
+        public void TestStableFonts()
+        {
+            AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
+            AddStep("use stable layouts", () => Config.SetValue(OsuSetting.StableSongSelect, true));
+            AddStep("HD and RX", () => SelectedMods.Value = new Mod[] { new OsuModHidden(), new OsuModRelax() });
+
+            LoadSongSelect();
+            ImportBeatmapForRuleset(0);
+            AddUntilStep("stable leaderboard shown", () => SongSelect.ChildrenOfType<LegacySongSelectLeaderboard>().Any(l => l.IsLoaded));
+            AddUntilStep("mods written out", () => modsText() == "Hidden,Relax");
+            AddAssert("off: leaderboard in the game's font", () => fonts<LegacySongSelectLeaderboard>().Contains("Torus"));
+
+            // The game follows OsuSetting.StableFonts with StableFont.Enabled (the scene has its own settings); song select rebuilds.
+            AddStep("use stable fonts", () =>
+            {
+                StableFont.Enabled = true;
+                Config.SetValue(OsuSetting.StableFonts, true);
+            });
+            AddUntilStep("leaderboard in Aller", () => fonts<LegacySongSelectLeaderboard>().All(f => f == "Aller") && modsText() == "Hidden,Relax");
+            AddAssert("footer in Aller", () => fonts<LegacyFooter>().All(f => f == "Aller"));
+            AddAssert("top in Aller", () => fonts<LegacySongSelectTop>().All(f => f == "Aller"));
+
+            AddStep("stop using stable fonts", () =>
+            {
+                StableFont.Enabled = false;
+                Config.SetValue(OsuSetting.StableFonts, false);
+            });
+            AddUntilStep("leaderboard in the game's font again", () => fonts<LegacySongSelectLeaderboard>().Contains("Torus"));
+
+            AddStep("reset", () =>
+            {
+                SelectedMods.Value = System.Array.Empty<Mod>();
+                skins.CurrentSkinInfo.SetDefault();
+            });
+        }
+
+        private string[] fonts<T>() where T : Drawable => SongSelect.ChildrenOfType<T>().SelectMany(d => d.ChildrenOfType<Graphics.Sprites.OsuSpriteText>())
+                                                                     .Where(t => t.IsPresent && t.Text.ToString().Length > 0)
+                                                                     .Select(t => t.Font.Family).Distinct().ToArray();
+
+        [Test]
         public void TestModeIconDrawnAdditively()
         {
             AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);

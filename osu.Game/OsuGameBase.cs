@@ -78,6 +78,8 @@ namespace osu.Game
     [Cached(typeof(OsuGameBase))]
     public partial class OsuGameBase : Framework.Game, ICanAcceptFiles, IBeatSyncProvider
     {
+        private Bindable<bool> stableFonts = null!;
+
 #if DEBUG
         public const string GAME_NAME = "Reprise Lazer (development)";
 #else
@@ -319,6 +321,9 @@ namespace osu.Game
             Resources.AddStore(new Sounds2023Store(LocalConfig.Get<bool>(OsuSetting.Sounds2023)));
             // Reprise: the 2023 interface (its icons are added as a font below).
             Interface2023.Apply(LocalConfig.Get<bool>(OsuSetting.Interface2023));
+            // Reprise: osu!stable's font in its layouts (song select's leaderboard, the results screen), when picked.
+            stableFonts = LocalConfig.GetBindable<bool>(OsuSetting.StableFonts);
+            stableFonts.BindValueChanged(v => StableFont.Enabled = v.NewValue, true);
             // Reprise: our own versions of osu!'s resources (the main menu logo, the Triangles intro's logo), in front of osu!'s.
             Resources.AddStore(new NamespacedResourceStore<byte[]>(new DllResourceStore(typeof(OsuGameBase).Assembly), @"Resources/Overrides"));
             Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));

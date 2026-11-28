@@ -189,6 +189,7 @@ namespace osu.Game.Screens.Select
         private SkinManager skinManager { get; set; } = null!;
 
         private Bindable<bool> stableLayouts = null!;
+        private Bindable<bool> stableFonts = null!;
         private Bindable<StableLayoutVersion> stableLayoutVersion = null!;
         private IBindable<Skin> currentSkin = null!;
         private bool stableFooterShown;
@@ -382,6 +383,7 @@ namespace osu.Game.Screens.Select
             });
 
             stableLayouts = config.GetBindable<bool>(OsuSetting.StableSongSelect);
+            stableFonts = config.GetBindable<bool>(OsuSetting.StableFonts);
             stableLayoutVersion = config.GetBindable<StableLayoutVersion>(OsuSetting.StableLayoutVersion);
             stableFooterShown = wantsStableFooter;
             if (stableFooterShown)
@@ -469,6 +471,8 @@ namespace osu.Game.Screens.Select
             modSelectOverlayRegistration = overlayManager?.RegisterBlockingOverlay(modSelectOverlay);
 
             stableLayouts.BindValueChanged(_ => updateStableFooter());
+            // osu!stable's font picked or not: its layouts again, written in it (after the game has followed the setting).
+            stableFonts.BindValueChanged(_ => Schedule(updateStableFooter));
             // Another version: its look again (as with another skin).
             stableLayoutVersion.BindValueChanged(_ => updateStableFooter());
             // A copy: unbound when this screen goes (the skin manager's stays).

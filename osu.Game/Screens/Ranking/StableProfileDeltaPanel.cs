@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
+using osu.Game.Skinning;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Online;
 using osu.Game.Scoring;
@@ -76,13 +77,13 @@ namespace osu.Game.Screens.Ranking
                             new OsuSpriteText
                             {
                                 Text = "PROFILE UPDATE",
-                                Font = OsuFont.Torus.With(size: 15, weight: FontWeight.Bold),
+                                Font = StableFont.Like(OsuFont.Torus.With(size: 15, weight: FontWeight.Bold)),
                                 Colour = Color4Extensions.FromHex("#ffd966"),
                             },
                             statusText = new OsuSpriteText
                             {
                                 Text = showForThisScore ? "waiting..." : "—",
-                                Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold),
+                                Font = StableFont.Like(OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold)),
                                 Colour = Color4.White.Opacity(0.65f),
                             },
                             profileRow("GLOBAL RANK", out rankText),
@@ -136,13 +137,13 @@ namespace osu.Game.Screens.Ranking
                     new OsuSpriteText
                     {
                         Text = label,
-                        Font = OsuFont.Torus.With(size: 11, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.Torus.With(size: 11, weight: FontWeight.Bold)),
                         Colour = Color4.White.Opacity(0.55f),
                     },
                     createdValueText = new OsuSpriteText
                     {
                         Text = "—",
-                        Font = OsuFont.Torus.With(size: 20, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.Torus.With(size: 20, weight: FontWeight.Bold)),
                         Colour = Color4.White,
                     }
                 }

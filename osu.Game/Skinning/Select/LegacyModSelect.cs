@@ -104,7 +104,7 @@ namespace osu.Game.Skinning.Select
                 Origin = Anchor.Centre,
                 // Measured against stable at 1920x1080.
                 Y = 130,
-                Font = OsuFont.GetFont(size: 48, weight: FontWeight.Bold),
+                Font = StableFont.Like(OsuFont.GetFont(size: 48, weight: FontWeight.Bold)),
             });
 
             for (int row = 0; row < rows.Length; row++)
@@ -115,7 +115,7 @@ namespace osu.Game.Skinning.Select
                 {
                     Position = new Vector2(20 * 1.6f, y - 13 * 1.6f),
                     Text = rows[row].Name,
-                    Font = OsuFont.GetFont(size: 38, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 38, weight: FontWeight.Bold)),
                     Colour = rows[row].Colour,
                 });
 

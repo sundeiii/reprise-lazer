@@ -68,13 +68,13 @@ namespace osu.Game.Skinning.Ranking
                     Text = beatmap == null
                         ? string.Empty
                         : StableMetadata.ArtistTitle(beatmap.Metadata, after: $" [{beatmap.DifficultyName}] by {beatmap.Metadata.Author.Username}"),
-                    Font = OsuFont.GetFont(size: 21, weight: FontWeight.Light),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 21, weight: FontWeight.Light)),
                     Alpha = decorated ? 1 : 0,
                 },
                 counts = new OsuSpriteText
                 {
                     Position = new Vector2(275, 25),
-                    Font = OsuFont.GetFont(size: 19, weight: FontWeight.Light),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 19, weight: FontWeight.Light)),
                     Alpha = decorated ? 1 : 0,
                 },
                 // Stable's rating: the message 91 below the band's top, the stars under it.

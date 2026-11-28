@@ -233,6 +233,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.StableGameplayMods, false);
             SetDefault(OsuSetting.StableIntroSkip, false);
             SetDefault(OsuSetting.StableSkipButton, false);
+            SetDefault(OsuSetting.StableFonts, false);
             SetDefault(OsuSetting.RelaxTapping, string.Empty);
             SetDefault(OsuSetting.RelaxCopyTiming, false);
             SetDefault(OsuSetting.StableSettingsSplit, false);
@@ -739,6 +740,9 @@ namespace osu.Game.Configuration
 
         /// <summary>Reprise: osu!stable's skip button (the skin's play-skip in the bottom right, always shown) with a legacy skin.</summary>
         StableSkipButton,
+
+        /// <summary>Reprise: osu!stable's font (Aller) on song select's leaderboard and the results screen in their osu!stable layouts.</summary>
+        StableFonts,
 
         /// <summary>Reprise: the player Relax taps like in osu! (a RelaxTappingProfile's name; empty for Relax's own perfect tapping).</summary>
         RelaxTapping,

@@ -15,6 +15,23 @@ namespace osu.Game.Skinning
     public static class StableFont
     {
         /// <param name="screenHeight">The window's height (stable picks the weight by the size on the screen).</param>
+        /// <summary>Whether osu!stable's layouts are written in its font (<see cref="Configuration.OsuSetting.StableFonts"/>).</summary>
+        public static bool Enabled { get; set; }
+
+        /// <summary>
+        /// A layout's font, as osu!stable writes it when <see cref="Enabled"/>: Aller at the same size (in a layout 768 high), Bold
+        /// for bold text, else Light, or Regular when small on the screen (stable's rule, as <see cref="Get"/>).
+        /// </summary>
+        public static FontUsage Like(FontUsage font, float screenHeight = 1080)
+        {
+            if (!Enabled)
+                return font;
+
+            bool bold = font.Weight is "Bold" or "SemiBold" or "Black";
+            string weight = bold ? "Bold" : font.Size * 3 / 4 * screenHeight / 768 < 20 ? "Regular" : "Light";
+            return new FontUsage("Aller", font.Size, weight, font.Italics, font.FixedWidth);
+        }
+
         public static FontUsage Get(float size, bool bold = false, float screenHeight = 1080)
         {
             string weight = bold ? "Bold" : size * screenHeight / 768 < 20 ? "Regular" : "Light";

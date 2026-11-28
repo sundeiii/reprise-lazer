@@ -71,7 +71,7 @@ namespace osu.Game.Skinning
         private void load(ISkinSource skin)
         {
             // Stable's: at the top left, wrapping across (its mod selection's is a sentence).
-            var titleText = new OsuTextFlowContainer(t => t.Font = OsuFont.GetFont(size: 33))
+            var titleText = new OsuTextFlowContainer(t => t.Font = StableFont.Like(OsuFont.GetFont(size: 33)))
             {
                 Position = new Vector2(2 * 1.6f),
                 RelativeSizeAxes = Axes.X,
@@ -279,7 +279,7 @@ namespace osu.Game.Skinning
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         Text = text,
-                        Font = OsuFont.GetFont(size: 30, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 30, weight: FontWeight.Bold)),
                         Shadow = true,
                     },
                     hoverSound = new SkinnableSound(new SampleInfo("click-short")),

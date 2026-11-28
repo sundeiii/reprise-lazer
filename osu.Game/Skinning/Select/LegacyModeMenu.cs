@@ -91,7 +91,7 @@ namespace osu.Game.Skinning.Select
                     Origin = Anchor.CentreLeft,
                     Position = position + new Vector2(row_size + 16, row_size / 2),
                     Text = r.Name,
-                    Font = OsuFont.GetFont(size: 38.4f),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 38.4f)),
                 };
                 names.Add(name);
 

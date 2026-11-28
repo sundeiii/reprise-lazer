@@ -189,7 +189,7 @@ namespace osu.Game.Skinning.Ranking
             Y = header_y,
             Origin = Anchor.BottomCentre,
             Text = text,
-            Font = OsuFont.GetFont(size: 14, weight: FontWeight.Bold),
+            Font = StableFont.Like(OsuFont.GetFont(size: 14, weight: FontWeight.Bold)),
         };
 
         private static Drawable cell((float X, float Width) column, float y, Color4 background, string value, string? change, Color4? textColour = null, float size = 15,
@@ -219,7 +219,7 @@ namespace osu.Game.Skinning.Ranking
                             Origin = Anchor.TopCentre,
                             Text = value,
                             // Bold only for the large ones (the label and the map rank).
-                            Font = OsuFont.GetFont(size: size, weight: size > 15 ? FontWeight.Bold : FontWeight.Regular),
+                            Font = StableFont.Like(OsuFont.GetFont(size: size, weight: size > 15 ? FontWeight.Bold : FontWeight.Regular)),
                             Colour = textColour ?? Color4.White,
                         },
                         new OsuSpriteText
@@ -227,7 +227,7 @@ namespace osu.Game.Skinning.Ranking
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Text = change ?? string.Empty,
-                            Font = OsuFont.GetFont(size: 14),
+                            Font = StableFont.Like(OsuFont.GetFont(size: 14)),
                             Alpha = change == null ? 0 : 1,
                         },
                     }

@@ -226,22 +226,22 @@ namespace osu.Game.Skinning.Select
                 title = new TruncatingSpriteText
                 {
                     Position = new Vector2(38, -2),
-                    Font = OsuFont.GetFont(size: 24),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 24)),
                 },
                 mapper = new OsuSpriteText
                 {
                     Position = new Vector2(38, 20),
-                    Font = OsuFont.GetFont(size: 18),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 18)),
                 },
                 lengthLine = new OsuSpriteText
                 {
                     Position = new Vector2(5, 40),
-                    Font = OsuFont.GetFont(size: 17),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 17)),
                 },
                 countsLine = new OsuSpriteText
                 {
                     Position = new Vector2(5, 58),
-                    Font = OsuFont.GetFont(size: 17),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 17)),
                 },
                 // Stable's has a black backing.
                 new Container
@@ -258,7 +258,7 @@ namespace osu.Game.Skinning.Select
                         difficultyLine = new OsuSpriteText
                         {
                             Margin = new MarginPadding { Horizontal = 2 },
-                            Font = OsuFont.GetFont(size: 13),
+                            Font = StableFont.Like(OsuFont.GetFont(size: 13)),
                         },
                     }
                 },
@@ -301,7 +301,7 @@ namespace osu.Game.Skinning.Select
         {
             var text = new OsuSpriteText
             {
-                Font = OsuFont.GetFont(size: 19, weight: FontWeight.Bold),
+                Font = StableFont.Like(OsuFont.GetFont(size: 19, weight: FontWeight.Bold)),
                 Alpha = label ? 0 : 1,
                 AlwaysPresent = true,
             };
@@ -323,7 +323,7 @@ namespace osu.Game.Skinning.Select
                     new OsuSpriteText
                     {
                         Text = "Search:",
-                        Font = OsuFont.GetFont(size: 19, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 19, weight: FontWeight.Bold)),
                         Colour = search_colour,
                         Alpha = label ? 1 : 0,
                         AlwaysPresent = true,
@@ -379,7 +379,7 @@ namespace osu.Game.Skinning.Select
             X = x - layout_width,
             Y = 22,
             Text = text,
-            Font = OsuFont.GetFont(size: 32, weight: FontWeight.Light),
+            Font = StableFont.Like(OsuFont.GetFont(size: 32, weight: FontWeight.Light)),
             Colour = label_colour,
         };
 
@@ -664,7 +664,7 @@ namespace osu.Game.Skinning.Select
                         Anchor = Anchor.Centre,
                         Origin = Anchor.Centre,
                         Text = label,
-                        Font = OsuFont.GetFont(size: 15, weight: FontWeight.Bold),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 15, weight: FontWeight.Bold)),
                     },
                 };
             }

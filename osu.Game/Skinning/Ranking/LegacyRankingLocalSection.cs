@@ -82,7 +82,7 @@ namespace osu.Game.Skinning.Ranking
                     Text = details.LocalRank is int rank
                         ? $"You achieved the #{rank.ToString(CultureInfo.InvariantCulture)} score on local rankings!"
                         : string.Empty,
-                    Font = OsuFont.GetFont(size: 28),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 28)),
                     Colour = message_colour,
                     Alpha = decorated ? 1 : 0,
                 },
@@ -92,7 +92,7 @@ namespace osu.Game.Skinning.Ranking
                     Position = new Vector2(195, 74),
                     Origin = Anchor.CentreLeft,
                     Text = "Local player name:",
-                    Font = OsuFont.GetFont(size: 18),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 18)),
                 },
                 new Container
                 {
@@ -111,7 +111,7 @@ namespace osu.Game.Skinning.Ranking
                             Origin = Anchor.CentreLeft,
                             X = 3,
                             Text = score.User.Username,
-                            Font = OsuFont.GetFont(size: 18, weight: FontWeight.Bold),
+                            Font = StableFont.Like(OsuFont.GetFont(size: 18, weight: FontWeight.Bold)),
                         },
                     }
                 },
@@ -197,7 +197,7 @@ namespace osu.Game.Skinning.Ranking
                     {
                         X = 28,
                         Text = text,
-                        Font = OsuFont.GetFont(size: 21),
+                        Font = StableFont.Like(OsuFont.GetFont(size: 21)),
                         AlwaysPresent = true,
                     },
                 };

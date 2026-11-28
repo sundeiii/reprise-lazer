@@ -87,9 +87,9 @@ namespace osu.Game.Skinning.Select
                 usernameText = new OsuSpriteText
                 {
                     Position = new Vector2(50.5f, -2f) * 1.6f,
-                    Font = OsuFont.Default.With(size: 14 * 1.6f),
+                    Font = StableFont.Like(OsuFont.Default.With(size: 14 * 1.6f)),
                 },
-                infoText = new OsuTextFlowContainer(t => t.Font = OsuFont.Default.With(size: 10 * 1.6f))
+                infoText = new OsuTextFlowContainer(t => t.Font = StableFont.Like(OsuFont.Default.With(size: 10 * 1.6f)))
                 {
                     Position = new Vector2(50f, 11.5f) * 1.6f,
                 },
@@ -101,7 +101,7 @@ namespace osu.Game.Skinning.Select
                 rankText = new OsuSpriteText
                 {
                     Position = new Vector2(200, 9) * 1.6f,
-                    Font = OsuFont.Default.With(size: 36 * 1.6f * 0.9f),
+                    Font = StableFont.Like(OsuFont.Default.With(size: 36 * 1.6f * 0.9f)),
                     Origin = Anchor.TopRight,
                 },
                 levelBar = new Sprite

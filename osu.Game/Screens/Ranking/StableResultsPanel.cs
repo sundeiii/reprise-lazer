@@ -133,14 +133,14 @@ namespace osu.Game.Screens.Ranking
                                 new TruncatingSpriteText
                                 {
                                     Text = beatmapTitleLine(),
-                                    Font = OsuFont.Torus.With(size: 24, weight: FontWeight.Bold),
+                                    Font = StableFont.Like(OsuFont.Torus.With(size: 24, weight: FontWeight.Bold)),
                                     Colour = Color4.White,
                                     Width = 760,
                                 },
                                 new TruncatingSpriteText
                                 {
                                     Text = beatmapDifficultyLine(),
-                                    Font = OsuFont.Torus.With(size: 15, weight: FontWeight.SemiBold),
+                                    Font = StableFont.Like(OsuFont.Torus.With(size: 15, weight: FontWeight.SemiBold)),
                                     Colour = Color4.White.Opacity(0.68f),
                                     Width = 760,
                                 },
@@ -288,7 +288,7 @@ namespace osu.Game.Screens.Ranking
                                     new OsuSpriteText
                                     {
                                         Text = "played by",
-                                        Font = OsuFont.Torus.With(size: 12, weight: FontWeight.SemiBold),
+                                        Font = StableFont.Like(OsuFont.Torus.With(size: 12, weight: FontWeight.SemiBold)),
                                         Colour = Color4.White.Opacity(0.65f),
                                     },
                                     new FillFlowContainer
@@ -309,7 +309,7 @@ namespace osu.Game.Screens.Ranking
                                                 Anchor = Anchor.CentreLeft,
                                                 Origin = Anchor.CentreLeft,
                                                 Text = score.User.Username,
-                                                Font = OsuFont.Torus.With(size: 19, weight: FontWeight.Bold),
+                                                Font = StableFont.Like(OsuFont.Torus.With(size: 19, weight: FontWeight.Bold)),
                                                 Colour = Color4.White,
                                             },
                                         }
@@ -326,7 +326,7 @@ namespace osu.Game.Screens.Ranking
                         Origin = Anchor.BottomRight,
                         Margin = new MarginPadding { Right = 38, Bottom = 38 },
                         Text = score.Date == default ? "" : score.Date.LocalDateTime.ToString("g"),
-                        Font = OsuFont.Torus.With(size: 15),
+                        Font = StableFont.Like(OsuFont.Torus.With(size: 15)),
                         Colour = Color4.White.Opacity(0.72f),
                     },
                 }
@@ -555,13 +555,13 @@ namespace osu.Game.Screens.Ranking
                 new OsuSpriteText
                 {
                     Text = "MAP RANK",
-                    Font = OsuFont.Torus.With(size: 12, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 12, weight: FontWeight.Bold)),
                     Colour = Color4Extensions.FromHex("#ffd966"),
                 },
                 mapRankText = new OsuSpriteText
                 {
                     Text = "—",
-                    Font = OsuFont.Torus.With(size: 21, weight: FontWeight.SemiBold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 21, weight: FontWeight.SemiBold)),
                     Colour = Color4.White,
                 }
             }
@@ -576,13 +576,13 @@ namespace osu.Game.Screens.Ranking
                 new OsuSpriteText
                 {
                     Text = "COUNTRY MAP RANK",
-                    Font = OsuFont.Torus.With(size: 12, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 12, weight: FontWeight.Bold)),
                     Colour = Color4Extensions.FromHex("#ffd966"),
                 },
                 countryMapRankText = new OsuSpriteText
                 {
                     Text = "—",
-                    Font = OsuFont.Torus.With(size: 21, weight: FontWeight.SemiBold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 21, weight: FontWeight.SemiBold)),
                     Colour = Color4.White,
                 }
             }
@@ -597,13 +597,13 @@ namespace osu.Game.Screens.Ranking
                 new OsuSpriteText
                 {
                     Text = BeatmapsetsStrings.ShowScoreboardHeaderspp,
-                    Font = OsuFont.Torus.With(size: 12, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 12, weight: FontWeight.Bold)),
                     Colour = Color4Extensions.FromHex("#ffd966"),
                 },
                 ppText = new OsuSpriteText
                 {
                     Text = "...",
-                    Font = OsuFont.Torus.With(size: 24),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 24)),
                     Colour = Color4.White,
                 }
             }
@@ -644,7 +644,7 @@ namespace osu.Game.Screens.Ranking
         private Drawable label(string text) => new OsuSpriteText
         {
             Text = text,
-            Font = OsuFont.Torus.With(size: 24, weight: FontWeight.SemiBold),
+            Font = StableFont.Like(OsuFont.Torus.With(size: 24, weight: FontWeight.SemiBold)),
             Colour = Color4.White,
         };
 
@@ -671,7 +671,7 @@ namespace osu.Game.Screens.Ranking
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
                 Text = stableRankText(),
-                Font = OsuFont.Torus.With(size: 155, weight: FontWeight.Bold),
+                Font = StableFont.Like(OsuFont.Torus.With(size: 155, weight: FontWeight.Bold)),
                 Colour = Color4Extensions.FromHex("#7ffcff"),
             };
         }
@@ -717,13 +717,13 @@ namespace osu.Game.Screens.Ranking
                 new OsuSpriteText
                 {
                     Text = name,
-                    Font = OsuFont.Torus.With(size: 12, weight: FontWeight.Bold),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 12, weight: FontWeight.Bold)),
                     Colour = Color4Extensions.FromHex("#ffd966"),
                 },
                 new OsuSpriteText
                 {
                     Text = value,
-                    Font = OsuFont.Torus.With(size: 24, weight: valueWeight),
+                    Font = StableFont.Like(OsuFont.Torus.With(size: 24, weight: valueWeight)),
                     Colour = valueColour ?? Color4.White,
                 }
             }

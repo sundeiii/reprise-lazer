@@ -57,19 +57,19 @@ namespace osu.Game.Skinning.Ranking
                 {
                     Position = new Vector2(text_left, 2),
                     Text = beatmap == null ? string.Empty : StableMetadata.ArtistTitle(beatmap.Metadata, after: $" [{beatmap.DifficultyName}]"),
-                    Font = OsuFont.GetFont(size: 32),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 32)),
                 },
                 new OsuSpriteText
                 {
                     Position = new Vector2(text_left, 33),
                     Text = beatmap == null ? string.Empty : $"Beatmap by {beatmap.Metadata.Author.Username}",
-                    Font = OsuFont.GetFont(size: 26),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 26)),
                 },
                 new OsuSpriteText
                 {
                     Position = new Vector2(text_left, 56),
                     Text = $"Played by {score.User.Username} on {score.Date.ToLocalTime().ToString("G", CultureInfo.CurrentCulture)}.",
-                    Font = OsuFont.GetFont(size: 26),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 26)),
                 },
                 new Sprite
                 {

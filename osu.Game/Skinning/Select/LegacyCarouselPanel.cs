@@ -241,7 +241,7 @@ namespace osu.Game.Skinning.Select
         {
             Anchor = Anchor.CentreLeft,
             Origin = Anchor.CentreLeft,
-            Font = OsuFont.GetFont(size: size, weight: bold ? FontWeight.Bold : FontWeight.Regular),
+            Font = StableFont.Like(OsuFont.GetFont(size: size, weight: bold ? FontWeight.Bold : FontWeight.Regular)),
         };
 
         protected override void LoadComplete()

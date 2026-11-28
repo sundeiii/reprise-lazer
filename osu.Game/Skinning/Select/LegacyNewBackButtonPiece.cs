@@ -50,7 +50,7 @@ namespace osu.Game.Skinning.Select
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.Centre,
                     Text = @"back",
-                    Font = OsuFont.Default.With(size: 26),
+                    Font = StableFont.Like(OsuFont.Default.With(size: 26)),
                     Y = -vertical_offset * 1.6f,
                     UseFullGlyphHeight = false,
                 },

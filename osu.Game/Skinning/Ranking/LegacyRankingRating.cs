@@ -65,7 +65,7 @@ namespace osu.Game.Skinning.Ranking
                 {
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.Centre,
-                    Font = OsuFont.GetFont(size: 22),
+                    Font = StableFont.Like(OsuFont.GetFont(size: 22)),
                     Colour = message_colour,
                     Alpha = decorated ? 1 : 0,
                 },
