@@ -224,7 +224,11 @@ namespace osu.Game.Skinning.Select
 
         private void updateGrade()
         {
-            grade.Texture = topRank is { } rank ? skin.GetTexture($"{DrawableRank.GetLegacyRankTextureName(rank)}-small") : null;
+            var texture = topRank is { } rank ? skin.GetTexture($"{DrawableRank.GetLegacyRankTextureName(rank)}-small") : null;
+            // A sprite only sizes itself to its first texture: without this, another skin's letter was drawn at the
+            // previous skin's letter size (stretched or squashed until the panel was made again).
+            grade.Size = texture is null ? Vector2.Zero : new Vector2(texture.DisplayWidth, texture.DisplayHeight);
+            grade.Texture = texture;
             layoutText();
         }
 
@@ -260,6 +264,7 @@ namespace osu.Game.Skinning.Select
             unbindStars();
             topRank = null;
             grade.Texture = null;
+            grade.Size = Vector2.Zero;
             stars.Clear();
             showsDifficulty = false;
 
