@@ -27,19 +27,32 @@ namespace osu.Game.Screens.Play.HUD.Counters
         public LocalisableString Text
         {
             get => text.Text;
-            set => text.Text = value;
+            set
+            {
+                text.Text = value;
+                // The glow is drawn once into a kept image: drawn again for the new text (a grade going from SS to S kept showing SS).
+                ForceRedraw();
+            }
         }
 
         public FontUsage Font
         {
             get => text.Font;
-            set => text.Font = value;
+            set
+            {
+                text.Font = value;
+                ForceRedraw();
+            }
         }
 
         public ColourInfo TextColour
         {
             get => text.Colour;
-            set => text.Colour = value;
+            set
+            {
+                text.Colour = value;
+                ForceRedraw();
+            }
         }
 
         public Vector2 Spacing

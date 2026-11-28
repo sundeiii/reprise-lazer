@@ -125,6 +125,21 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("screenshot", () => Screenshot?.Invoke("tosu-counters"));
         }
 
+        // The grade follows the play: SS until a 100, then S (and A with a miss).
+        [Test]
+        public void TestGradeFollowsThePlay()
+        {
+            AddStep("hit 50 greats", () => apply(HitResult.Great, 50));
+            AddUntilStep("SS", () => grade(), () => Is.EqualTo("SS"));
+            AddStep("a 100", () => apply(HitResult.Ok, 1));
+            AddAssert("the game's grade is S", () => scoreProcessor.Rank.Value, () => Is.EqualTo(osu.Game.Scoring.ScoreRank.S));
+            AddUntilStep("S", () => grade(), () => Is.EqualTo("S"));
+            AddStep("a miss", () => apply(HitResult.Miss, 1));
+            AddUntilStep("A", () => grade(), () => Is.EqualTo("A"));
+        }
+
+        private string grade() => this.ChildrenOfType<SimplisticPerformancePointsCounter>().Single().ChildrenOfType<GlowText>().First().Text.ToString();
+
         private LivePlayStats[] stats() => this.ChildrenOfType<LivePlayStats>().ToArray();
 
         private void setProgress(double progress)
