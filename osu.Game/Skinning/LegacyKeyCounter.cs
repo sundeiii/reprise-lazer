@@ -71,7 +71,7 @@ namespace osu.Game.Skinning
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
                                 Text = trigger.Name,
-                                Font = OsuFont.GetFont(weight: FontWeight.SemiBold),
+                                Font = StableFont.Like(OsuFont.GetFont(weight: FontWeight.SemiBold)),
                                 Colour = textColour,
                             },
                             overlayKeyText = new LegacySpriteText(LegacyFont.ScoreEntry)

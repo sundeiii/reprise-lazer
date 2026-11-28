@@ -112,6 +112,42 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("reset skin", () => skins.CurrentSkinInfo.SetDefault());
         }
 
+        [Test]
+        public void TestStableLayoutFollowsChangesWhileShown()
+        {
+            Skinning.LegacyGameplayMenu? first = null;
+
+            AddStep("set legacy skin", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
+            AddStep("use stable layouts", () => config.SetValue(Configuration.OsuSetting.StablePauseMenu, true));
+
+            showOverlay();
+            AddUntilStep("stable pause screen", () => (first = pauseOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().SingleOrDefault())?.IsLoaded == true);
+
+            // Another skin while it's showing: its look straight away.
+            AddStep("set lazer's skin", () => skins.CurrentSkinInfo.SetDefault());
+            AddUntilStep("lazer's menu", () => !pauseOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().Any());
+            AddStep("set legacy skin again", () => skins.CurrentSkinInfo.Value = skins.DefaultClassicSkin.SkinInfo);
+            AddUntilStep("stable's again, made anew", () => pauseOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().SingleOrDefault() is { IsLoaded: true } menu && menu != first);
+
+            // osu!stable's font picked (the game follows the setting with StableFont.Enabled).
+            AddStep("use stable fonts", () =>
+            {
+                first = pauseOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().Single();
+                Skinning.StableFont.Enabled = true;
+                config.SetValue(Configuration.OsuSetting.StableFonts, true);
+            });
+            AddUntilStep("made anew in Aller", () => pauseOverlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().SingleOrDefault() is { IsLoaded: true } menu && menu != first
+                                                     && menu.ChildrenOfType<Graphics.Sprites.OsuSpriteText>().All(t => t.Font.Family == "Aller"));
+
+            AddStep("reset", () =>
+            {
+                Skinning.StableFont.Enabled = false;
+                config.SetValue(Configuration.OsuSetting.StableFonts, false);
+                config.SetValue(Configuration.OsuSetting.StablePauseMenu, false);
+                skins.CurrentSkinInfo.SetDefault();
+            });
+        }
+
         private static System.Collections.Generic.IEnumerable<ClickableContainer> stableButtons(GameplayMenuOverlay overlay) =>
             overlay.ChildrenOfType<Skinning.LegacyGameplayMenu>().Single().ChildrenOfType<ClickableContainer>();
 

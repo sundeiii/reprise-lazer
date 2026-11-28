@@ -85,6 +85,8 @@ namespace osu.Game.Screens.Play
         private Container lazerLayer = null!;
         private Container stableLayer = null!;
         private Bindable<bool> stableLayouts = null!;
+        private Bindable<bool> stableFonts = null!;
+        private IBindable<Skin> currentSkin = null!;
 
         [Resolved]
         private SkinManager skinManager { get; set; } = null!;
@@ -93,6 +95,7 @@ namespace osu.Game.Screens.Play
         private void load(OsuColour colours, GameHost? host, OsuConfigManager config)
         {
             stableLayouts = config.GetBindable<bool>(OsuSetting.StablePauseMenu);
+            stableFonts = config.GetBindable<bool>(OsuSetting.StableFonts);
 
             Children = new Drawable[]
             {
@@ -211,14 +214,7 @@ namespace osu.Game.Screens.Play
         protected override void PopIn()
         {
             // Made on showing: the skin's images then (and the setting or skin may have changed since).
-            bool stable = stableLayouts.Value && skinManager.CurrentSkin.Value is LegacySkin;
-
-            lazerLayer.Alpha = stable ? 0 : 1;
-
-            if (stable)
-                stableLayer.Child = new LegacyGameplayMenu(this is FailOverlay, OnResume, OnRetry, OnQuit);
-            else
-                stableLayer.Clear();
+            updateLayout();
 
             this.FadeIn(TRANSITION_DURATION, Easing.In);
             updateInfoText();
@@ -358,12 +354,39 @@ namespace osu.Game.Screens.Play
 
         private float targetVolume => windowActive.Value && State.Value == Visibility.Visible ? 1.0f : 0;
 
+        /// <summary>
+        /// osu!stable's menu (made again, with the skin's images now) or this one's, by the setting and the skin.
+        /// </summary>
+        private void updateLayout()
+        {
+            bool stable = stableLayouts.Value && skinManager.CurrentSkin.Value is LegacySkin;
+
+            lazerLayer.Alpha = stable ? 0 : 1;
+
+            if (stable)
+                stableLayer.Child = new LegacyGameplayMenu(this is FailOverlay, OnResume, OnRetry, OnQuit);
+            else
+                stableLayer.Clear();
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            // Another skin, layout or font while it's showing: its look again (scheduled: after the skin sources have followed the skin).
+            currentSkin = skinManager.CurrentSkin.GetBoundCopy();
+            currentSkin.BindValueChanged(_ => Schedule(updateIfShown));
+            stableLayouts.BindValueChanged(_ => Schedule(updateIfShown));
+            stableFonts.BindValueChanged(_ => Schedule(updateIfShown));
+
             // Schedule required because host.IsActive doesn't seem to always run on the update thread.
             windowActive.BindValueChanged(_ => Schedule(() => pauseLoop.VolumeTo(targetVolume, 1000, Easing.Out)));
+        }
+
+        private void updateIfShown()
+        {
+            if (State.Value == Visibility.Visible)
+                updateLayout();
         }
 
         public void StopAllSamples()

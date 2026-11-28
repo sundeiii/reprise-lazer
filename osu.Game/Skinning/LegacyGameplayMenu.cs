@@ -148,7 +148,7 @@ namespace osu.Game.Skinning
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
                                 Text = text,
-                                Font = OsuFont.GetFont(size: 40, weight: FontWeight.Bold),
+                                Font = StableFont.Like(OsuFont.GetFont(size: 40, weight: FontWeight.Bold)),
                             },
                         }
                     };
