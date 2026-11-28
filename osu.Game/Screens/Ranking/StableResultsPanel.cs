@@ -27,6 +27,7 @@ using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play.HUD;
+using osu.Game.Screens.Ranking.Expanded;
 using osu.Game.Skinning;
 using osu.Game.Users;
 using osu.Game.Users.Drawables;
@@ -184,11 +185,29 @@ namespace osu.Game.Screens.Ranking
                         Spacing = new Vector2(0, 15),
                         Children = new Drawable[]
                         {
-                            scoreText = new OsuSpriteText
+                            new FillFlowContainer
                             {
-                                Text = "0",
-                                Font = OsuFont.Numeric.With(size: 58),
-                                Colour = Color4.White,
+                                AutoSizeAxes = Axes.Both,
+                                Direction = FillDirection.Horizontal,
+                                Spacing = new Vector2(14, 0),
+                                Children = new Drawable[]
+                                {
+                                    scoreText = new OsuSpriteText
+                                    {
+                                        Text = "0",
+                                        Font = OsuFont.Numeric.With(size: 58),
+                                        Colour = Color4.White,
+                                    },
+                                    // Reprise: where it would place on osu!'s own board (for a player with osu!'s scores on).
+                                    new BanchoPlaceText(score)
+                                    {
+                                        Anchor = Anchor.BottomLeft,
+                                        Origin = Anchor.BottomLeft,
+                                        Margin = new MarginPadding { Bottom = 12 },
+                                        Font = StableFont.Like(OsuFont.Torus.With(size: 22, weight: FontWeight.SemiBold)),
+                                        Colour = Color4Extensions.FromHex(@"ff66aa"),
+                                    },
+                                }
                             },
 
                             new ModDisplay

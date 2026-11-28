@@ -12,6 +12,7 @@ using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Scoring;
+using osu.Game.Screens.Ranking.Expanded;
 using osu.Game.Screens.RankingV2.Legacy;
 using osuTK;
 using osuTK.Graphics;
@@ -94,6 +95,15 @@ namespace osu.Game.Skinning.Ranking
                                         Origin = Anchor.Centre,
                                     },
                                     panel = new LegacyRankingPanel(),
+                                    // Reprise: under the score, where it would place on osu!'s own board (for a player with osu!'s scores on).
+                                    new BanchoPlaceText(score)
+                                    {
+                                        Origin = Anchor.Centre,
+                                        // The panel's score is centred on stable's (220, 94); this between it and the counts.
+                                        Position = new Vector2(220, 119.5f) * LegacySkin.STABLE_MAGIC_SCALE_FACTOR,
+                                        Font = StableFont.Get(12),
+                                        Shadow = true,
+                                    },
                                     graph = new LegacyRankingHealthGraph(),
                                     perfect = new LegacyRankingPerfectIndicator { Origin = Anchor.Centre },
                                     grade = new LegacyRankingGrade

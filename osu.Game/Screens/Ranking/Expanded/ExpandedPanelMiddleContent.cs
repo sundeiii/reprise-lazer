@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
@@ -152,7 +153,15 @@ namespace osu.Game.Screens.Ranking.Expanded
                                         ExpansionMode = ExpansionMode.AlwaysExpanded,
                                         Scale = new Vector2(0.5f),
                                         Current = { Value = score.Mods }
-                                    }
+                                    },
+                                    // Reprise: where it would place on osu!'s own board (for a player with osu!'s scores on).
+                                    new BanchoPlaceText(score)
+                                    {
+                                        Anchor = Anchor.CentreLeft,
+                                        Origin = Anchor.CentreLeft,
+                                        Font = OsuFont.GetFont(size: 14, weight: FontWeight.Bold),
+                                        Colour = Color4Extensions.FromHex(@"ff66aa"),
+                                    },
                                 }
                             },
                             new FillFlowContainer

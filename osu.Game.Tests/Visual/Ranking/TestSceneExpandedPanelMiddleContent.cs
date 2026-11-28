@@ -16,6 +16,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Localisation;
 using osu.Game.Models;
+using osu.Game.Online.API.Requests;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
@@ -34,6 +35,23 @@ namespace osu.Game.Tests.Visual.Ranking
     {
         [Resolved]
         private RulesetStore rulesetStore { get; set; }
+
+        [Test]
+        public void TestBanchoPlace()
+        {
+            AddStep("show example score", () => showPanel(TestResources.CreateTestScoreInfo(createTestBeatmap(new RealmUser()))));
+            AddUntilStep("place text loaded", () => this.ChildrenOfType<BanchoPlaceText>().SingleOrDefault()?.IsLoaded == true);
+
+            // Nothing for a player without osu!'s scores, or without a place.
+            AddStep("not enabled", () => this.ChildrenOfType<BanchoPlaceText>().Single().Show(new BanchoPlace { Enabled = false, Place = 12 }));
+            AddAssert("hidden", () => this.ChildrenOfType<BanchoPlaceText>().Single().Alpha == 0);
+            AddStep("no place", () => this.ChildrenOfType<BanchoPlaceText>().Single().Show(new BanchoPlace { Enabled = true, Place = null }));
+            AddAssert("still hidden", () => this.ChildrenOfType<BanchoPlaceText>().Single().Alpha == 0);
+
+            AddStep("12th of 345", () => this.ChildrenOfType<BanchoPlaceText>().Single().Show(new BanchoPlace { Enabled = true, Place = 12, Count = 345 }));
+            AddAssert("shown", () => this.ChildrenOfType<BanchoPlaceText>().Single().Text.ToString() == "#12 on osu!");
+            AddUntilStep("visible", () => this.ChildrenOfType<BanchoPlaceText>().Single().Alpha == 1);
+        }
 
         [Test]
         public void TestMapWithKnownMapper()
