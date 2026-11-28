@@ -19,6 +19,7 @@ namespace osu.Game.Rulesets.Osu.Tests
             {
                 "mrekk", "Ivaxa", "Akolibed", "NINERIK", "milosz", "lifeline", "xootynator",
                 "FlyingTuna", "BTMC", "chocomint", "WhiteCat", "Zylice", "ASecretBox", "Abyssal", "cedru",
+                "Vaxei", "Rafis", "RyuK", "Bubbleman", "rektygon", "decaten", "luciano", "Lilily",
             }));
 
             foreach (string name in RelaxTappingProfile.Available)

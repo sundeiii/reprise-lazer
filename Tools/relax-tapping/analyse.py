@@ -10,6 +10,7 @@ its percentiles (101 points), which the game samples from (osu.Game.Rulesets.Osu
 Usage: python analyse.py <replays dir with one folder per player and manifest.json> <output dir>
 """
 
+import hashlib
 import json
 import lzma
 import math
@@ -24,7 +25,7 @@ BREAK_GAP = 1000
 # Replay key bits: M1, M2, K1 (with M1), K2 (with M2).
 M1, M2, K1, K2 = 1, 2, 4, 8
 
-MOD_DT, MOD_HT, MOD_NC = 64, 256, 512
+MOD_EZ, MOD_HR, MOD_DT, MOD_HT, MOD_NC = 2, 16, 64, 256, 512
 
 
 def read_uleb(data, pos):
@@ -160,7 +161,12 @@ def presses_of(frames):
 def analyse(replay, notes, od):
     mods = replay['mods']
     rate = 1.5 if mods & (MOD_DT | MOD_NC) else 0.75 if mods & MOD_HT else 1.0
-    window = 200 - 10 * od  # the 50's window, in the map's time
+    # The 50's window, in the map's time, with HR's or EZ's OD (stray presses on a lenient map would count as hits otherwise).
+    if mods & MOD_HR:
+        od = min(10, od * 1.4)
+    elif mods & MOD_EZ:
+        od = od / 2
+    window = 200 - 10 * od
     presses = presses_of(replay['frames'])
     used = set()
     rows = []
@@ -285,7 +291,7 @@ def main():
         by_player.setdefault(entry['player'], []).append(entry)
 
     for name, entries in by_player.items():
-        rows, used = [], 0
+        per_replay = []
         for e in entries:
             osr = os.path.join(source, name, f"{e['score']}.osr")
             osu = os.path.join(source, name, f"{e['beatmap']}.osu")
@@ -294,14 +300,34 @@ def main():
             replay = read_osr(osr)
             if replay['mode'] != 0:
                 continue
+            # Played on another version of the map (a replay older than the map's last update): its notes have moved since.
+            if replay['hash'] and hashlib.md5(open(osu, 'rb').read()).hexdigest() != replay['hash']:
+                print(f'  {name} {e["score"]}: played on an older version of the map, left out')
+                continue
             notes, od = read_osu(osu)
             got = analyse(replay, notes, od)
             # A replay whose presses didn't line up with its map (a wrong .osu) is left out.
             if len(got) < 0.8 * sum(1 for n in notes if n[1] != 'spinner'):
                 print(f'  {name} {e["score"]}: only {len(got)} of {len(notes)} notes matched, left out')
                 continue
-            rows += got
-            used += 1
+            per_replay.append((e['score'], got))
+        # A replay whose own timing is far looser than the player's usual (more than twice their typical replay's UR) didn't line
+        # up as it should (stray presses counted as hits): left out, as it would pull the whole profile's timing apart.
+        def spread(got):
+            offsets = [r['offset'] for r in got]
+            mean = sum(offsets) / len(offsets)
+            return 10 * math.sqrt(sum((o - mean) ** 2 for o in offsets) / len(offsets))
+        if per_replay:
+            typical = sorted(spread(g) for _, g in per_replay)[len(per_replay) // 2]
+            kept = []
+            for score, got in per_replay:
+                if spread(got) > 2 * typical:
+                    print(f'  {name} {score}: UR {spread(got):.0f}, over twice their typical {typical:.0f}, left out')
+                else:
+                    kept.append(got)
+            per_replay = kept
+        rows = [r for got in per_replay for r in got]
+        used = len(per_replay)
         if not rows:
             continue
         p = profile(name, rows, used)

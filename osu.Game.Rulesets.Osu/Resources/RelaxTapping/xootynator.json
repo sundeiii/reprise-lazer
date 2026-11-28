@@ -632,7 +632,7 @@
     7.33,
     8.0,
     8.0,
-    8.67,
+    8.93,
     9.0,
     9.33,
     10.0,
@@ -1605,6 +1605,6 @@
   "alternate": 0.501,
   "leftShare": 0.369,
   "meanOffset": -0.4,
-  "unstableRate": 79.9
+  "unstableRate": 79.6
  }
 }
