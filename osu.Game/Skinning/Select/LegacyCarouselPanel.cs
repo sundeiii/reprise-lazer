@@ -209,11 +209,24 @@ namespace osu.Game.Skinning.Select
                     Child = new Box { RelativeSizeAxes = Axes.Both, Colour = ColourInfo2.Gradient },
                 };
 
+            // Reprise: the grade's image from this skin too (it kept the one looked up first: a card could show another
+            // skin's letter, or the fallback one, depending on which had loaded when its scores came in).
+            updateGrade();
+
             if (IsLoaded)
                 updateState(false);
         }
 
         private void onSkinChanged() => Schedule(applySkin);
+
+        // The player's best grade on the shown difficulty (null: none), drawn with the current skin's image.
+        private ScoreRank? topRank;
+
+        private void updateGrade()
+        {
+            grade.Texture = topRank is { } rank ? skin.GetTexture($"{DrawableRank.GetLegacyRankTextureName(rank)}-small") : null;
+            layoutText();
+        }
 
         /// <summary>
         /// The bar behind the panel (the skin's "menu-button-background", or one like stable's default).
@@ -245,6 +258,7 @@ namespace osu.Game.Skinning.Select
             scoreSubscription?.Dispose();
             scoreSubscription = null;
             unbindStars();
+            topRank = null;
             grade.Texture = null;
             stars.Clear();
             showsDifficulty = false;
@@ -413,8 +427,8 @@ namespace osu.Game.Skinning.Select
                 var top = sender.Where(s => (s.UserID == userId || s.UserID <= 1) && currentRuleset.Equals(s.Ruleset))
                                 .MaxBy(s => s.TotalScore);
 
-                grade.Texture = top == null ? null : skin.GetTexture($"{DrawableRank.GetLegacyRankTextureName(top.Rank)}-small");
-                layoutText();
+                topRank = top?.Rank;
+                updateGrade();
             });
         }
 
