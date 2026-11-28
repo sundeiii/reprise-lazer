@@ -56,6 +56,22 @@ namespace osu.Game.Rulesets.Osu.Tests
             }
         }
 
+        // How each plays, in the settings' words, as their replays (and osuconfigs.com's) have it.
+        [TestCase("FlyingTuna", "full alternate")]
+        [TestCase("Zylice", "full alternate")]
+        [TestCase("mrekk", "alternates")]
+        [TestCase("lifeline", "single-tapper")]
+        [TestCase("chocomint", "single-tapper")]
+        [TestCase("NINERIK", "single-taps jumps")]
+        [TestCase("xootynator", "mixed")]
+        public void TestStyle(string name, string style)
+        {
+            var profile = RelaxTappingProfile.Load(name)!;
+            Assert.That(profile.Style, Is.EqualTo(style));
+            Assert.That(profile.UserId, Is.GreaterThan(0));
+            Assert.That(profile.Country, Has.Length.EqualTo(2));
+        }
+
         [Test]
         public void TestSampleStaysWithinTheDeciles()
         {

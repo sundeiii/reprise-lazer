@@ -300,7 +300,7 @@ namespace osu.Game.Graphics.UserInterfaceV2
             }
         }
 
-        private partial class FormDropdownMenu : OsuDropdownMenu
+        protected partial class FormDropdownMenu : OsuDropdownMenu
         {
             private OverlayColourProvider colourProvider = null!;
 

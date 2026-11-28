@@ -87,15 +87,4 @@ namespace osu.Game.Rulesets.Osu.UI
             };
         }
     }
-
-    /// <summary>Reprise: "Perfect" (Relax's own tapping) and the players there are tapping profiles of.</summary>
-    public partial class RelaxTappingDropdown : FormDropdown<string>
-    {
-        public RelaxTappingDropdown()
-        {
-            Items = new[] { string.Empty }.Concat(RelaxTappingProfile.Available).ToArray();
-        }
-
-        protected override LocalisableString GenerateItemText(string item) => string.IsNullOrEmpty(item) ? "Perfect (Relax's own)" : item;
-    }
 }

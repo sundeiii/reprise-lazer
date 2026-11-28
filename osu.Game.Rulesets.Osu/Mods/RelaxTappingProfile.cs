@@ -24,11 +24,43 @@ namespace osu.Game.Rulesets.Osu.Mods
         [JsonProperty("name")]
         public string Name { get; set; } = string.Empty;
 
+        /// <summary>Their osu! account (for their avatar).</summary>
+        [JsonProperty("userId")]
+        public int? UserId { get; set; }
+
+        /// <summary>Their country (two letters, for their flag).</summary>
+        [JsonProperty("country")]
+        public string? Country { get; set; }
+
         [JsonProperty("replays")]
         public int Replays { get; set; }
 
         [JsonProperty("notes")]
         public int Notes { get; set; }
+
+        /// <summary>
+        /// How they tap, in a few words, from how often they alternate overall and on jumps (notes over 140ms apart): "full alternate",
+        /// "alternates", "mixed", "single-taps jumps" or "single-tapper".
+        /// </summary>
+        public string Style
+        {
+            get
+            {
+                double overall = Summary?.Alternate ?? 0.5;
+                var jumps = Buckets.Where(b => b.MaxGap == null || b.MaxGap > 140).ToArray();
+                int jumpNotes = jumps.Sum(b => b.Notes);
+                double onJumps = jumpNotes > 0 ? jumps.Sum(b => b.Alternate * b.Notes) / jumpNotes : overall;
+
+                if (overall >= 0.9)
+                    return "full alternate";
+                if (onJumps < 0.2)
+                    return overall < 0.6 ? "single-tapper" : "single-taps jumps";
+                if (onJumps >= 0.4 && overall >= 0.7)
+                    return "alternates";
+
+                return "mixed";
+            }
+        }
 
         [JsonProperty("firstKeyLeft")]
         public double FirstKeyLeft { get; set; } = 0.5;
@@ -43,6 +75,9 @@ namespace osu.Game.Rulesets.Osu.Mods
         {
             [JsonProperty("unstableRate")]
             public double UnstableRate { get; set; }
+
+            [JsonProperty("alternate")]
+            public double Alternate { get; set; }
         }
 
         [JsonProperty("sliderRelease")]

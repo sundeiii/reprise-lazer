@@ -255,8 +255,13 @@ def profile(name, rows, replays):
     offsets = [r['offset'] for r in rows]
     mean = sum(offsets) / len(offsets)
     ur = 10 * math.sqrt(sum((o - mean) ** 2 for o in offsets) / len(offsets))
+    # Their osu! account (for the game's avatar and flag), from players.json beside this script.
+    players_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'players.json')
+    player = json.load(open(players_file)).get(name, {}) if os.path.exists(players_file) else {}
     return {
         'name': name,
+        'userId': player.get('id'),
+        'country': player.get('country'),
         'replays': replays,
         'notes': len(rows),
         'firstKeyLeft': round(after_break.count('L') / len(after_break), 3) if after_break else 0.5,
